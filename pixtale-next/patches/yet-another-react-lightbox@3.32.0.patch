@@ -1,0 +1,63 @@
+diff --git a/dist/index.js b/dist/index.js
+index 6cda7eb1df6a72c80af7944af6a38ba0a5c5f2a7..46e768768b5fa5a74ee4b1b0a5c2808e33802054 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -1130,7 +1130,7 @@ function Controller({ children, ...props }) {
+         let { direction } = action;
+         const count = (_b = action.count) !== null && _b !== void 0 ? _b : 1;
+         let newSwipeState = SwipeState.ANIMATION;
+-        let newSwipeAnimationDuration = swipeDuration * count;
++        let newSwipeAnimationDuration = Math.max(150, Math.min(swipeDuration * count, swipeDuration * 1.25));
+         if (!direction) {
+             const containerWidth = containerRect === null || containerRect === void 0 ? void 0 : containerRect.width;
+             const elapsedTime = action.duration || 0;
+diff --git a/dist/plugins/zoom/index.js b/dist/plugins/zoom/index.js
+index 79d76a1cd56e3364e43a711e44db91cddd55067e..39e97b0dd66d8099a6735b544bebe6c155abef57 100644
+--- a/dist/plugins/zoom/index.js
++++ b/dist/plugins/zoom/index.js
+@@ -146,7 +146,7 @@ function scaleZoom(value, delta, factor = 100, clamp = 2) {
+ }
+ function useZoomSensors(zoom, minZoom, maxZoom, disabled, zoomIn, zoomOut, changeZoom, changeOffsets, zoomWrapperRef) {
+     const activePointers = React.useRef([]);
+-    const lastPointerDown = React.useRef(0);
++    const lastPointerDown = React.useRef(null);
+     const pinchZoom = React.useRef(undefined);
+     const { globalIndex } = useLightboxState();
+     const { getOwnerWindow } = useDocumentContext();
+@@ -233,10 +233,15 @@ function useZoomSensors(zoom, minZoom, maxZoom, disabled, zoomIn, zoomOut, chang
+         if (zoom > 1) {
+             event.stopPropagation();
+         }
+-        const { timeStamp } = event;
++        const { timeStamp, clientX, clientY } = event;
++        const last = lastPointerDown.current;
++        const tapDist = getOwnerWindow().innerWidth < 1024 ? 30 : 10;
+         if (pointers.length === 0 &&
+-            timeStamp - lastPointerDown.current < (event.pointerType === "touch" ? doubleTapDelay : doubleClickDelay)) {
+-            lastPointerDown.current = 0;
++            last &&
++            timeStamp - last.time < (event.pointerType === "touch" ? doubleTapDelay : doubleClickDelay) &&
++            Math.abs(clientX - last.x) <= tapDist &&
++            Math.abs(clientY - last.y) <= tapDist) {
++            lastPointerDown.current = null;
+             const targetZoom = zoom >= 1
+                 ? zoom !== maxZoom
+                     ? zoom * Math.max(maxZoom ** (1 / doubleClickMaxStops), zoomInMultiplier)
+@@ -247,7 +251,7 @@ function useZoomSensors(zoom, minZoom, maxZoom, disabled, zoomIn, zoomOut, chang
+             changeZoom(targetZoom, false, ...translateCoordinates(event));
+         }
+         else {
+-            lastPointerDown.current = timeStamp;
++            lastPointerDown.current = { time: timeStamp, x: clientX, y: clientY };
+         }
+         replacePointer(event);
+         if (pointers.length === 2) {
+@@ -295,7 +299,7 @@ function useZoomSensors(zoom, minZoom, maxZoom, disabled, zoomIn, zoomOut, chang
+     const cleanupSensors = React.useCallback(() => {
+         const pointers = activePointers.current;
+         pointers.splice(0, pointers.length);
+-        lastPointerDown.current = 0;
++        lastPointerDown.current = null;
+         pinchZoom.current = undefined;
+     }, []);
+     usePointerEvents(subscribeSensors, onPointerDown, onPointerMove, onPointerUp, disabled);

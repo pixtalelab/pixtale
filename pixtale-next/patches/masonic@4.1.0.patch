@@ -1,0 +1,65 @@
+diff --git a/dist/esm/index.dev.mjs b/dist/esm/index.dev.mjs
+index 85c1a4a472b2ca754328659c1eadb2613402e3a3..9ee464e4771186a0712fc886d630cd41ff654987 100644
+--- a/dist/esm/index.dev.mjs
++++ b/dist/esm/index.dev.mjs
+@@ -984,7 +984,7 @@ var getColumns = function getColumns(width, minimumWidth, gutter, columnCount, m
+   }
+ 
+   columnCount = columnCount || Math.min(Math.floor((width + gutter) / (minimumWidth + gutter)), maxColumnCount || Infinity) || 1;
+-  var columnWidth = Math.floor((width - gutter * (columnCount - 1)) / columnCount); // Cap the column width if maxColumnWidth is specified
++  var columnWidth = ((width - gutter * (columnCount - 1)) / columnCount); // Cap the column width if maxColumnWidth is specified
+ 
+   if (maxColumnWidth !== undefined && columnWidth > maxColumnWidth) {
+     columnWidth = maxColumnWidth;
+diff --git a/dist/main/use-positioner.js b/dist/main/use-positioner.js
+index 503f67646024eeedc04b40c60cbe8e490e838c94..7682de012d1a586d6ffc6a3716d5645bea5d8ef1 100644
+--- a/dist/main/use-positioner.js
++++ b/dist/main/use-positioner.js
+@@ -208,7 +208,7 @@ const binarySearch = (a, y) => {
+ 
+ const getColumns = (width = 0, minimumWidth = 0, gutter = 8, columnCount, maxColumnCount, maxColumnWidth) => {
+   columnCount = columnCount || Math.min(Math.floor((width + gutter) / (minimumWidth + gutter)), maxColumnCount || Infinity) || 1;
+-  let columnWidth = Math.floor((width - gutter * (columnCount - 1)) / columnCount); // Cap the column width if maxColumnWidth is specified
++  let columnWidth = ((width - gutter * (columnCount - 1)) / columnCount); // Cap the column width if maxColumnWidth is specified
+ 
+   if (maxColumnWidth !== undefined && columnWidth > maxColumnWidth) {
+     columnWidth = maxColumnWidth;
+diff --git a/dist/module/use-positioner.js b/dist/module/use-positioner.js
+index 8b0410965474e932e7fc6624bd13f44d542e2acd..261c1bd9a4840ec5226b2f84d9e9d75713428174 100644
+--- a/dist/module/use-positioner.js
++++ b/dist/module/use-positioner.js
+@@ -225,7 +225,7 @@ const getColumns = function (width, minimumWidth, gutter, columnCount, maxColumn
+   }
+ 
+   columnCount = columnCount || Math.min(Math.floor((width + gutter) / (minimumWidth + gutter)), maxColumnCount || Infinity) || 1;
+-  let columnWidth = Math.floor((width - gutter * (columnCount - 1)) / columnCount); // Cap the column width if maxColumnWidth is specified
++  let columnWidth = ((width - gutter * (columnCount - 1)) / columnCount); // Cap the column width if maxColumnWidth is specified
+ 
+   if (maxColumnWidth !== undefined && columnWidth > maxColumnWidth) {
+     columnWidth = maxColumnWidth;
+diff --git a/dist/umd/masonic.dev.js b/dist/umd/masonic.dev.js
+index 9f2e923f1d80746bcf01009de24fe45102ef22ae..d0e1acc7852e45bf3a52f1beb5c69d097d04bdac 100644
+--- a/dist/umd/masonic.dev.js
++++ b/dist/umd/masonic.dev.js
+@@ -1425,7 +1425,7 @@
+     }
+ 
+     columnCount = columnCount || Math.min(Math.floor((width + gutter) / (minimumWidth + gutter)), maxColumnCount || Infinity) || 1;
+-    var columnWidth = Math.floor((width - gutter * (columnCount - 1)) / columnCount); // Cap the column width if maxColumnWidth is specified
++    var columnWidth = ((width - gutter * (columnCount - 1)) / columnCount); // Cap the column width if maxColumnWidth is specified
+ 
+     if (maxColumnWidth !== undefined && columnWidth > maxColumnWidth) {
+       columnWidth = maxColumnWidth;
+diff --git a/src/use-positioner.ts b/src/use-positioner.ts
+index 76f6179b8af71eb6846d002bb58536f50ff4b766..515dac866d40383332f88b79047843d186e5fca7 100644
+--- a/src/use-positioner.ts
++++ b/src/use-positioner.ts
+@@ -367,7 +367,7 @@ const getColumns = (
+       maxColumnCount || Infinity
+     ) ||
+     1;
+-  let columnWidth = Math.floor(
++  let columnWidth = (
+     (width - gutter * (columnCount - 1)) / columnCount
+   );
+ 

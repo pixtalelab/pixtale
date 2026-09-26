@@ -1,0 +1,22 @@
+# 依赖与构建产物
+node_modules
+.next
+.open-next
+
+# 版本控制与 IDE
+.git
+.github
+.cursor
+.vercel
+
+# 本地数据（运行时通过卷挂载）
+data
+album.sqlite
+
+# 环境与密钥
+.env
+
+# 日志与临时文件
+*.log
+npm-debug.log*
+pnpm-debug.log*
