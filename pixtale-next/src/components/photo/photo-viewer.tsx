@@ -6,7 +6,7 @@ import { isImageSlide, type SlideImage, useController, useLightboxState } from "
 import Fullscreen from "yet-another-react-lightbox/plugins/fullscreen"
 import Thumbnails from "yet-another-react-lightbox/plugins/thumbnails"
 import Zoom from "yet-another-react-lightbox/plugins/zoom"
-import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, CircleAlertIcon, CircleIcon, Menu, LoaderCircleIcon, MaximizeIcon, PanelRightClose, PanelRightOpen, RotateCcwSquare } from "lucide-react"
+import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, CircleAlertIcon, CircleIcon, Menu, LoaderCircleIcon, MaximizeIcon, PanelRightClose, PanelRightOpen, RotateCwSquare } from "lucide-react"
 
 import { PhotoInfoSidebar, PhotoViewerBlurBackground } from "@/components/photo/photo-info-sidebar"
 import { useTapAction } from "@/hooks/use-tap-action"
@@ -432,7 +432,7 @@ function RotateButton({ showActions, onRotate }: { showActions: boolean, onRotat
       ].join(" ")}
       {...tap}
     >
-      <RotateCcwSquare />
+      <RotateCwSquare />
       <span className="sr-only">Rotate photo</span>
     </Button>
   )
