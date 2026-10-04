@@ -5,10 +5,7 @@ import { DatabaseIcon, Image, SearchIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog"
+import { Dialog } from "@/components/common/dialog"
 import {
   InputGroup,
   InputGroupAddon,
@@ -84,15 +81,20 @@ export function PhotoSearch({ onSearch }: PhotoSearchProps) {
         <SearchIcon />
         <span className="sr-only">{t("search")}</span>
       </Button>
-      <Dialog open={open} onOpenChange={handleOpenChange} >
-        <DialogContent showCloseButton={false} className="top-20 translate-y-0 p-4 lg:max-w-lg">
+      <Dialog
+        open={open}
+        onOpenChange={handleOpenChange}
+        preventMobileAutoFocus
+        showFooter={false}
+        showCloseButton={false}
+        contentClassName="top-20 translate-y-0 p-4 lg:max-w-lg"
+      >
           <form onSubmit={submitSearch}>
             <InputGroup className="h-10">
               <InputGroupAddon>
                 <SearchIcon />
               </InputGroupAddon>
               <InputGroupInput
-                autoFocus
                 value={value}
                 onChange={(event) => setValue(event.target.value)}
                 placeholder={t(searchType === "photo" ? "searchPhotoPlaceholder" : "searchStoragePlaceholder")}
@@ -144,7 +146,6 @@ export function PhotoSearch({ onSearch }: PhotoSearchProps) {
               </Button>
             </div>
           </form>
-        </DialogContent>
       </Dialog>
     </>
   )
