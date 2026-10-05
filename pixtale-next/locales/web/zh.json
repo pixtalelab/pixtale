@@ -137,8 +137,6 @@
   "storage.domainPlaceholder": "访问域名（可选）",
   "storage.telegramDomain": "代理地址",
   "storage.telegramDomainPlaceholder": "代理地址（可选）",
-  "storage.tgToken": "TG Token",
-  "storage.tgChatId": "TG Chat ID",
   "storage.bucket": "桶名称",
   "storage.region": "区域",
   "storage.endpoint": "接入端点",

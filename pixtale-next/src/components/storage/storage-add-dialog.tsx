@@ -326,23 +326,23 @@ export function StorageAddDialog({ title, open, storage, onOpenChange, onStorage
             </div>
             <div className="grid gap-2">
               <Input
-                value={form.tgToken ?? ""}
-                placeholder={t("tgToken")}
-                aria-label={t("tgToken")}
-                aria-invalid={Boolean(errors.tgToken)}
-                onChange={(event) => updateField("tgToken", event.target.value)}
-              />
-              {errors.tgToken && <p className="text-sm text-destructive">{errors.tgToken}</p>}
-            </div>
-            <div className="grid gap-2">
-              <Input
                 value={form.tgChatId ?? ""}
-                placeholder={t("tgChatId")}
-                aria-label={t("tgChatId")}
+                placeholder="Chat ID"
+                aria-label="Token"
                 aria-invalid={Boolean(errors.tgChatId)}
                 onChange={(event) => updateField("tgChatId", event.target.value)}
               />
               {errors.tgChatId && <p className="text-sm text-destructive">{errors.tgChatId}</p>}
+            </div>
+            <div className="grid gap-2">
+              <Input
+                value={form.tgToken ?? ""}
+                placeholder="TG Token"
+                aria-label="TG Token"
+                aria-invalid={Boolean(errors.tgToken)}
+                onChange={(event) => updateField("tgToken", event.target.value)}
+              />
+              {errors.tgToken && <p className="text-sm text-destructive">{errors.tgToken}</p>}
             </div>
           </div>
         )}

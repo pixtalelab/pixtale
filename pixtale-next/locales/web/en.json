@@ -137,8 +137,6 @@
   "storage.domainPlaceholder": "Public domain (optional)",
   "storage.telegramDomain": "Proxy address",
   "storage.telegramDomainPlaceholder": "Proxy address (optional)",
-  "storage.tgToken": "TG Token",
-  "storage.tgChatId": "TG Chat ID",
   "storage.bucket": "Bucket",
   "storage.region": "Region",
   "storage.endpoint": "Endpoint",
