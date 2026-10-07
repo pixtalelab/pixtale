@@ -173,9 +173,15 @@ export function NavUser({
                   <Key />
                   {t("changePassword")}
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <BookOpen />
-                  {t("documentation")}
+                <DropdownMenuItem asChild>
+                  <a
+                    href="https://docs.022335.xyz/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <BookOpen />
+                    {t("documentation")}
+                  </a>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
