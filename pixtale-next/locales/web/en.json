@@ -54,6 +54,8 @@
   "albums.empty": "No albums yet",
   "albums.deleteTitle": "Delete This Album?",
   "albums.deleteDescription": "The album can't be recovered, but its photos will be kept.",
+  "albums.recycleTitle": "Clean Up These Photos?",
+  "albums.recycleDescription": "Photos in this album will be moved to the trash.",
   "albums.actions.rename": "Rename",
   "albums.actions.pin": "Pin Album",
   "albums.actions.public": "Make Public",

@@ -26,7 +26,7 @@ import { photoFavorite, photoRecycle } from "@/request/photo"
 import { albumAddPhoto, albumRemovePhoto } from "@/request/album"
 import { useAlbumStore } from "@/store/album-store"
 import { usePhotoStore } from "@/store/photo-store"
-import { ChevronLeftIcon, PlusIcon } from "lucide-react"
+import { ArrowLeftIcon, PlusIcon } from "lucide-react"
 import { useAlbumPhotoContext } from "./provider"
 import { useApp } from "@/app/(main)/provider"
 import { PhotoDateDrawer } from "@/components/photo/photo-date-drawer"
@@ -200,7 +200,7 @@ export default function Page() {
                 className="-ml-1"
                 onClick={() => router.back()}
               >
-                <ChevronLeftIcon />
+                <ArrowLeftIcon />
                 <span className="sr-only">Back</span>
               </Button>
               <Separator

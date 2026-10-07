@@ -46,6 +46,10 @@ export default function Page() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   // deletingAlbum 保存当前等待删除确认的相册。
   const [deletingAlbum, setDeletingAlbum] = useState<AlbumVo | null>(null)
+  // recycleOpen 控制回收照片确认弹框的打开状态。
+  const [recycleOpen, setRecycleOpen] = useState(false)
+  // recyclingAlbum 保存当前等待回收照片确认的相册。
+  const [recyclingAlbum, setRecyclingAlbum] = useState<AlbumVo | null>(null)
 
   useEffect(() => {
     // 刷新相册页时禁用浏览器滚动恢复，并回到列表顶部。
@@ -107,6 +111,12 @@ export default function Page() {
     })
   }
 
+  // 打开回收照片确认弹框。
+  function openRecycleAlbum(album: AlbumVo) {
+    setRecyclingAlbum(album)
+    setRecycleOpen(true)
+  }
+
   // 把相册中的照片移入回收站后刷新相册数量和封面。
   function recycleAlbum(album: AlbumVo) {
     albumRecycle({ albumId: album.albumId }).then(() => {
@@ -116,11 +126,6 @@ export default function Page() {
 
   // 打开删除确认弹框。
   function openDeleteAlbum(album: AlbumVo) {
-    if (album.photoTotal === 0) {
-      deleteAlbum(album)
-      return
-    }
-
     setDeletingAlbum(album)
     setDeleteOpen(true)
   }
@@ -148,6 +153,22 @@ export default function Page() {
     }, 300)
 
     deleteAlbum(album)
+  }
+
+  // 确认回收相册照片后更新当前列表。
+  function confirmRecycleAlbum() {
+    const album = recyclingAlbum
+
+    if (!album) {
+      return
+    }
+
+    setRecycleOpen(false)
+    setTimeout(() => {
+      setRecyclingAlbum(null)
+    }, 300)
+
+    recycleAlbum(album)
   }
 
   // 提交相册新名称，成功后更新当前列表中的相册名称。
@@ -191,6 +212,17 @@ export default function Page() {
     }
   }
 
+  // 处理回收照片确认弹框打开状态。
+  function handleRecycleOpenChange(open: boolean) {
+    setRecycleOpen(open)
+
+    if (!open) {
+      setTimeout(() => {
+        setRecyclingAlbum(null)
+      }, 300)
+    }
+  }
+
   return (
     <>
       <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
@@ -224,7 +256,7 @@ export default function Page() {
             onAlbumRename={renameAlbum}
               onAlbumTop={topAlbum}
               onAlbumPublic={changeAlbumPublic}
-              onAlbumRecycle={recycleAlbum}
+              onAlbumRecycle={openRecycleAlbum}
               onAlbumDelete={openDeleteAlbum}
             />
           </div>
@@ -244,6 +276,14 @@ export default function Page() {
         title={t("deleteTitle")}
         description={t("deleteDescription")}
         onConfirm={confirmDeleteAlbum}
+      />
+      <AlertDialogDestructive
+        open={recycleOpen}
+        onOpenChange={handleRecycleOpenChange}
+        title={t("recycleTitle")}
+        description={t("recycleDescription")}
+        confirmText={t("actions.recycle")}
+        onConfirm={confirmRecycleAlbum}
       />
     </>
   )
