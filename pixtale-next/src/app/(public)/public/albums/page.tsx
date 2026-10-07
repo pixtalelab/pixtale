@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useLayoutEffect, useState } from "react"
-import { CornerUpLeft } from "lucide-react"
+import { Undo2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 
@@ -48,7 +48,7 @@ export default function PublicAlbumsPage() {
         </div>
         <div className="fixed left-[calc(100vw-3.5rem)] top-0 flex h-12 items-center gap-1 px-4 md:left-[calc(100vw-4rem)]">
           <Button variant="ghost" size="icon" className="group" onClick={goBack}>
-            <CornerUpLeft strokeWidth={2.5} className="text-muted-foreground transition-colors group-hover:text-foreground" />
+            <Undo2 className="text-muted-foreground transition-colors group-hover:text-foreground" />
           </Button>
         </div>
       </header>

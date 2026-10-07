@@ -76,15 +76,15 @@ export default function PublicHomePage() {
         <div className="fixed left-[calc(100vw-5.75rem)] top-0 flex h-12 items-center gap-1 px-4 md:left-[calc(100vw-6.25rem)]">
           <Button asChild variant="ghost" size="icon" className="group">
             <Link href="/public/albums">
-              <GalleryVerticalEnd strokeWidth={2.5} className="text-muted-foreground transition-colors group-hover:text-foreground" />
+              <GalleryVerticalEnd className="text-muted-foreground transition-colors group-hover:text-foreground" />
             </Link>
           </Button>
           <Button asChild variant="ghost" size="icon" className="group">
             <Link href={accountHref}>
               {isLoggedIn ? (
-                <UserRound strokeWidth={2.5} className="text-muted-foreground transition-colors group-hover:text-foreground" />
+                <UserRound className="text-muted-foreground transition-colors group-hover:text-foreground" />
               ) : (
-                <LogIn strokeWidth={2.5} className="text-muted-foreground transition-colors group-hover:text-foreground" />
+                <LogIn className="text-muted-foreground transition-colors group-hover:text-foreground" />
               )}
             </Link>
           </Button>
