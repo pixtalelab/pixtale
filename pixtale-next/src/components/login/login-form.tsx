@@ -100,7 +100,6 @@ export function LoginForm({
                 <Input
                   id="username"
                   type="text"
-                  placeholder="name"
                   value={form.username}
                   onChange={(event) => updateField("username", event.target.value)}
                   required
@@ -111,7 +110,6 @@ export function LoginForm({
                 <Input
                   id="password"
                   type="password"
-                  placeholder="******"
                   value={form.password}
                   onChange={(event) => updateField("password", event.target.value)}
                   required

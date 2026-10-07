@@ -1,5 +1,5 @@
 import { stat } from 'node:fs/promises';
-import { and, count, desc, eq, inArray, isNotNull, ne, sum } from 'drizzle-orm';
+import { count, desc, eq, inArray, sum } from 'drizzle-orm';
 import { createId } from '@/server/lib/id';
 import { photoTab } from '@/server/entity/photo';
 import { type Storage, type StorageInto, storageTab } from '@/server/entity/storage';
@@ -26,7 +26,6 @@ const storageService = {
         size: totalSize,
       })
       .from(photoTab)
-      .where(and(isNotNull(photoTab.storageId), ne(photoTab.storageId, 'none')))
       .groupBy(photoTab.storageId)
       .orderBy(desc(totalSize))
       .limit(6);
