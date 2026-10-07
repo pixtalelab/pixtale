@@ -210,6 +210,22 @@ const albumService = {
       throw new BizError('album.selectRequired');
     }
 
+    const albumIds = Array.from(new Set(params.albumIds));
+    const albums = await orm
+      .select({
+        albumId: albumTab.albumId
+      })
+      .from(albumTab)
+      .where(and(
+        eq(albumTab.userId, userId),
+        inArray(albumTab.albumId, albumIds)
+      ));
+
+    // 批量操作必须先确认所有目标相册都属于当前用户。
+    if (albums.length !== albumIds.length) {
+      throw new BizError('auth.forbidden', 403);
+    }
+
     const photos = await orm
       .select({
         photoId: photoTab.photoId
@@ -232,11 +248,11 @@ const albumService = {
       })
       .from(albumPhotoTab)
       .where(and(
-        inArray(albumPhotoTab.albumId, params.albumIds),
+        inArray(albumPhotoTab.albumId, albumIds),
         inArray(albumPhotoTab.photoId, photoIds)
       ));
     const existsKeys = new Set(existsRows.map((row) => `${row.albumId}:${row.photoId}`));
-    const rows = params.albumIds.flatMap((albumId) => (
+    const rows = albumIds.flatMap((albumId) => (
       photoIds
         .filter((photoId) => !existsKeys.has(`${albumId}:${photoId}`))
         .map((photoId) => ({
@@ -364,6 +380,21 @@ const albumService = {
 
   // 删除当前用户指定相册，并清理相册照片关联。
   async delete(params: AlbumDeleteBo, userId: string): Promise<void> {
+
+    const [album] = await orm
+      .select({
+        albumId: albumTab.albumId
+      })
+      .from(albumTab)
+      .where(and(
+        eq(albumTab.albumId, params.albumId),
+        eq(albumTab.userId, userId)
+      ))
+      .limit(1);
+
+    if (!album) {
+      return;
+    }
 
     await orm.delete(albumPhotoTab)
       .where(eq(albumPhotoTab.albumId, params.albumId));
