@@ -4,7 +4,7 @@
     <p></p>
     <p align="center">一个沉浸式瀑布流相册应用</p>
     <p>
-        <a href="https://022335.xyz">在线演示</a> · <a href="https://doc.022335.xyz">部署文档</a> ·
+        <a href="https://022335.xyz">在线演示</a> · <a href="https://docs.022335.xyz">部署文档</a> ·
         <a align="center"><a href="README_EN.md">English</a> | 简体中文</a>
     </p>
     <img alt="Next.js" src="https://img.shields.io/badge/next.js-16-white?labelColor=black&logo=nextdotjs&logoColor=white&style=flat-square">
@@ -39,9 +39,9 @@ docker run -d \
   -p 8082:8082 \
   -v /home/pixtale/data:/app/data \
   -e ADMIN=admin \
-  -e PASSWORD=194396aa \
-  -e JWT_SECRET=194396aa \
-  pixtalelab/pixtale:latest
+  -e PASSWORD=123456 \
+  -e JWT_SECRET=abc \
+  aslost/pixtale:latest
 ```
 将`ADMIN` `PASSWORD` `JWT_SECRET` 变量替换为自己的并执行， 浏览器访问`ip:8082`
 
@@ -51,7 +51,7 @@ docker run -d \
 
 - **🖼️ 瀑布流列表**：瀑布流无限滚动，采用游标分页+虚拟滚动优化性能
 
-- **🔄 自动同步**：配合本项目的pixtale-sync，可自同步至云端
+- **🔄 自动同步**：配合本项目的 `pixtale-sync`，可自同步至云端
 
 - **🌄 缩略图优化**：生成缩略图和高清图，优化在弱网环境下的体验
 
