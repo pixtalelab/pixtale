@@ -17,9 +17,10 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import dynamic from "next/dynamic"
-import { useEffect, useState } from "react"
+import { useLayoutEffect, useState } from "react"
 import { useAlbumContext } from "./provider"
 import { useApp } from "@/app/(main)/provider"
+import { useAlbumStore } from "@/store/album-store"
 import { albumAdd, albumDelete, albumList, albumRecycle, albumSetName, albumSetPublic, albumSetTop } from "@/request/album"
 import { AlbumPublicEnum } from "@/server/enums/album-enum"
 import { type AlbumVo } from "@/server/entity/vo/album"
@@ -51,14 +52,27 @@ export default function Page() {
   // recyclingAlbum 保存当前等待回收照片确认的相册。
   const [recyclingAlbum, setRecyclingAlbum] = useState<AlbumVo | null>(null)
 
-  useEffect(() => {
-    // 刷新相册页时禁用浏览器滚动恢复，并回到列表顶部。
+  useLayoutEffect(() => {
+    // 仅从相册照片页返回时恢复内存中记录的位置，整页刷新时状态为 0 并回到顶部。
     const previousScrollRestoration = window.history.scrollRestoration
+    const scrollPosition = useAlbumStore.getState().scrollPosition
+    let frame = 0
 
     window.history.scrollRestoration = "manual"
-    window.scrollTo(0, 0)
+    useAlbumStore.getState().setScrollPosition(0)
+
+    const restoreScrollPosition = () => {
+      window.scrollTo(0, scrollPosition)
+
+      if (scrollPosition > 0 && window.scrollY < scrollPosition - 1) {
+        frame = window.requestAnimationFrame(restoreScrollPosition)
+      }
+    }
+
+    frame = window.requestAnimationFrame(restoreScrollPosition)
 
     return () => {
+      window.cancelAnimationFrame(frame)
       window.history.scrollRestoration = previousScrollRestoration
     }
   }, [])

@@ -24,12 +24,14 @@ type AlbumCardProps = Partial<RenderComponentProps<AlbumVo>> & {
 // 渲染虚拟列表中的单个相册卡片。
 export function AlbumCard({ data, width, href, showPublicLabel = true, onRename, onTop, onPublic, onRecycle, onDelete }: AlbumCardProps) {
   const setCurrentAlbumName = useAlbumStore((state) => state.setCurrentAlbumName)
+  const setScrollPosition = useAlbumStore((state) => state.setScrollPosition)
   const thumbnailSrc = data.thumbnail
   const placeholder = useMemo(() => getThumbHashUrl(data.thumbHash), [data.thumbHash])
 
   // 点击进入相册前记录当前相册名称，供照片页面包屑展示。
   function saveCurrentAlbumName() {
     setCurrentAlbumName(data.name)
+    setScrollPosition(window.scrollY)
   }
 
   // 把重命名操作和当前相册交给上层页面。
