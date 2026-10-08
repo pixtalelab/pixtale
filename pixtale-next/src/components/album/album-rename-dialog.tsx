@@ -43,7 +43,7 @@ export function AlbumRenameDialog({ open, name, onOpenChange, onNameConfirm }: A
       onOpenChange={onOpenChange}
       title={t("renameTitle")}
       className="w-full"
-      contentClassName="max-md:top-20 max-md:translate-y-0"
+      preventMobileAutoFocus
       showCloseButton={false}
       onConfirm={submitName}
     >

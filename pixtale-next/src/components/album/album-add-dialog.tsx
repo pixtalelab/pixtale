@@ -52,7 +52,7 @@ export function AlbumAddDialog({ title, onNameConfirm }: AlbumAddDialogProps) {
     <Dialog
       title={title}
       className="w-full"
-      contentClassName="max-md:top-20 max-md:translate-y-0"
+      preventMobileAutoFocus
       open={open}
       onOpenChange={handleOpenChange}
       onConfirm={submitName}

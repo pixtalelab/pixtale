@@ -188,7 +188,6 @@ export function UserAddDialog({ title, open, user, onOpenChange, onUserConfirm }
     <Dialog
       title={title}
       className="w-full sm:max-w-sm"
-      contentClassName="max-md:top-20 max-md:translate-y-0"
       open={open}
       onOpenChange={handleOpenChange}
       onConfirm={submitUser}

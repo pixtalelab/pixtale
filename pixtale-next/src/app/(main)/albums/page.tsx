@@ -56,23 +56,13 @@ export default function Page() {
     // 仅从相册照片页返回时恢复内存中记录的位置，整页刷新时状态为 0 并回到顶部。
     const previousScrollRestoration = window.history.scrollRestoration
     const scrollPosition = useAlbumStore.getState().scrollPosition
-    let frame = 0
 
     window.history.scrollRestoration = "manual"
     useAlbumStore.getState().setScrollPosition(0)
 
-    const restoreScrollPosition = () => {
-      window.scrollTo(0, scrollPosition)
-
-      if (scrollPosition > 0 && window.scrollY < scrollPosition - 1) {
-        frame = window.requestAnimationFrame(restoreScrollPosition)
-      }
-    }
-
-    frame = window.requestAnimationFrame(restoreScrollPosition)
+    window.scrollTo(0, scrollPosition)
 
     return () => {
-      window.cancelAnimationFrame(frame)
       window.history.scrollRestoration = previousScrollRestoration
     }
   }, [])
