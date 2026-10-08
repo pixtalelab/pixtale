@@ -14,7 +14,7 @@ import { systemInfo } from '@/server/lib/system';
 
 // 这个模块处理系统资源监控相关业务。
 
-const SYSTEM_USAGE_INTERVAL = 2000;
+const SYSTEM_USAGE_INTERVAL = 3000;
 const SYSTEM_USAGE_MAX_SIZE = 30;
 
 const dashboardService = {

@@ -285,7 +285,7 @@ export default function Page() {
                         />
                       }
                     />
-                    <Area type="natural" dataKey="cpu" stroke="var(--color-cpu)" fill="url(#fillCpu)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} isAnimationActive={false}/>
+                    <Area type="monotoneX" dataKey="cpu" stroke="var(--color-cpu)" fill="url(#fillCpu)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} isAnimationActive={false}/>
                   </AreaChart>
                 </ChartContainer>
               </CardContent>
@@ -357,7 +357,7 @@ export default function Page() {
                         />
                       }
                     />
-                    <Area type="natural" dataKey="memory" stroke="var(--color-memory)" fill="url(#fillMemory)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} isAnimationActive={false}/>
+                    <Area type="monotoneX" dataKey="memory" stroke="var(--color-memory)" fill="url(#fillMemory)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} isAnimationActive={false}/>
                   </AreaChart>
                 </ChartContainer>
               </CardContent>

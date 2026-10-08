@@ -25,7 +25,7 @@ import { PhotoStatusEnum } from "@/server/enums/photo-enum"
 import { useTrashPhotoContext } from "./provider"
 import { useApp } from "@/app/(main)/provider"
 import { Button } from "@/components/ui/button"
-import { BrushCleaning, ChevronLeftIcon } from "lucide-react"
+import { ArrowLeftIcon, BrushCleaning } from "lucide-react"
 import { PhotoMasonrySkeleton } from "@/components/photo/photo-masonry-skeleton"
 import { useTranslations } from "next-intl"
 
@@ -150,7 +150,7 @@ export default function Page() {
                 className="-ml-1"
                 onClick={() => router.back()}
               >
-                <ChevronLeftIcon />
+                <ArrowLeftIcon />
                 <span className="sr-only">Back</span>
               </Button>
               <Separator

@@ -1,30 +1,47 @@
 import os from 'node:os';
+import { readFile } from 'node:fs/promises';
 import type { SystemInfoVo, SystemUsageVo } from '../../entity/vo/system';
 import type { SystemInfoProvider } from './types';
 
-// 这个模块通过 Node.js 采集 Linux 系统资源。
+// 这个模块通过 /proc/stat 和 Node.js 采集 Linux 系统资源。
 
-// 通过两次 CPU 时间采样计算一段时间内的平均使用率。
+let previousCpuTimes: number[] | undefined;
+let previousCpuUsage = 0;
+
+// 读取整机累计 CPU 时间，guest 和 guest_nice 已包含在 user 和 nice 中，不重复计入。
+async function readCpuTimes(): Promise<number[]> {
+  const stat = await readFile('/proc/stat', 'utf8');
+  const [label, ...fields] = stat.split('\n', 1)[0].trim().split(/\s+/);
+  const times = fields.slice(0, 8).map(Number);
+
+  if (label !== 'cpu' || times.length !== 8 || times.some((value) => !Number.isFinite(value) || value < 0)) {
+    throw new Error('Invalid CPU counters in /proc/stat');
+  }
+
+  return times;
+}
+
+// 按相邻采集的累计时间差计算非空闲比例，首次采集等待一秒建立有效区间。
 async function getCpuUsage(): Promise<number> {
-  const start = os.cpus();
-  await new Promise((resolve) => setTimeout(resolve, 100));
-  const end = os.cpus();
-  let idle = 0;
-  let total = 0;
+  let start = previousCpuTimes;
+  if (!start) {
+    start = await readCpuTimes();
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
 
-  end.forEach((cpu, index) => {
-    const startCpu = start[index];
-    if (!startCpu) {
-      return;
-    }
+  const end = await readCpuTimes();
+  previousCpuTimes = end;
+  const startTimes = start;
 
-    const startTotal = Object.values(startCpu.times).reduce((sum, value) => sum + value, 0);
-    const endTotal = Object.values(cpu.times).reduce((sum, value) => sum + value, 0);
-    idle += cpu.times.idle - startCpu.times.idle;
-    total += endTotal - startTotal;
-  });
+  // iowait 等计数可能回退；逐项忽略负增量，避免影响总时间。
+  const deltas = end.map((value, index) => Math.max(value - startTimes[index], 0));
+  const total = deltas.reduce((sum, value) => sum + value, 0);
 
-  return total > 0 ? Math.min(Math.max(Math.floor((1 - idle / total) * 100), 0), 100) : 0;
+  if (total > 0) {
+    previousCpuUsage = Math.min(Math.max(Math.round((1 - deltas[3] / total) * 1000) / 10, 0), 100);
+  }
+
+  return previousCpuUsage;
 }
 
 const linuxSystemInfoProvider: SystemInfoProvider = {
