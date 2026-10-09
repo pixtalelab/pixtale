@@ -66,6 +66,7 @@
   "trash.title": "Trash",
   "trash.clearing": "Emptying trash",
   "trash.cleared": "Trash emptied",
+  "trash.clearFailed": "Failed to empty trash. Check the service status.",
   "trash.deletePhotosTitle": "Permanently Delete These Photos?",
   "trash.deletePhotosDescription": "These photos will be permanently deleted and can't be recovered.",
   "trash.clearTitle": "Empty the Trash?",

@@ -1,4 +1,4 @@
-import { http } from "@/request/request";
+import { http, type RequestConfig } from "@/request/request";
 import { type PhotoDeleteBo, type PhotoExistsBo, type PhotoFavoriteBo, type PhotoListBo, type PhotoRecycleBo, type PhotoRestoreBo, type PhotoTakenDateListBo } from "@/server/entity/bo/photo";
 import { type PageVo } from "@/server/entity/vo/common";
 import { type PhotoAddResultVo, type PhotoExistsVo, type PhotoTakenDateVo, type PhotoVo } from "@/server/entity/vo/photo";
@@ -50,6 +50,6 @@ export function photoDelete(params: PhotoDeleteBo) {
 }
 
 // 清空回收站照片。
-export function photoClear() {
-  return http.post<void>('/photo/clear');
+export function photoClear(config?: RequestConfig) {
+  return http.post<void>('/photo/clear', null, config);
 }

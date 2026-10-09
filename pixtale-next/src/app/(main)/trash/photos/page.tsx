@@ -96,18 +96,19 @@ export default function Page() {
     })
   }
 
-  // 清空当前用户回收站照片，期间在顶部提示加载与成功状态。
+  // 清空当前用户回收站照片，期间提示加载、成功或失败状态。
   function clearPhotos() {
     setClearOpen(false)
 
     toast.promise(
-      photoClear().then(() => {
+      photoClear({ showErrorToast: false }).then(() => {
         setPhotos([])
         refreshMasonry()
       }),
       {
         loading: t("clearing"),
         success: t("cleared"),
+        error: (error: unknown) => error instanceof Error ? error.message : t("clearFailed"),
       }
     )
   }

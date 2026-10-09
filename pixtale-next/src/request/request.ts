@@ -13,6 +13,8 @@ type RequestParams = object | FormData | null;
 // 请求的可选配置，透传到 fetch 的 RequestInit 上。
 interface RequestConfig extends RequestInit {
   priority?: "high" | "low";
+  // 由调用方管理加载和失败提示时，关闭统一错误提示。
+  showErrorToast?: boolean;
 }
 
 const MOCK_REQUEST_DELAY = 0;
@@ -38,6 +40,7 @@ function handleUnauthorized() {
 
 // 发送 POST 请求并返回接口 data。
 async function post<T = unknown>(url: string, params: RequestParams = null, config?: RequestConfig) {
+  const { showErrorToast = true, ...requestConfig } = config ?? {};
   const headers = new Headers();
   let body: BodyInit | null = null;
 
@@ -56,23 +59,30 @@ async function post<T = unknown>(url: string, params: RequestParams = null, conf
     headers,
     body,
     credentials: 'include',
-    ...config
+    ...requestConfig
   };
-  const res = await fetch(buildUrl(url), options);
-  const json = await res.json() as ApiResponse<T>;
+  try {
+    const res = await fetch(buildUrl(url), options);
+    // 网关可能返回 HTML 或空响应，不让 JSON 解析异常掩盖 HTTP 状态。
+    const json = await res.json().catch(() => null) as ApiResponse<T> | null;
 
-  if (!res.ok || json.code !== 200) {
-    const message = json.message || '请求失败';
-    toast.error(message);
-
-    if (res.status === 401 || json.code === 401) {
+    if (res.status === 401 || json?.code === 401) {
       handleUnauthorized();
     }
 
-    throw new Error(message);
-  }
+    if (!res.ok || json?.code !== 200) {
+      const message = json?.message || `Server error (HTTP ${res.status}${res.statusText ? ` ${res.statusText}` : ''})`;
+      throw new Error(message);
+    }
 
-  return json.data as T;
+    return json.data as T;
+  } catch (error) {
+    const failure = error instanceof Error ? error : new Error('Request failed');
+    if (showErrorToast) {
+      toast.error(failure.message);
+    }
+    throw failure;
+  }
 }
 
 const http = {

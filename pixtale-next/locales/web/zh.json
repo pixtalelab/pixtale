@@ -66,6 +66,7 @@
   "trash.title": "回收站",
   "trash.clearing": "正在清理",
   "trash.cleared": "清理成功",
+  "trash.clearFailed": "清理失败，请检查服务状态",
   "trash.deletePhotosTitle": "确定删除照片？",
   "trash.deletePhotosDescription": "照片会被彻底删除，无法恢复",
   "trash.clearTitle": "确认清空回收站？",
