@@ -180,8 +180,6 @@ export function PhotoCard({
         <img
           ref={imageRef}
           src={src}
-          fetchPriority="low"
-          crossOrigin="anonymous"
           alt={data.name}
           draggable={false}
           className={[
