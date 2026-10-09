@@ -53,6 +53,11 @@ const memoryConfig = {
 // 两张饼图分别使用独立调色板，数据项按颜色数组顺序映射。
 const photoTypeColors = ["#0868ac", "#43a2ca", "#7bccc4", "#bae4bc", "#f0f9e8"];
 const storageColors = ["#0868ac", "#43a2ca", "#7bccc4", "#bae4bc", "#f0f9e8"];
+// 内存容量在 GB 以下四舍五入为整数，GB 及以上保留一位小数。
+function formatMemoryCapacity(size: number) {
+  return formatCapacity(size, size < 1024 ** 3 ? 0 : 1);
+}
+
 // 把服务端返回的 CPU 和内存历史数据转换为图表数据。
 function createResourceUsage(systemInfo: DashboardSystemInfoVo) {
   const size = Math.max(
@@ -297,8 +302,8 @@ export default function Page() {
                     {t("memory")}
                   </CardTitle>
                   <span className="text-sm font-medium">
-                    {formatCapacity(systemInfo.currentMemoryUsed)} /{" "}
-                    {formatCapacity(systemInfo.memoryTotal)}
+                    {formatMemoryCapacity(systemInfo.currentMemoryUsed)} /{" "}
+                    {formatMemoryCapacity(systemInfo.memoryTotal)}
                   </span>
                 </div>
               </CardHeader>
@@ -346,7 +351,7 @@ export default function Page() {
                                   {memoryConfig.memory.label}
                                 </span>
                                 <span className="font-mono font-medium text-foreground tabular-nums">
-                                  {formatCapacity(Number(item.payload.memoryBytes))}
+                                  {formatMemoryCapacity(Number(item.payload.memoryBytes))}
                                 </span>
                               </div>
                             </>
@@ -447,7 +452,7 @@ export default function Page() {
                       {t("memoryTotal")}
                     </span>
                     <span className="font-medium">
-                      {formatCapacity(systemInfo.memoryTotal)}
+                      {formatMemoryCapacity(systemInfo.memoryTotal)}
                     </span>
                   </div>
                 </div>
