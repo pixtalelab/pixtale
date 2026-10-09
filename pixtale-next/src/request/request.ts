@@ -71,7 +71,7 @@ async function post<T = unknown>(url: string, params: RequestParams = null, conf
     }
 
     if (!res.ok || json?.code !== 200) {
-      const message = json?.message || `HTTP ${res.status}${res.statusT ext ? ` ${res.statusText}` : ''}`;
+      const message = json?.message || `HTTP ${res.status}${res.statusText ? ` ${res.statusText}` : ''}`;
       throw new Error(message);
     }
 
