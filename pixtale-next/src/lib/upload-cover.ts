@@ -23,7 +23,7 @@ export async function createPhotoCover(file: File) {
       }
 
       reject(new Error("封面生成失败"))
-    }, "image/webp", 0.9)
+    }, "image/webp", 0.8)
   })
 
   return URL.createObjectURL(blob)

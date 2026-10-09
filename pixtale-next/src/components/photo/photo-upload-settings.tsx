@@ -14,7 +14,7 @@ interface PhotoUploadSettingsValue {
 const STORAGE_KEY = "photo-upload-settings"
 
 const defaultSettings: PhotoUploadSettingsValue = {
-  concurrency: 4,
+  concurrency: 1,
   retryOnFail: false,
 }
 
