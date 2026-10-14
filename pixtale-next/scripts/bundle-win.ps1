@@ -29,13 +29,13 @@ if (-not (Test-Path $NodeExe)) {
 }
 Copy-Item $NodeExe (Join-Path $Out "node.exe") -Force
 
-# 用本机 csc 编译启动器，图标取自 public/logo.ico。
+# 用本机 csc 编译启动器，图标取自 public/desktop/favicon.ico。
 function Invoke-CompileLauncher([string]$DestExe) {
   $csc = Join-Path $env:WINDIR "Microsoft.NET\Framework64\v4.0.30319\csc.exe"
   if (-not (Test-Path $csc)) {
     throw "Missing $csc"
   }
-  $ico = Join-Path $Root "public\logo.ico"
+  $ico = Join-Path $Root "public\desktop\favicon.ico"
   if (-not (Test-Path $ico)) {
     throw "Missing $ico"
   }

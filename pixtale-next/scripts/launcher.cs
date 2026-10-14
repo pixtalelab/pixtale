@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.NetworkInformation;
+using System.Threading;
 
 // Launches the bundled Node server from this directory and opens the browser.
 
@@ -31,8 +32,6 @@ internal static class Program
 
         Environment.SetEnvironmentVariable("PORT", port.ToString());
         Environment.SetEnvironmentVariable("HOSTNAME", "0.0.0.0");
-        Process.Start("http://localhost:" + port);
-
         ProcessStartInfo psi = new ProcessStartInfo();
         psi.FileName = node;
         psi.Arguments = "\"server.js\"";
@@ -44,8 +43,50 @@ internal static class Program
         {
             return 1;
         }
+
+        if (WaitForServer(proc, port, 30000))
+        {
+            Process.Start("http://localhost:" + port);
+        }
+        else if (!proc.HasExited)
+        {
+            Console.WriteLine("Server startup timed out. Open http://localhost:" + port + " when ready.");
+        }
+
         proc.WaitForExit();
         return proc.ExitCode;
+    }
+
+    // Waits for the server to accept HTTP requests, or until it exits or times out.
+    private static bool WaitForServer(Process proc, int port, int timeoutMs)
+    {
+        Stopwatch timer = Stopwatch.StartNew();
+        string url = "http://127.0.0.1:" + port + "/";
+
+        while (timer.ElapsedMilliseconds < timeoutMs)
+        {
+            if (proc.HasExited)
+            {
+                return false;
+            }
+
+            try
+            {
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                request.Timeout = 1000;
+                request.Proxy = null;
+                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                {
+                }
+                return true;
+            }
+            catch (WebException)
+            {
+                Thread.Sleep(250);
+            }
+        }
+
+        return false;
     }
 
     // Returns the first free TCP port from 8082 to 8099, or -1 if none are free.
@@ -75,4 +116,5 @@ internal static class Program
         }
         return false;
     }
+
 }
