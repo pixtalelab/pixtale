@@ -125,22 +125,6 @@ async function migrate(): Promise<void> {
     for (const sql of createTableSqlList) {
       db.exec(sql);
     }
-
-    const albumColumns = db.prepare('PRAGMA table_info(album)').all() as Array<{ name: string }>;
-
-    if (!albumColumns.some((column) => column.name === 'public')) {
-      db.exec('ALTER TABLE album ADD COLUMN public INTEGER NOT NULL DEFAULT 1');
-    }
-
-    const storageColumns = db.prepare('PRAGMA table_info(storage)').all() as Array<{ name: string }>;
-
-    if (!storageColumns.some((column) => column.name === 'tg_token')) {
-      db.exec('ALTER TABLE storage ADD COLUMN tg_token TEXT');
-    }
-
-    if (!storageColumns.some((column) => column.name === 'tg_chat_id')) {
-      db.exec('ALTER TABLE storage ADD COLUMN tg_chat_id TEXT');
-    }
   });
   runBatch();
 }
