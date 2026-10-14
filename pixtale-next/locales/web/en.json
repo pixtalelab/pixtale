@@ -47,6 +47,7 @@
   "photos.info.iso": "ISO",
   "photos.info.uncalibrated": "Uncalibrated",
   "albums.title": "Albums",
+  "albums.default": "Default Album",
   "albums.addTitle": "Create Album",
   "albums.renameTitle": "Rename Album",
   "albums.namePlaceholder": "Enter an album name",

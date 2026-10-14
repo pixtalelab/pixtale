@@ -47,6 +47,7 @@
   "photos.info.iso": "ISO",
   "photos.info.uncalibrated": "未校准",
   "albums.title": "相册",
+  "albums.default": "默认相册",
   "albums.addTitle": "添加相册",
   "albums.renameTitle": "修改名称",
   "albums.namePlaceholder": "请输入相册名称",

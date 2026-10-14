@@ -98,7 +98,9 @@ export default function Page() {
     }
 
     const photosToAdd = usePhotoStore.getState().takeUploadedPhotos()
-      .filter((photo) => photo.uploadAlbumId === albumIdRef.current)
+      .filter((photo) => albumIdRef.current === "default"
+        ? !photo.uploadAlbumId
+        : photo.uploadAlbumId === albumIdRef.current)
 
     if (!photosToAdd.length) {
       return
@@ -163,6 +165,9 @@ export default function Page() {
     }
 
     albumAddPhoto({ albumIds: targetAlbumIds, photoIds: albumPhotoIds }).then(() => {
+      if (albumId === "default") {
+        removePhotos(albumPhotoIds)
+      }
       void refreshAlbums()
     })
   }
@@ -210,7 +215,7 @@ export default function Page() {
               <Breadcrumb>
                 <BreadcrumbList>
                   <BreadcrumbItem>
-                    <BreadcrumbPage>{currentAlbumName || t("title")}</BreadcrumbPage>
+                    <BreadcrumbPage>{albumId === "default" ? t("default") : currentAlbumName || t("title")}</BreadcrumbPage>
                   </BreadcrumbItem>
                 </BreadcrumbList>
               </Breadcrumb>
@@ -222,7 +227,7 @@ export default function Page() {
                 type="button"
                 size="icon"
                 variant="ghost"
-                onClick={() => openUpload(albumId)}
+                onClick={() => openUpload(albumId === "default" ? null : albumId)}
               >
                 <PlusIcon />
               </Button>
@@ -240,7 +245,7 @@ export default function Page() {
                 onPhotoFavorite={changePhotoFavorite}
                 onPhotoDelete={recyclePhotos}
                 onAlbumOpen={openAlbumDialog}
-                onAlbumRemove={removeAlbumPhotos}
+                onAlbumRemove={albumId === "default" ? undefined : removeAlbumPhotos}
               />
             ) : (
               <PhotoMasonrySkeleton photos={initialPhotos} listStyle={listStyle} />

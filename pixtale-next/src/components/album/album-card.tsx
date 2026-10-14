@@ -3,6 +3,7 @@
 import { useMemo } from "react"
 import { type RenderComponentProps } from "masonic"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 
 import { AlbumActionMenu } from "@/components/album/album-action-menu"
 import { getThumbHashUrl } from "@/lib/thumb-hash"
@@ -23,6 +24,8 @@ type AlbumCardProps = Partial<RenderComponentProps<AlbumVo>> & {
 
 // 渲染虚拟列表中的单个相册卡片。
 export function AlbumCard({ data, width, href, showPublicLabel = true, onRename, onTop, onPublic, onRecycle, onDelete }: AlbumCardProps) {
+  const t = useTranslations()
+  const name = data.nameKey ? t(data.nameKey) : data.name
   const setCurrentAlbumName = useAlbumStore((state) => state.setCurrentAlbumName)
   const setScrollPosition = useAlbumStore((state) => state.setScrollPosition)
   const thumbnailSrc = data.thumbnail
@@ -30,7 +33,7 @@ export function AlbumCard({ data, width, href, showPublicLabel = true, onRename,
 
   // 点击进入相册前记录当前相册名称，供照片页面包屑展示。
   function saveCurrentAlbumName() {
-    setCurrentAlbumName(data.name)
+    setCurrentAlbumName(name)
     setScrollPosition(window.scrollY)
   }
 
@@ -82,7 +85,7 @@ export function AlbumCard({ data, width, href, showPublicLabel = true, onRename,
           {thumbnailSrc ? (
             <img
               src={thumbnailSrc}
-              alt={data.name}
+              alt={name}
               crossOrigin="anonymous"
               className="absolute inset-0 h-full w-full object-cover duration-300 group-hover:scale-105"
               onError={(event) => {
@@ -94,7 +97,7 @@ export function AlbumCard({ data, width, href, showPublicLabel = true, onRename,
           )}
         </div>
         <div className="pt-2 text-left">
-          <div className="truncate text-base font-semibold">{data.name}</div>
+          <div className="truncate text-base font-semibold">{name}</div>
           <div className="text-sm text-muted-foreground">
             {data.photoTotal}
             {showPublicLabel && data.public === AlbumPublicEnum.ENABLE && (
@@ -109,6 +112,7 @@ export function AlbumCard({ data, width, href, showPublicLabel = true, onRename,
       {onRename && onTop && onPublic && onDelete && (
         <div className="absolute top-[4px] right-[4px] z-10">
           <AlbumActionMenu
+            albumId={data.albumId}
             shadow={Boolean(thumbnailSrc)}
             onRename={renameAlbum}
             onTop={topAlbum}

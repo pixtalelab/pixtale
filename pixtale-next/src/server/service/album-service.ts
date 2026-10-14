@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, max } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, max, notExists } from 'drizzle-orm';
 import { createId } from '@/server/lib/id';
 import { type Album, albumTab } from '@/server/entity/album';
 import { albumPhotoTab } from '@/server/entity/album-photo';
@@ -49,7 +49,8 @@ const albumService = {
       .orderBy(desc(albumTab.sort));
 
     if (!albumList.length) {
-      return [];
+      const defaultAlbum = await this.getDefaultAlbum(userId);
+      return defaultAlbum ? [defaultAlbum] : [];
     }
 
     const fileStorageList = await storageService.list();
@@ -76,7 +77,7 @@ const albumService = {
       photoStatList.map((stat) => stat.photoId).filter(Boolean)
     );
 
-    const list = albumList.map((album) => {
+    const list: AlbumVo[] = albumList.map((album) => {
       const photoStat = photoStatList.find((stat) => stat.albumId === album.albumId);
       const fileStorage = fileStorageList.list.find((item) => item.storageId === photoStat?.storageId);
       const domain = formatHttpUrl(fileStorage?.domain);
@@ -96,7 +97,17 @@ const albumService = {
       };
     });
 
+    const defaultAlbum = await this.getDefaultAlbum(userId);
+    if (defaultAlbum) {
+      list.push(defaultAlbum);
+    }
     return list;
+  },
+
+  // 复用相册列表查询，排除默认相册后供选择列表使用。
+  async select(userId: string): Promise<AlbumVo[]> {
+    const list = await this.list(userId);
+    return list.filter((album) => album.albumId !== 'default');
   },
 
   // 查询所有公开相册列表，不要求登录用户身份。
@@ -350,7 +361,7 @@ const albumService = {
 
   },
 
-  // 把当前用户相册中的正常照片移入回收站，保留相册和照片关联。
+  // 把当前用户相册中的正常照片移入回收站，默认相册仅匹配未关联任何相册的照片。
   async recycle(params: AlbumRecycleBo, userId: string): Promise<void> {
     if (!params.albumId) {
       throw new BizError('album.selectRequired');
@@ -372,7 +383,10 @@ const albumService = {
         recycleTime: new Date().toISOString(),
       })
       .where(and(
-        inArray(photoTab.photoId, photoIds),
+        params.albumId === 'default'
+          ? notExists(orm.select({ id: albumPhotoTab.id }).from(albumPhotoTab)
+            .where(eq(albumPhotoTab.photoId, photoTab.photoId)))
+          : inArray(photoTab.photoId, photoIds),
         eq(photoTab.userId, userId),
         eq(photoTab.status, PhotoStatusEnum.NORMAL),
       ));
@@ -469,7 +483,59 @@ const albumService = {
       thumbHash: coverPhoto?.thumbHash ?? null,
       photoTotal: photoList.length
     };
-  }
+  },
+
+  // 统计当前用户未关联相册的正常照片，并以列表第一张照片作为默认相册封面。
+  async getDefaultAlbum(userId: string): Promise<AlbumVo | null> {
+    const where = and(
+      eq(photoTab.userId, userId),
+      eq(photoTab.status, PhotoStatusEnum.NORMAL),
+      notExists(orm.select({ id: albumPhotoTab.id }).from(albumPhotoTab)
+        .where(eq(albumPhotoTab.photoId, photoTab.photoId)))
+    );
+    const [stat] = await orm
+      .select({ photoTotal: count(photoTab.photoId) })
+      .from(photoTab)
+      .where(where);
+
+    const photoTotal = Number(stat?.photoTotal ?? 0);
+    if (!photoTotal) {
+      return null;
+    }
+
+    const [coverPhoto] = await orm
+      .select({
+        photoId: photoTab.photoId,
+        storageId: photoTab.storageId,
+        thumbHash: photoTab.thumbHash,
+      })
+      .from(photoTab)
+      .where(where)
+      .orderBy(desc(photoTab.takenTime), desc(photoTab.photoId))
+      .limit(1);
+    const fileStorageList = await storageService.list();
+    const fileStorage = fileStorageList.list.find((item) => item.storageId === coverPhoto?.storageId);
+    const domain = formatHttpUrl(fileStorage?.domain);
+    const fileMap = await fileService.listByPhotoIds(coverPhoto ? [coverPhoto.photoId] : []);
+    const thumbnail = coverPhoto
+      ? (fileMap.get(coverPhoto.photoId) ?? []).find((file) => file.type === FileTypeEnum.THUMBNAIL)?.key ?? null
+      : null;
+
+    return {
+      albumId: 'default',
+      name: 'albums.default',
+      nameKey: 'albums.default',
+      description: '',
+      sort: 0,
+      public: AlbumPublicEnum.DISABLE,
+      createTime: '',
+      updateTime: '',
+      userId,
+      thumbnail: thumbnail ? toMediaUrl(thumbnail, domain) : null,
+      thumbHash: coverPhoto?.thumbHash ?? null,
+      photoTotal,
+    };
+  },
 }
 
 export { albumService };

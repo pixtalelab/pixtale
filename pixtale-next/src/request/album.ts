@@ -10,6 +10,11 @@ export function albumList() {
   return http.post<AlbumVo[]>('/album/list');
 }
 
+// 查询不包含默认相册的相册选项。
+export function albumSelect() {
+  return http.post<AlbumVo[]>('/album/select');
+}
+
 // 添加相册。
 export function albumAdd(params: AlbumAddBo) {
   return http.post<Album>('/album/add', params);

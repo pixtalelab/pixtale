@@ -16,6 +16,7 @@ import {
 import { AlbumPublicEnum } from "@/server/enums/album-enum"
 
 interface AlbumActionMenuProps {
+  albumId: string
   // 当前按钮图标是否显示阴影。
   shadow?: boolean
   onRename: () => void
@@ -27,8 +28,10 @@ interface AlbumActionMenuProps {
 }
 
 // 渲染相册卡片右上角的更多操作菜单。
-export function AlbumActionMenu({ shadow = true, onRename, onTop, onPublic, public: publicStatus, onRecycle, onDelete }: AlbumActionMenuProps) {
+export function AlbumActionMenu({ albumId, shadow = true, onRename, onTop, onPublic, public: publicStatus, onRecycle, onDelete }: AlbumActionMenuProps) {
   const t = useTranslations("albums")
+  // 默认相册仅提供清理操作。
+  const isDefaultAlbum = albumId === "default"
   // open 记录当前下拉菜单是否打开，用于打开时隐藏图标阴影。
   const [open, setOpen] = useState(false)
   const showShadow = shadow && !open
@@ -51,21 +54,23 @@ export function AlbumActionMenu({ shadow = true, onRename, onTop, onPublic, publ
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-33">
-        <DropdownMenuGroup>
-          <DropdownMenuItem onSelect={onRename}>
-            <PencilIcon />
-            {t("actions.rename")}
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={onTop}>
-            <PinIcon />
-            {t("actions.pin")}
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={onPublic}>
-            {publicStatus === AlbumPublicEnum.ENABLE ? <LockIcon /> : <GlobeIcon />}
-            {publicStatus === AlbumPublicEnum.ENABLE ? t("actions.private") : t("actions.public")}
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
+        {!isDefaultAlbum && (
+          <DropdownMenuGroup>
+            <DropdownMenuItem onSelect={onRename}>
+              <PencilIcon />
+              {t("actions.rename")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={onTop}>
+              <PinIcon />
+              {t("actions.pin")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={onPublic}>
+              {publicStatus === AlbumPublicEnum.ENABLE ? <LockIcon /> : <GlobeIcon />}
+              {publicStatus === AlbumPublicEnum.ENABLE ? t("actions.private") : t("actions.public")}
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+        )}
+        {!isDefaultAlbum && <DropdownMenuSeparator />}
         <DropdownMenuGroup>
           {onRecycle && (
             <DropdownMenuItem variant="destructive" onSelect={onRecycle}>
@@ -73,10 +78,12 @@ export function AlbumActionMenu({ shadow = true, onRename, onTop, onPublic, publ
               {t("actions.recycle")}
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem variant="destructive" onSelect={onDelete}>
-            <Trash2Icon />
-            {t("actions.delete")}
-          </DropdownMenuItem>
+          {!isDefaultAlbum && (
+            <DropdownMenuItem variant="destructive" onSelect={onDelete}>
+              <Trash2Icon />
+              {t("actions.delete")}
+            </DropdownMenuItem>
+          )}
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>

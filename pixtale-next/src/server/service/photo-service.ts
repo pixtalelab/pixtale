@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, getTableColumns, gte, inArray, isNotNull, like, lt, lte, or, sql, sum } from 'drizzle-orm';
+import { and, asc, count, desc, eq, getTableColumns, gte, inArray, isNotNull, like, lt, lte, notExists, or, sql, sum } from 'drizzle-orm';
 import { createId } from '@/server/lib/id';
 import { type Photo, photoTab } from '@/server/entity/photo';
 import { albumPhotoTab } from '@/server/entity/album-photo';
@@ -144,7 +144,13 @@ const photoService = {
       }
     }
 
-    const list = params.albumId
+    // 默认相册仅匹配没有任何相册关联的照片。
+    if (params.albumId === 'default') {
+      whereList.push(notExists(orm.select({ id: albumPhotoTab.id }).from(albumPhotoTab)
+        .where(eq(albumPhotoTab.photoId, photoTab.photoId))));
+    }
+
+    const list = params.albumId && params.albumId !== 'default'
       ? await orm
         .select(getTableColumns(photoTab))
         .from(photoTab)
@@ -268,7 +274,13 @@ const photoService = {
       count: count(photoTab.photoId),
     };
 
-    const list = params.albumId
+    // 日期统计与默认相册照片列表使用相同的未关联条件。
+    if (params.albumId === 'default') {
+      whereList.push(notExists(orm.select({ id: albumPhotoTab.id }).from(albumPhotoTab)
+        .where(eq(albumPhotoTab.photoId, photoTab.photoId))));
+    }
+
+    const list = params.albumId && params.albumId !== 'default'
       ? await orm
         .select(selectColumns)
         .from(photoTab)

@@ -4,7 +4,7 @@ import dynamic from "next/dynamic"
 import * as React from "react"
 import { useEffect } from "react"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { albumList } from "@/request/album"
+import { albumSelect } from "@/request/album"
 import { storageSelect } from "@/request/storage"
 import { type UserInfoVo } from "@/server/entity/vo/user"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -75,7 +75,7 @@ function Provider({ children, defaultSidebarOpen, initialUserInfo, title, listSt
 
   // 查询相册列表并写入全局相册选项。
   useEffect(() => {
-    void albumList().then((albums) => {
+    void albumSelect().then((albums) => {
       setAlbums(albums)
     })
   }, [setAlbums])
@@ -96,7 +96,7 @@ function Provider({ children, defaultSidebarOpen, initialUserInfo, title, listSt
 
   // 重新查询相册列表并写入全局相册选项。
   const refreshAlbums = React.useCallback(() => {
-    return albumList().then((albums) => {
+    return albumSelect().then((albums) => {
       setAlbums(albums)
     })
   }, [setAlbums])

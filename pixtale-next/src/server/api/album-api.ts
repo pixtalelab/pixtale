@@ -13,6 +13,12 @@ app.post('/album/list', async (c: Context) => {
   return c.json(result.ok(data));
 });
 
+// 查询当前用户可选择的相册列表。
+app.post('/album/select', async (c: Context) => {
+  const data = await albumService.select(getUserId());
+  return c.json(result.ok(data));
+});
+
 // 查询当前用户的回收站虚拟相册。
 app.post('/album/trash', async (c: Context) => {
   const album = await albumService.trash(getUserId());
