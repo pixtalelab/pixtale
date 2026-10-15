@@ -93,13 +93,15 @@ export function LoginForm({
           </CardTitle>
         </CardHeader>
         <CardContent className="mt-2">
-          <form onSubmit={submitLogin}>
+          <form name="login" onSubmit={submitLogin} autoComplete="on">
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor="username">{t("username")}</FieldLabel>
                 <Input
                   id="username"
+                  name="username"
                   type="text"
+                  autoComplete="username"
                   value={form.username}
                   onChange={(event) => updateField("username", event.target.value)}
                   required
@@ -109,7 +111,9 @@ export function LoginForm({
                 <FieldLabel htmlFor="password">{t("password")}</FieldLabel>
                 <Input
                   id="password"
+                  name="password"
                   type="password"
+                  autoComplete="current-password"
                   value={form.password}
                   onChange={(event) => updateField("password", event.target.value)}
                   required

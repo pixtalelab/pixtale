@@ -1,8 +1,8 @@
 import { hashPassword } from '@/server/lib/crypto';
 import { createId } from '@/server/lib/id';
-import { count, eq, inArray, sum } from 'drizzle-orm';
+import { count, desc, eq, inArray, sum } from 'drizzle-orm';
 import { userTab } from '@/server/entity/user';
-import { type UserAddBo, type UserSetAvatarBo, type UserSetBo, type UserPasswordBo, type UserToggleStatusBo } from '@/server/entity/bo/user';
+import { type UserAddBo, type UserSetAvatarBo, type UserSetBo, type UserPasswordBo, type UserSetTopBo, type UserToggleStatusBo } from '@/server/entity/bo/user';
 import { photoTab } from '@/server/entity/photo';
 import { type PageVo } from '@/server/entity/vo/common';
 import { type UserInfoVo, type UserVo } from '@/server/entity/vo/user';
@@ -156,11 +156,12 @@ const userService = {
     }
   },
 
-  // 查询全部用户，并统计每个用户的照片数量和已用容量。
+  // 按置顶时间倒序查询全部用户，并统计每个用户的照片数量和已用容量。
   async list(): Promise<PageVo<UserVo>> {
     const userList = await orm
       .select()
-      .from(userTab);
+      .from(userTab)
+      .orderBy(desc(userTab.sort));
 
     if (!userList.length) {
       return { list: [], total: 0 };
@@ -313,6 +314,19 @@ const userService = {
         salt: password.salt
       })
       .where(eq(userTab.userId, userId));
+  },
+
+  // 把指定用户置顶。
+  async setTop(params: UserSetTopBo): Promise<void> {
+    if (!params.userId) {
+      throw new BizError('user.selectRequired');
+    }
+
+    await orm.update(userTab)
+      .set({
+        sort: Date.now()
+      })
+      .where(eq(userTab.userId, params.userId));
   },
 
   // 切换指定用户的启用状态。

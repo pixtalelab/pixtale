@@ -24,6 +24,7 @@ interface SortableHeaderProps {
 
 interface UserColumnsOptions {
   onEdit: (user: UserVo) => void
+  onSetTop: (userId: string) => void
   onToggleStatus: (userId: string) => void
   onDelete: (user: UserVo) => void
 }
@@ -59,7 +60,7 @@ function UserStatusBadge({ status }: { status: number }) {
 }
 
 // 创建带国际化文案的用户列表列配置。
-export function useUserColumns({ onEdit, onToggleStatus, onDelete }: UserColumnsOptions): ColumnDef<UserVo>[] {
+export function useUserColumns({ onEdit, onSetTop, onToggleStatus, onDelete }: UserColumnsOptions): ColumnDef<UserVo>[] {
   const t = useTranslations("users")
 
   return [
@@ -130,6 +131,7 @@ export function useUserColumns({ onEdit, onToggleStatus, onDelete }: UserColumns
             <DropdownMenuItem onClick={() => onToggleStatus(row.original.userId)}>
               {row.original.status === UserStatusEnum.DISABLE ? t("enable") : t("disable")}
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSetTop(row.original.userId)}>{t("pin")}</DropdownMenuItem>
             <DropdownMenuItem onClick={() => onDelete(row.original)}>{t("delete")}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

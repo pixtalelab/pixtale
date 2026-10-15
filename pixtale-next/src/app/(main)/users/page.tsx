@@ -20,7 +20,7 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { userAdd, userDelete, userList, userSet, userToggleStatus } from "@/request/user"
+import { userAdd, userDelete, userList, userSet, userSetTop, userToggleStatus } from "@/request/user"
 import { type UserAddBo, type UserSetBo } from "@/server/entity/bo/user"
 import { type UserVo } from "@/server/entity/vo/user"
 import { useUserColumns } from "@/components/user/user-columns"
@@ -85,6 +85,13 @@ export default function Page() {
     })
   }
 
+  // 置顶用户后刷新列表。
+  function setTopUser(userId: string) {
+    userSetTop({ userId }).then(() => {
+      getUserList()
+    })
+  }
+
   // 打开删除确认弹框。
   function openDeleteUser(user: UserVo) {
     setDeletingUser(user)
@@ -137,6 +144,7 @@ export default function Page() {
 
   const columns = useUserColumns({
     onEdit: openEditUser,
+    onSetTop: setTopUser,
     onToggleStatus: toggleUserStatus,
     onDelete: openDeleteUser,
   })

@@ -197,6 +197,7 @@
   "users.edit": "编辑",
   "users.enable": "启用",
   "users.disable": "禁用",
+  "users.pin": "置顶",
   "users.delete": "删除",
   "users.columns.index": "序号",
   "users.columns.username": "用户名",

@@ -197,6 +197,7 @@
   "users.edit": "Edit",
   "users.enable": "Enable",
   "users.disable": "Disable",
+  "users.pin": "Pin to top",
   "users.delete": "Delete",
   "users.columns.index": "No.",
   "users.columns.username": "Username",

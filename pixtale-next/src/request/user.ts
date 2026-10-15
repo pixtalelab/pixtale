@@ -1,5 +1,5 @@
 import { http } from "@/request/request";
-import { type UserAddBo, type UserDeleteBo, type UserSetAvatarBo, type UserSetBo, type UserPasswordBo, type UserToggleStatusBo } from "@/server/entity/bo/user";
+import { type UserAddBo, type UserDeleteBo, type UserSetAvatarBo, type UserSetBo, type UserPasswordBo, type UserSetTopBo, type UserToggleStatusBo } from "@/server/entity/bo/user";
 import { type PageVo } from "@/server/entity/vo/common";
 import { type UserInfoVo, type UserVo } from "@/server/entity/vo/user";
 
@@ -33,6 +33,11 @@ export function userSetUserPassword(params: UserPasswordBo) {
 // 设置当前用户头像。
 export function userSetAvatar(params: UserSetAvatarBo) {
   return http.post<string>('/user/setAvatar', params);
+}
+
+// 置顶用户。
+export function userSetTop(params: UserSetTopBo) {
+  return http.post<void>('/user/setTop', params);
 }
 
 // 切换用户启用状态。

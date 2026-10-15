@@ -1,7 +1,7 @@
 import { app } from '../hono/hono';
 import { Context } from 'hono';
 import result from '@/server/model/result';
-import { type UserAddBo, type UserDeleteBo, type UserSetAvatarBo, type UserSetBo, type UserPasswordBo, type UserToggleStatusBo } from '@/server/entity/bo/user';
+import { type UserAddBo, type UserDeleteBo, type UserSetAvatarBo, type UserSetBo, type UserPasswordBo, type UserSetTopBo, type UserToggleStatusBo } from '@/server/entity/bo/user';
 import { getUserId } from '@/server/security/context';
 import { userService } from '@/server/service/user-service';
 
@@ -62,6 +62,13 @@ app.get('/user/avatar/:key', async (c: Context) => {
     'Cache-Control': 'public, max-age=31536000, immutable',
     'Content-Length': String(file.size),
   });
+});
+
+// 把指定用户置顶，不返回业务数据。
+app.post('/user/setTop', async (c: Context) => {
+  const params = await c.req.json<UserSetTopBo>();
+  await userService.setTop(params);
+  return c.json(result.ok());
 });
 
 // 切换指定用户启用状态。

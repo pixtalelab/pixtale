@@ -21,6 +21,10 @@ interface UserToggleStatusBo {
   userId: string;
 }
 
+interface UserSetTopBo {
+  userId: string;
+}
+
 interface UserSetAvatarBo {
   avatar: string;
 }
@@ -29,4 +33,4 @@ interface UserDeleteBo {
   userId: string;
 }
 
-export type { UserAddBo, UserDeleteBo, UserPasswordBo, UserSetAvatarBo, UserSetBo, UserToggleStatusBo };
+export type { UserAddBo, UserDeleteBo, UserPasswordBo, UserSetAvatarBo, UserSetBo, UserSetTopBo, UserToggleStatusBo };
