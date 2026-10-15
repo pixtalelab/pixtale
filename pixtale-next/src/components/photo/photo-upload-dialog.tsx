@@ -39,6 +39,7 @@ import { PhotoUploadSettings, readPhotoUploadSettings } from "@/components/photo
 import { createPhotoCover } from "@/lib/upload-cover"
 import { useStorageStore } from "@/store/storage-store"
 import { usePhotoStore } from "@/store/photo-store"
+import { useAlbumStore } from "@/store/album-store"
 import { photoExists } from "@/request/photo"
 import { type PhotoAddResultVo } from "@/server/entity/vo/photo"
 import { type StorageSelectVo } from "@/server/entity/vo/storage"
@@ -348,6 +349,7 @@ export function PhotoUploadDialog() {
       }
 
       if (result.photo) {
+        useAlbumStore.getState().increaseRefreshKey()
         addUploadedPhoto(result.photo, item.albumId)
       }
 

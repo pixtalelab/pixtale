@@ -16,7 +16,9 @@ interface AlbumAddDialogProps {
 // 渲染新增相册弹窗，并在确认后把相册名交给父组件。
 export function AlbumAddDialog({ title, onNameConfirm }: AlbumAddDialogProps) {
   const t = useTranslations("albums")
+  // open 控制新增相册弹窗的显示状态。
   const [open, setOpen] = useState(false)
+  // name 保存输入值，关闭动画结束后再清空。
   const [name, setName] = useState("")
 
   // 提交输入的相册名称。
@@ -28,8 +30,8 @@ export function AlbumAddDialog({ title, onNameConfirm }: AlbumAddDialogProps) {
     }
 
     onNameConfirm(value)
-    setName("")
     setOpen(false)
+    setTimeout(() => setName(""), 300)
   }
 
   // 处理输入框回车确认。
@@ -42,10 +44,6 @@ export function AlbumAddDialog({ title, onNameConfirm }: AlbumAddDialogProps) {
   // 处理弹窗打开状态变化。
   function handleOpenChange(nextOpen: boolean) {
     setOpen(nextOpen)
-
-    if (!nextOpen) {
-      setName("")
-    }
   }
 
   return (

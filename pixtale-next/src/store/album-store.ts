@@ -9,6 +9,10 @@ interface AlbumState {
   albums: AlbumVo[]
   currentAlbumName: string
   scrollPosition: number
+  // refreshKey 记录需要刷新相册列表的照片变更次数。
+  refreshKey: number
+  increaseRefreshKey: () => void
+  resetRefreshKey: () => void
   setAlbums: (albums: AlbumVo[]) => void
   setCurrentAlbumName: (name: string) => void
   setScrollPosition: (position: number) => void
@@ -19,6 +23,13 @@ const useAlbumStore = create<AlbumState>((set) => ({
   albums: [],
   currentAlbumName: "",
   scrollPosition: 0,
+  refreshKey: 0,
+
+  // 照片变更成功后标记相册列表需要刷新。
+  increaseRefreshKey: () => set((state) => ({ refreshKey: state.refreshKey + 1 })),
+
+  // 相册列表发起刷新时清除已记录的变更次数。
+  resetRefreshKey: () => set({ refreshKey: 0 }),
 
   // 设置全局相册列表。
   setAlbums: (albums) => set({ albums }),

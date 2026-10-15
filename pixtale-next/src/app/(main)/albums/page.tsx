@@ -17,11 +17,12 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import dynamic from "next/dynamic"
-import { useLayoutEffect, useState } from "react"
+import { useEffect, useLayoutEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { useAlbumContext } from "./provider"
 import { useApp } from "@/app/(main)/provider"
 import { useAlbumStore } from "@/store/album-store"
-import { albumAdd, albumDelete, albumList, albumRecycle, albumSetName, albumSetPublic, albumSetTop } from "@/request/album"
+import { albumAdd, albumDelete, albumRecycle, albumSetName, albumSetPublic, albumSetTop } from "@/request/album"
 import { AlbumPublicEnum } from "@/server/enums/album-enum"
 import { type AlbumVo } from "@/server/entity/vo/album"
 import { useTranslations } from "next-intl"
@@ -33,9 +34,12 @@ const AlbumMasonry = dynamic(
 
 export default function Page() {
   const t = useTranslations("albums")
+  const router = useRouter()
   const { initialAlbums } = useAlbumContext()
   const { sidebarOpen, setSidebarOpen, refreshAlbums } = useApp()
-  // albums 保存当前页面展示的相册列表。
+  // refreshKey 大于零表示照片变更后需要重新读取相册统计和封面。
+  const refreshKey = useAlbumStore((state) => state.refreshKey)
+  // albums 保存当前页面展示的相册列表，并跟随服务端数据更新。
   const [albums, setAlbums] = useState<AlbumVo[]>(initialAlbums)
   // albumListKey 用于强制刷新相册瀑布流布局。
   const [albumListKey, setAlbumListKey] = useState(0)
@@ -52,6 +56,20 @@ export default function Page() {
   // recyclingAlbum 保存当前等待回收照片确认的相册。
   const [recyclingAlbum, setRecyclingAlbum] = useState<AlbumVo | null>(null)
 
+  // 返回列表或收到照片变更标记时刷新服务端数据，并消费当前标记。
+  useEffect(() => {
+    if (refreshKey > 0) {
+      useAlbumStore.getState().resetRefreshKey()
+      router.refresh()
+    }
+  }, [refreshKey, router])
+
+  // 服务端相册数据变化后同步列表，并重新计算瀑布流布局。
+  useLayoutEffect(() => {
+    setAlbums(initialAlbums)
+    setAlbumListKey((prev) => prev + 1)
+  }, [initialAlbums])
+
   useLayoutEffect(() => {
     // 仅从相册照片页返回时恢复内存中记录的位置，整页刷新时状态为 0 并回到顶部。
     const previousScrollRestoration = window.history.scrollRestoration
@@ -67,17 +85,9 @@ export default function Page() {
     }
   }, [])
 
-  // 加载全部相册数据。
-  async function getAlbumList() {
-    const data = await albumList()
-
-    setAlbums(data)
-    setAlbumListKey((prev) => prev + 1)
-  }
-
-  // 重新查询相册页面列表和全局相册选择列表。
+  // 刷新服务端相册数据和全局相册选择列表。
   async function refreshAlbumData() {
-    await getAlbumList()
+    router.refresh()
     await refreshAlbums()
   }
 

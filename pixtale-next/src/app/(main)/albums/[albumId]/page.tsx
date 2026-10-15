@@ -50,6 +50,7 @@ export default function Page() {
   const { initialPhotos } = useAlbumPhotoContext()
   const { sidebarOpen, setSidebarOpen, refreshAlbums, listStyle } = useApp()
   const currentAlbumName = useAlbumStore((state) => state.currentAlbumName)
+  const increaseRefreshKey = useAlbumStore((state) => state.increaseRefreshKey)
   const albumIdRef = useRef(albumId)
   // isBrowser 标记当前是否在浏览器环境，SSR 阶段显示骨架屏。
   const [isBrowser, setIsBrowser] = useState(false)
@@ -138,17 +139,19 @@ export default function Page() {
   // 批量回收当前相册选中的照片。
   const recyclePhotos = useCallback((photoIds: string[]) => {
     photoRecycle({ photoIds }).then(() => {
+      increaseRefreshKey()
       removePhotos(photoIds)
     })
-  }, [removePhotos])
+  }, [increaseRefreshKey, removePhotos])
 
   // 批量把当前相册选中的照片移出相册。
   const removeAlbumPhotos = useCallback((photoIds: string[]) => {
     albumRemovePhoto({ albumId, photoIds }).then(() => {
+      increaseRefreshKey()
       removePhotos(photoIds)
       void refreshAlbums()
     })
-  }, [albumId, removePhotos, refreshAlbums])
+  }, [albumId, increaseRefreshKey, removePhotos, refreshAlbums])
 
   // 打开当前相册照片批量加入相册弹框。
   const openAlbumDialog = useCallback((photoIds: string[]) => {
@@ -165,6 +168,7 @@ export default function Page() {
     }
 
     albumAddPhoto({ albumIds: targetAlbumIds, photoIds: albumPhotoIds }).then(() => {
+      increaseRefreshKey()
       if (albumId === "default") {
         removePhotos(albumPhotoIds)
       }

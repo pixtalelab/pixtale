@@ -18,7 +18,7 @@ interface AlbumProviderProps {
 
 const AlbumContext = createContext<AlbumContextValue | null>(null)
 
-// 读取 /album 路由下服务端预取的相册数据。
+// 读取相册路由下服务端预取的相册数据。
 function useAlbumContext() {
   const context = useContext(AlbumContext)
 
@@ -29,7 +29,7 @@ function useAlbumContext() {
   return context
 }
 
-// 给 /album 路由下的客户端组件提供服务端预取相册。
+// 给相册路由下的客户端组件提供服务端预取相册。
 function AlbumProvider({ children, initialAlbums }: AlbumProviderProps) {
   return (
     <AlbumContext.Provider value={{ initialAlbums }}>
