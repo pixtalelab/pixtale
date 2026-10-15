@@ -40,7 +40,7 @@ docker run -d \
   -e ADMIN=admin \
   -e PASSWORD=123456 \
   -e JWT_SECRET=abc \
-  aslost/pixtale:latest
+  pixtalelab/pixtale:latest
 ```
 
 Replace the `ADMIN`, `PASSWORD`, and `JWT_SECRET` values with your own before running the command, then visit `ip:8082` in your browser.

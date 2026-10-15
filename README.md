@@ -41,7 +41,7 @@ docker run -d \
   -e ADMIN=admin \
   -e PASSWORD=123456 \
   -e JWT_SECRET=abc \
-  aslost/pixtale:latest
+  pixtalelab/pixtale:latest
 ```
 将`ADMIN` `PASSWORD` `JWT_SECRET` 变量替换为自己的并执行， 浏览器访问`ip:8082`
 
