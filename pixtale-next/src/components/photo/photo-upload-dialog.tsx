@@ -326,6 +326,7 @@ export function PhotoUploadDialog() {
       }
 
       const formData = new FormData()
+      formData.set("lock", item.id)
       formData.set("storageId", currentStorageId)
       formData.set("file", item.file)
       formData.set("lastModified", String(item.file.lastModified))

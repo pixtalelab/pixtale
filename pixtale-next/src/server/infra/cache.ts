@@ -13,7 +13,7 @@ type CacheSetOptions = {
 const dbCache = {
 
   // 写入缓存，同 key 则覆盖。
-  async set(key: string, data: object, options?: CacheSetOptions): Promise<void> {
+  async set(key: string, data: unknown, options?: CacheSetOptions): Promise<void> {
     const value = JSON.stringify(data)
     const expireTime = options?.ttl
       ? Math.floor(Date.now() / 1000) + options.ttl
@@ -70,7 +70,7 @@ const dbCache = {
 
 const cache = {
   // 写入缓存。
-  async set(key: string, data: object, options?: CacheSetOptions): Promise<void> {
+  async set(key: string, data: unknown, options?: CacheSetOptions): Promise<void> {
     return dbCache.set(key, data, options)
   },
 
@@ -82,6 +82,25 @@ const cache = {
   // 删除缓存。
   async delete(key: string): Promise<void> {
     return dbCache.delete(key)
+  },
+
+  // 每秒检查一次缓存，等待超过 1000 次则抛错，否则在 key 不存在后写入锁标记。
+  async lock(key: string): Promise<void> {
+    let attempts = 0
+    while (await dbCache.get<string>(key) !== null) {
+      attempts += 1
+      if (attempts > 1000) {
+        throw new Error('Cache lock wait exceeded 1000 attempts')
+      }
+      await new Promise<void>((resolve) => setTimeout(resolve, 1000))
+    }
+
+    await dbCache.set(key, 'LOCK', { ttl: 600 })
+  },
+
+  // 删除指定 key，释放缓存锁。
+  async unlock(key: string): Promise<void> {
+    await dbCache.delete(key)
   },
 
   // 删除所有已过期的缓存。

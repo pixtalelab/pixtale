@@ -4,6 +4,7 @@ import result from '@/server/model/result';
 import { photoService } from '@/server/service/photo-service';
 import { getUserId } from "@/server/security/context";
 import { type PhotoDeleteBo, type PhotoExistsBo, type PhotoFavoriteBo, type PhotoListBo, type PhotoRecycleBo, type PhotoRestoreBo, type PhotoTakenDateListBo } from '@/server/entity/bo/photo';
+import { cache } from '@/server/infra/cache';
 
 // 这个模块注册照片相关接口。
 
@@ -30,8 +31,23 @@ app.post('/photo/takenDateList', async (c: Context) => {
 
 // 上传单张照片，后端生成 preview、thumbnail 和元信息。
 app.post('/photo/add', async (c: Context) => {
-  const data = await photoService.add(await c.req.formData(), getUserId());
-  return c.json(result.ok(data));
+  const form = await c.req.formData();
+  const lock = form.get('lock');
+
+  if (typeof lock !== 'string' || !lock.trim()) {
+    return c.json(result.fail('Upload lock is required', 400), 400);
+  }
+
+  // 为上传锁添加用户命名空间，避免影响其他用户和业务缓存。
+  const userId = getUserId();
+  const key = `photo:upload:${userId}:${lock}`;
+  await cache.lock(key);
+  try {
+    const data = await photoService.add(form, userId);
+    return c.json(result.ok(data));
+  } finally {
+    await cache.unlock(key);
+  }
 })
 
 // 上传前检查当前用户是否已有相同文件。
