@@ -89,7 +89,6 @@ export function AlbumSelectDialog({ open, onOpenChange, onAlbumSelect }: AlbumSe
                     <img
                       src={album.thumbnail}
                       alt={album.name}
-                      crossOrigin="anonymous"
                     />
                   ) : (
                     <span className="h-full w-full bg-muted" />

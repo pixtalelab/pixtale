@@ -51,7 +51,6 @@ export function TeamSwitcher({
                   src="/assets/logo.png"
                   alt=""
                   className="size-7 object-contain"
-                  crossOrigin="anonymous"
                 />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">

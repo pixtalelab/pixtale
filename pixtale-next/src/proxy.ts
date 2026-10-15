@@ -60,7 +60,7 @@ function clearLoginCookies(response: NextResponse) {
 }
 
 // 继续请求，并把 userId、type 以哈希头名写入下游。
-function nextWithUser(req: NextRequest, authInfo: AuthInfo) {
+function nextWithUser(req: NextRequest, authInfo: Pick<AuthInfo, 'userId' | 'type'>) {
   const requestHeaders = new Headers(req.headers);
   setProxyUserHeaders(requestHeaders, authInfo.userId, authInfo.type);
 
@@ -89,7 +89,7 @@ export async function proxy(req: NextRequest) {
   }
 
   const cookie = req.headers.get('cookie');
-  const { userId, uuid } = await getLoginInfo(cookie);
+  const { userId, uuid, type } = await getLoginInfo(cookie);
 
   if (!userId || !uuid) {
     if (isPublicPath(pathname)) {
@@ -102,8 +102,10 @@ export async function proxy(req: NextRequest) {
     return clearLoginCookies(NextResponse.rewrite(loginUrl));
   }
 
-  // 从缓存确认当前会话 uuid 仍有效。
-  const authInfo = await cache.get<AuthInfo>(AUTH_CACHE_KEY + userId);
+  // Vercel 使用签名 JWT 中的身份与角色，其他环境仍校验缓存会话。
+  const authInfo = process.env.VERCEL
+    ? { userId, type: type!, uuidList: [uuid] }
+    : await cache.get<AuthInfo>(AUTH_CACHE_KEY + userId);
 
   if (!authInfo || !authInfo.uuidList.includes(uuid)) {
     if (isPublicPath(pathname)) {

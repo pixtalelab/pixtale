@@ -78,7 +78,7 @@ async function security(c: Context, next: Next) {
     return next();
   }
 
-  const { userId, uuid } = await getLoginInfo(
+  const { userId, uuid, type } = await getLoginInfo(
     c.req.header('cookie') ?? null,
     c.req.header('authorization')
   );
@@ -88,8 +88,10 @@ async function security(c: Context, next: Next) {
     throw new BizError('auth.failed', 401);
   }
 
-  // 从缓存读取登录信息，并确认当前 uuid 仍有效。
-  const authInfo = await cache.get<AuthInfo>(AUTH_CACHE_KEY + userId);
+  // Vercel 使用签名 JWT 中的身份与角色，其他环境仍校验缓存会话。
+  const authInfo = process.env.VERCEL
+    ? { userId, type: type!, uuidList: [uuid] }
+    : await cache.get<AuthInfo>(AUTH_CACHE_KEY + userId);
 
   if (!authInfo || !authInfo.uuidList.includes(uuid)) {
     clearLoginCookies(c);

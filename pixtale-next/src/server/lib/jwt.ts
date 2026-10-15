@@ -7,10 +7,11 @@ import BizError from "@/server/error/biz-error";
 interface LoginTokenPayload extends JWTPayload {
   userId: string;
   uuid: string;
+  type: number;
 }
 
 // 生成登录成功后返回给前端的 JWT。
-async function createLoginToken(userId: string, uuid: string): Promise<string> {
+async function createLoginToken(userId: string, uuid: string, type: number): Promise<string> {
   const secret = process.env.JWT_SECRET;
 
   if (!secret) {
@@ -21,6 +22,7 @@ async function createLoginToken(userId: string, uuid: string): Promise<string> {
   const payload: LoginTokenPayload = {
     userId,
     uuid,
+    type,
     iat: now,
     exp: now + 60 * 60 * 24 * 30
   };

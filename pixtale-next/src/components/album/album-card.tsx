@@ -86,7 +86,6 @@ export function AlbumCard({ data, width, href, showPublicLabel = true, onRename,
             <img
               src={thumbnailSrc}
               alt={name}
-              crossOrigin="anonymous"
               className="absolute inset-0 h-full w-full object-cover duration-300 group-hover:scale-105"
               onError={(event) => {
                 event.currentTarget.style.display = "none"

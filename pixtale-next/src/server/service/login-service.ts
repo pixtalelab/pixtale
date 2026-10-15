@@ -19,6 +19,9 @@ const loginService = {
   // 把用户信息写入登录缓存，并返回本次会话 uuid；最多保留 30 个会话，超出淘汰最旧的。
   async saveAuthInfo(user: { userId: string, username: string, avatar: string, type: number }): Promise<string> {
     const uuid = createId()
+    if (process.env.VERCEL) {
+      return uuid
+    }
     const oldAuthInfo = await cache.get<AuthInfo>(AUTH_CACHE_KEY + user.userId)
     // 追加新会话，超出 20 个时淘汰数组最前面的旧会话。
     const uuidList = [...(oldAuthInfo?.uuidList ?? []), uuid].slice(-20)
@@ -59,11 +62,15 @@ const loginService = {
     }
 
     const uuid = await this.saveAuthInfo(user);
-    return createLoginToken(user.userId, uuid);
+    return createLoginToken(user.userId, uuid, user.type);
   },
 
   // 退出登录时从缓存移除当前会话 uuid。
   async logout(userId: string | null, uuid: string | null): Promise<void> {
+
+    if (process.env.VERCEL) {
+      return
+    }
 
     if (!userId || !uuid) {
       return

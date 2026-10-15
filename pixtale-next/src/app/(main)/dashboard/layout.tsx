@@ -23,6 +23,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
 
   return (
     <DashboardProvider
+      realtimeEnabled={!process.env.VERCEL}
       initialSystemInfo={systemInfo}
       initialDashboardSummary={dashboardSummary}
     >

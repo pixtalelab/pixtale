@@ -93,11 +93,15 @@ function formatUsageTime(createTime?: string) {
 export default function Page() {
   const t = useTranslations("dashboard");
   const { sidebarOpen, setSidebarOpen } = useApp();
-  const { initialSystemInfo, initialDashboardSummary } = useDashboardContext();
+  const { initialSystemInfo, initialDashboardSummary, realtimeEnabled } = useDashboardContext();
   // systemInfo 保存服务端初始数据和短轮询更新后的系统数据。
   const [systemInfo, setSystemInfo] = useState(initialSystemInfo);
 
   useEffect(() => {
+    if (!realtimeEnabled) {
+      return;
+    }
+
     let active = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
 

@@ -120,8 +120,41 @@ const dashboardService = {
     };
   },
 
+  // 按缓存采样间隔生成 CPU 和内存均固定使用一半的历史数据。
+  generateSystemUsage(memoryTotal: number): DashboardSystemUsageVo {
+    const now = Date.now();
+    const usedBytes = memoryTotal / 2;
+    const cpuUsage: DashboardCpuUsageVo[] = [];
+    const memoryUsage: DashboardMemoryUsageVo[] = [];
+
+    for (let index = SYSTEM_USAGE_MAX_SIZE - 1; index >= 0; index--) {
+      const createTime = new Date(now - index * SYSTEM_USAGE_INTERVAL).toISOString();
+      cpuUsage.push({ usage: 50, createTime });
+      memoryUsage.push({ used: 50, usedBytes, createTime });
+    }
+
+    return {
+      cpuUsage,
+      memoryUsage,
+      currentCpuUsage: 50,
+      currentMemoryUsed: usedBytes,
+    };
+  },
+
   // 查询当前服务器 CPU、内存使用情况和系统信息。
   async getSystemInfo(): Promise<DashboardSystemInfoVo> {
+    if (process.env.VERCEL) {
+      const info = await systemInfo.getInfo();
+
+      return {
+        ...this.generateSystemUsage(info.memoryTotal),
+        cpuCount: info.cpuCount,
+        memoryTotal: info.memoryTotal,
+        operatingSystem: info.operatingSystem,
+        systemArchitecture: info.architecture,
+      };
+    }
+
     const [cpuUsage, memoryUsage, info] = await Promise.all([
       cache.get<DashboardCpuUsageVo[]>(DASHBOARD_CPU_USAGE_CACHE_KEY),
       cache.get<DashboardMemoryUsageVo[]>(DASHBOARD_MEMORY_USAGE_CACHE_KEY),

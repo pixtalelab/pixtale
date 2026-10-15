@@ -5,6 +5,7 @@ import { TOKEN_COOKIE_NAME } from "@/server/const/global"
 type LoginCookie = {
   userId: string | null
   uuid: string | null
+  type: number | null
 }
 
 // 从浏览器 Cookie 中读取指定名称的值。
@@ -42,6 +43,7 @@ async function getLoginInfo(cookie: string | null = null, authorization?: string
   return {
     userId: payload?.userId ?? null,
     uuid: payload?.uuid ?? null,
+    type: payload?.type ?? null,
   }
 }
 
