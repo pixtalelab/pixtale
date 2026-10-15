@@ -71,7 +71,7 @@ export default function PublicHomePage() {
     <>
       <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between gap-2 bg-background">
         <div className="flex min-w-0 items-center px-5">
-          <span className={`${hasChineseTitle ? "text-base font-semibold" : "text-2xl font-bahamas font-semibold"}`}>{title}</span>
+          <span className={`${hasChineseTitle ? "text-base font-bold" : "text-2xl font-bahamas font-semibold"}`}>{title}</span>
         </div>
         <div className="fixed left-[calc(100vw-5.75rem)] top-0 flex h-12 items-center gap-1 px-4 md:left-[calc(100vw-6.25rem)]">
           <Button asChild variant="ghost" size="icon" className="group">

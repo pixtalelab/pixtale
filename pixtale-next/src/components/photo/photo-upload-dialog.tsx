@@ -263,7 +263,9 @@ export function PhotoUploadDialog() {
         try {
           await addPhoto(file)
         } catch {
-          toast.error(t("previewFailed", { name: file.name }))
+          toast.error(t("previewFailed", { name: file.name }), {
+            position: isMobile ? "top-center" : "bottom-center",
+          })
         }
       }
     }
@@ -364,7 +366,9 @@ export function PhotoUploadDialog() {
       }
 
       if (error instanceof Error) {
-        toast.error(error.message)
+        toast.error(error.message, {
+          position: isMobile ? "top-center" : "bottom-center",
+        })
         console.error(error.message)
       }
 
@@ -418,12 +422,16 @@ export function PhotoUploadDialog() {
   // 上传弹窗内待处理的照片，成功后通知父页面。
   function startUpload() {
     if (process.env.NEXT_PUBLIC_DEMO_USERNAME && previewsRef.current.length > 0) {
-      toast.error("The application is running in read-only mode.")
+      toast.error("The application is running in read-only mode.", {
+        position: isMobile ? "top-center" : "bottom-center",
+      })
       return
     }
 
     if (!selectedStorageId && previewsRef.current.length > 0) {
-      toast.error(t("invalidStorage"))
+      toast.error(t("invalidStorage"), {
+        position: isMobile ? "top-center" : "bottom-center",
+      })
       return
     }
 

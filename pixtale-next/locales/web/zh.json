@@ -79,6 +79,7 @@
   "login.username": "用户名",
   "login.password": "密码",
   "login.signIn": "登录",
+  "login.back": "返回",
   "settings.title": "设置",
   "settings.basicFeatures": "基本功能",
   "settings.siteName": "网站名称",

@@ -78,17 +78,17 @@ export function LoginForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="px-1 pb-4 pt-5">
+      <Card className="px-1 pb-4 pt-5 shadow-lg">
         <CardHeader className="flex flex-col items-center gap-2 text-center">
-          <div className="flex size-10 items-center justify-center rounded-md">
+          <div className="flex size-11 items-center justify-center rounded-md">
             <img
               src="/assets/logo.png"
               alt=""
-              className="!size-10 object-contain"
+              className="!size-11 object-contain"
               aria-hidden="true"
             />
           </div>
-        <CardTitle className={`w-full break-words ${hasChineseTitle ? "text-base font-semibold" : "font-bahamas text-2xl"}`}>
+        <CardTitle className={`w-full break-words ${hasChineseTitle ? "text-lg font-bold" : "font-bahamas text-2xl"}`}>
             {title}
           </CardTitle>
         </CardHeader>
@@ -96,7 +96,7 @@ export function LoginForm({
           <form name="login" onSubmit={submitLogin} autoComplete="on">
             <FieldGroup>
               <Field>
-                <FieldLabel htmlFor="username">{t("username")}</FieldLabel>
+                <FieldLabel htmlFor="username" className="font-medium" >{t("username")}</FieldLabel>
                 <Input
                   id="username"
                   name="username"

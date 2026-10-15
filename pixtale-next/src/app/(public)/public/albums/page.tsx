@@ -44,7 +44,7 @@ export default function PublicAlbumsPage() {
     <>
       <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between gap-2 bg-background">
         <div className="flex min-w-0 items-center px-5">
-          <span className="text-lg font-bold">{t("title")}</span>
+          <span className="text-base font-bold">{t("title")}</span>
         </div>
         <div className="fixed left-[calc(100vw-3.5rem)] top-0 flex h-12 items-center gap-1 px-4 md:left-[calc(100vw-4rem)]">
           <Button variant="ghost" size="icon" className="group" onClick={goBack}>

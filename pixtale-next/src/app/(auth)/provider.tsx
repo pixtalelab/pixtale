@@ -5,6 +5,8 @@ import { createContext, useContext } from "react"
 interface AuthContextValue {
   // title 保存登录页显示的网站名称。
   title: string
+  // publicAlbumEnabled 控制登录页是否显示返回公开页面的按钮。
+  publicAlbumEnabled: boolean
 }
 
 interface AuthProviderProps {
@@ -12,14 +14,16 @@ interface AuthProviderProps {
   children: React.ReactNode
   // title 是服务端读取的网站名称。
   title: string
+  // publicAlbumEnabled 是服务端读取的公开相册开关。
+  publicAlbumEnabled: boolean
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 // 为认证页面提供网站名称。
-function AuthProvider({ children, title }: AuthProviderProps) {
+function AuthProvider({ children, title, publicAlbumEnabled }: AuthProviderProps) {
   return (
-    <AuthContext.Provider value={{ title }}>
+    <AuthContext.Provider value={{ title, publicAlbumEnabled }}>
       {children}
     </AuthContext.Provider>
   )

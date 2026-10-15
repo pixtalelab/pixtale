@@ -79,6 +79,7 @@
   "login.username": "Username",
   "login.password": "Password",
   "login.signIn": "Sign in",
+  "login.back": "Back",
   "settings.title": "Settings",
   "settings.basicFeatures": "General",
   "settings.siteName": "Site Name",
