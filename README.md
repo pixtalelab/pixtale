@@ -2,7 +2,7 @@
     <img src="https://img.022335.xyz/logo.png" width="64px" />
     <h1 align="center">Pixtale</h1>
     <p></p>
-    <p align="center">一个沉浸式瀑布流相册应用</p>
+    <p align="center">一个自托管云存储相册应用</p>
     <p>
         <a href="https://022335.xyz">在线演示</a> · <a href="https://docs.022335.xyz">部署文档</a> ·
         <a align="center"><a href="README_EN.md">English</a> | 简体中文</a>
@@ -16,7 +16,7 @@
 
 ## 💡 前言
 
-**Pixtale** 是一个自托管的云端存储照片相册应用，支持 **本地、S3、Telegram** 等方式作为存储空间，配合本项目的桌面同步工具 **pixtale-sync** 可自动化将本地照片同步至云端
+**Pixtale** 是一个自托管的云端存储照片相册应用，支持 **本地、S3、Telegram** 等方式作为存储空间，配合本项目的桌面同步工具 [Pixtale Sync](https://github.com/pixtalelab/pixtale/releases) 可自动化将本地照片同步至云端
 
 ## 💻 项目预览
 
@@ -51,7 +51,7 @@ docker run -d \
 
 - **🖼️ 瀑布流列表**：瀑布流无限滚动，采用游标分页+虚拟滚动优化性能
 
-- **🔄 自动同步**：配合本项目的 `pixtale-sync`，可自同步至云端
+- **🔄 自动同步**：配合本项目的 [Pixtale Sync](https://github.com/pixtalelab/pixtale/releases)，可自同步至云端
 
 - **🌄 缩略图优化**：生成缩略图和高清图，优化在弱网环境下的体验
 

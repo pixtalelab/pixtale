@@ -2,7 +2,7 @@
     <img src="https://img.022335.xyz/logo.png" width="64px" />
     <h1 align="center">Pixtale</h1>
     <p></p>
-    <p align="center">An immersive masonry photo gallery</p>
+    <p align="center">A self-hosted cloud photo gallery app</p>
     <p>
         <a href="https://022335.xyz">Live Demo</a> · <a href="https://docs.022335.xyz">Deployment Guide</a> ·
         <a align="center">English | <a href="README.md">简体中文</a></a>
@@ -15,7 +15,7 @@
 
 ## 💡 Introduction
 
-**Pixtale** is a self-hosted cloud photo gallery that supports **local storage, S3, Telegram**, and other storage backends. Combined with the desktop synchronization tool **pixtale-sync**, it can automatically sync local photos to the cloud.
+**Pixtale** is a self-hosted cloud photo gallery app that supports **local storage, S3, Telegram**, and other storage backends. Combined with the desktop synchronization tool [Pixtale Sync](https://github.com/pixtalelab/pixtale/releases), it can automatically sync local photos to the cloud.
 
 ## 💻 Preview
 
@@ -51,7 +51,7 @@ For detailed deployment and usage instructions, see the [Deployment Guide](https
 
 - **🖼️ Masonry Gallery:** Infinite scrolling with cursor pagination and virtualized rendering for improved performance.
 
-- **🔄 Automatic Sync:** Automatically sync local photos to the cloud with the included `pixtale-sync` tool.
+- **🔄 Automatic Sync:** Automatically sync local photos to the cloud with [Pixtale Sync](https://github.com/pixtalelab/pixtale/releases).
 
 - **🌄 Optimized Thumbnails:** Generates thumbnails and high-resolution previews for a better experience on slower networks.
 
