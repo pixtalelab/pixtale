@@ -82,7 +82,7 @@ export function LoginForm({
         <CardHeader className="flex flex-col items-center gap-2 text-center">
           <div className="flex size-11 items-center justify-center rounded-md">
             <img
-              src="/assets/logo.png"
+              src="/assets/logo.svg"
               alt=""
               className="!size-11 object-contain"
               aria-hidden="true"

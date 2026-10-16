@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/select"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { PhotoUploadSettings, readPhotoUploadSettings } from "@/components/photo/photo-upload-settings"
-import { createPhotoCover } from "@/lib/upload-cover"
+import { COVER_SIZE, createPhotoCover } from "@/lib/upload-cover"
 import { useStorageStore } from "@/store/storage-store"
 import { usePhotoStore } from "@/store/photo-store"
 import { useAlbumStore } from "@/store/album-store"
@@ -50,7 +50,7 @@ type UploadStatus = "new" | "waiting" | "uploading" | "success" | "failed" | "sk
 
 interface UploadPreview {
   id: string
-  cover: string
+  cover: ImageBitmap
   file: File
   albumId: string | null
   progress: number
@@ -154,6 +154,7 @@ export function PhotoUploadDialog() {
   const isMobile = useIsMobile()
   const fileInputRef = useRef<HTMLInputElement>(null) // 文件选择 input，用于触发系统文件选择器。
   const previewsRef = useRef<UploadPreview[]>([]) // 保存照片预览和上传状态列表。
+  const previewGenerationRef = useRef(0) // Invalidate pending previews after clearing or unmounting.
   const uploadQueueRef = useRef<UploadPreview[]>([]) // 保存待上传照片队列，支持上传中继续追加照片。
   const uploadingRef = useRef(false) // 标记当前是否有上传任务正在运行。
   const activeCountRef = useRef(0) // 记录当前正在上传的照片数量，用于限制并发数。
@@ -175,7 +176,8 @@ export function PhotoUploadDialog() {
 
   useEffect(() => {
     return () => {
-      previewsRef.current.forEach((preview) => URL.revokeObjectURL(preview.cover))
+      previewGenerationRef.current += 1
+      previewsRef.current.forEach((preview) => preview.cover.close())
     }
   }, [])
 
@@ -192,7 +194,8 @@ export function PhotoUploadDialog() {
 
   // 清空弹窗内已生成的预览。
   function resetUpload() {
-    previewsRef.current.forEach((preview) => URL.revokeObjectURL(preview.cover))
+    previewGenerationRef.current += 1
+    previewsRef.current.forEach((preview) => preview.cover.close())
     uploadQueueRef.current = []
     uploadingRef.current = false
     setUploading(false)
@@ -207,8 +210,13 @@ export function PhotoUploadDialog() {
   }
 
   // 生成封面后再加入预览列表。
-  async function addPhoto(file: File) {
+  async function addPhoto(file: File, generation: number) {
     const cover = await createPhotoCover(file)
+    if (generation !== previewGenerationRef.current) {
+      cover.close()
+      return
+    }
+
     const item: UploadPreview = {
       id: `${Math.random()}`,
       cover,
@@ -254,15 +262,20 @@ export function PhotoUploadDialog() {
     }
 
     let index = 0
+    const generation = previewGenerationRef.current
 
+    // Generate previews with bounded concurrency until the batch is invalidated.
     async function runAddPhoto() {
-      while (index < files.length) {
+      while (index < files.length && generation === previewGenerationRef.current) {
         const file = files[index]
         index += 1
 
         try {
-          await addPhoto(file)
+          await addPhoto(file, generation)
         } catch {
+          if (generation !== previewGenerationRef.current) {
+            return
+          }
           toast.error(t("previewFailed", { name: file.name }), {
             position: isMobile ? "top-center" : "bottom-center",
           })
@@ -532,19 +545,33 @@ function PhotoUploadHeader({ drawer = false }: PhotoUploadHeaderProps) {
   )
 }
 
+// Draw the decoded preview directly without encoding and decoding an image URL.
+function PhotoUploadCover({ cover, name }: { cover: ImageBitmap; name: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null) // Canvas displaying the preview bitmap.
+
+  useEffect(() => {
+    canvasRef.current?.getContext("2d")?.drawImage(cover, 0, 0)
+  }, [cover])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={COVER_SIZE}
+      height={COVER_SIZE}
+      role="img"
+      aria-label={name}
+      className="h-full w-full"
+    />
+  )
+}
+
 // 渲染待上传照片预览网格和添加照片按钮。
 function PhotoUploadGrid({ previews, onAddPhoto }: PhotoUploadGridProps) {
   return (
     <div className="grid grid-cols-3 content-start gap-1 md:grid-cols-4">
         {previews.map((preview) => (
           <div key={preview.id} className="relative aspect-square w-full overflow-hidden bg-muted [contain-intrinsic-size:160px_160px] [content-visibility:auto]">
-            <img
-              src={preview.cover}
-              alt={preview.file.name}
-              decoding="async"
-              loading="lazy"
-              className="h-full w-full object-cover"
-            />
+            <PhotoUploadCover cover={preview.cover} name={preview.file.name} />
             {preview.progress < 100 && (
               <div
                 className="pointer-events-none absolute inset-x-0 bottom-0 bg-black/60 transition-[height] duration-200"

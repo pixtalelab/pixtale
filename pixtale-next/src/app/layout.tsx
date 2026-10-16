@@ -23,8 +23,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title,
     icons: {
-      icon: "/assets/logo.png",
-      apple: "/assets/logo.png",
+      icon: "/assets/favicon.ico",
+      apple: "/assets/logo.svg",
     },
   }
 }

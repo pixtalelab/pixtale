@@ -48,7 +48,7 @@ export function TeamSwitcher({
             >
               <div className="flex aspect-square size-8 items-center justify-center">
                 <img
-                  src="/assets/logo.png"
+                  src="/assets/logo.svg"
                   alt=""
                   className="size-7 object-contain"
                 />

@@ -63,7 +63,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg">
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg">
-                <img src="/assets/logo.png" alt="" className="size-7 object-contain" />
+                <img src="/assets/logo.svg" alt="" className="size-7 object-contain" />
               </div>
               <div className="flex min-w-0 flex-col gap-0.5 leading-none">
                 <span className={`truncate ${hasChineseTitle ? "text-base font-bold" : "font-bahamas text-xl"}`}>{title}</span>
