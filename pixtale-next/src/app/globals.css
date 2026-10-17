@@ -190,6 +190,12 @@ body > .os-theme-page {
     z-index: 30;
 }
 
+/* 照片和相册页面的滚动轨道避开 h-12 顶部栏，并保留底部边界。 */
+body:has([data-gallery-page-header]) > .os-theme-page.os-scrollbar-vertical {
+    top: 3rem;
+    height: calc(100% - 3rem);
+}
+
 /* 页面滚动由 html 承载，弹窗锁定同一元素，避免 body 成为 sticky 的滚动祖先。 */
 html[data-overlayscrollbars-viewport]:has(> body[data-scroll-locked]),
 html[data-overlayscrollbars-viewport]:has(> body.yarl__no_scroll) {

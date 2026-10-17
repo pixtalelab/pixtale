@@ -42,7 +42,7 @@ export default function PublicAlbumsPage() {
 
   return (
     <>
-      <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between gap-2 bg-background">
+      <header data-gallery-page-header className="sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between gap-2 bg-background">
         <div className="flex min-w-0 items-center px-5">
           <span className="text-base font-bold">{t("title")}</span>
         </div>

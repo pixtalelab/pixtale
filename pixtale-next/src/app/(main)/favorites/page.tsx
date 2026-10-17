@@ -132,6 +132,7 @@ export default function Page() {
         <AppSidebar />
         <SidebarInset>
           <header
+            data-gallery-page-header
             className="sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between gap-2 bg-background transition-[width,height] ease-linear">
             <div className="flex min-w-0 items-center gap-2 px-4">
               <SidebarTrigger className="-ml-1" />
