@@ -5,6 +5,7 @@ import { getLocale } from "next-intl/server"
 
 import { ThemeProvider, type Theme } from "@/app/provider"
 import { Toaster } from "@/components/ui/sonner"
+import { PageScrollbar } from "@/components/layout/page-scrollbar"
 import { settingService } from "@/server/service/setting-service"
 import "./globals.css"
 
@@ -45,6 +46,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
       <head />
       <body>
         <ThemeProvider defaultTheme={defaultTheme}>
+          <PageScrollbar />
           {children}
           <Toaster position="bottom-right" />
         </ThemeProvider>

@@ -46,13 +46,13 @@ export default function PublicAlbumsPage() {
         <div className="flex min-w-0 items-center px-5">
           <span className="text-base font-bold">{t("title")}</span>
         </div>
-        <div className="fixed left-[calc(100vw-3.5rem)] top-0 flex h-12 items-center gap-1 px-4 md:left-[calc(100vw-4rem)]">
+        <div className="fixed right-0 top-0 flex h-12 items-center gap-1 px-3">
           <Button variant="ghost" size="icon" className="group" onClick={goBack}>
             <Undo2 className="text-muted-foreground transition-colors group-hover:text-foreground" />
           </Button>
         </div>
       </header>
-      <main className="px-2 pl-4 pr-4 pt-1 md:pt-2 md:pl-5 md:pr-4">
+      <main className="px-4 pt-1 md:pt-2 md:px-5">
         {isBrowser && (
           <AlbumMasonry
             albums={initialAlbums}

@@ -1,7 +1,6 @@
 "use client"
 
 import { memo, useEffect, useRef, useState, useLayoutEffect } from "react"
-import { flushSync } from "react-dom"
 import {
   MasonryScroller,
   type Positioner,
@@ -177,37 +176,18 @@ const PhotoMasonry = memo(function PhotoMasonry({
       }
     }
 
-    // 强制同步瀑布流外层的位置和宽度。
+    // 位置或宽度变化时同步状态，数据相同时复用原状态。
     function syncWrapPosition() {
-      console.log(wrapPosition.width);
-      setWrapPosition(getWrapPosition())
-    }
-
-    // 测量瀑布流外层的位置和宽度，首次同步完成后再强制读取一次。
-    function measureWrapPosition() {
       const nextPosition = getWrapPosition()
-      let needSync = false
 
-      flushSync(() => {
-        setWrapPosition((prev) => {
-          const widthDiff = Math.abs(prev.width - nextPosition.width)
-          const sameOffset = prev.offset === nextPosition.offset
-
-          if (widthDiff <= 10 && sameOffset) {
-            return prev
-          }
-
-          needSync = true
-          return nextPosition
-        })
-      })
-
-      if (needSync) {
-        syncWrapPosition()
-      }
+      setWrapPosition((prev) =>
+        prev.width === nextPosition.width && prev.offset === nextPosition.offset
+          ? prev
+          : nextPosition
+      )
     }
 
-    // 把 ResizeObserver 的通知防抖到停止变化 300ms 后处理。
+    // 把 ResizeObserver 的通知防抖到停止变化 350ms 后处理。
     function updateWrapPosition() {
       if (timerId !== null) {
         window.clearTimeout(timerId)
@@ -215,7 +195,7 @@ const PhotoMasonry = memo(function PhotoMasonry({
 
       timerId = window.setTimeout(() => {
         timerId = null
-        measureWrapPosition()
+        syncWrapPosition()
       }, 350)
     }
 

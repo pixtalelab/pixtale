@@ -166,7 +166,7 @@ export default function Page() {
           <header
             className="sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between gap-2 bg-background transition-[width,height] ease-linear">
             <div className="flex min-w-0 items-center gap-2 px-4">
-              <SidebarTrigger className="-ml-1" />
+              <SidebarTrigger className="ml-1" />
               <Separator
                 orientation="vertical"
                 className="mr-2 data-vertical:h-4 data-vertical:self-auto"
@@ -181,7 +181,7 @@ export default function Page() {
                 </BreadcrumbList>
               </Breadcrumb>
             </div>
-            <div className="fixed left-[calc(100vw-8rem)]  md:left-[calc(100vw-8.5rem)] top-0 flex h-12 items-center gap-1 px-4">
+            <div className="fixed right-0 top-0 flex h-12 items-center gap-1 px-3">
               <PhotoSearch onSearch={searchPhotos} />
               <PhotoDateDrawer onRangeChange={changePhotoTime} />
               <Button
@@ -194,7 +194,7 @@ export default function Page() {
               </Button>
             </div>
           </header>
-          <div className="px-1 md:pl-1 md:pr-0">
+          <div className="px-1">
             {isBrowser ? (
               <PhotoMasonry
                 photos={photos}

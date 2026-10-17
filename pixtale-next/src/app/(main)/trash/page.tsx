@@ -56,7 +56,7 @@ export default function Page() {
               </Breadcrumb>
             </div>
           </header>
-          <div className="px-3 md:pl-5 pl-4 pt-1 md:pt-2 md:pr-2">
+          <div className="px-4 pt-1 md:pt-2 md:px-5">
             <AlbumMasonry
               albums={[album]}
             />

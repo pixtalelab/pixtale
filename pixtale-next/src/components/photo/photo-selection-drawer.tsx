@@ -60,13 +60,7 @@ export function PhotoSelectionDrawer({ open, onClose, onDelete, onSelectAll, onR
         </Button>
         <div />
         <div
-          className={[
-            "fixed flex flex-row-reverse items-center gap-1",
-            onAlbumRemove
-              ? "left-[calc(100vw-9.25rem)] md:left-[calc(100vw-9.75rem)]"
-              : "left-[calc(100vw-7rem)] md:left-[calc(100vw-7.5rem)]",
-          ].join(" ")}
-        >
+          className="fixed flex flex-row-reverse items-center gap-1 right-0 px-3">
           <Button size="icon" variant="ghost" onClick={onSelectAll} aria-label="Select all photos">
             <CheckCheck />
           </Button>

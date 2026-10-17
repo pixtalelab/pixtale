@@ -168,7 +168,7 @@ export default function Page() {
                 </BreadcrumbList>
               </Breadcrumb>
             </div>
-            <div className="fixed left-[calc(100vw-3.5rem)]  md:left-[calc(100vw-4rem)] top-0 flex h-12 items-center gap-3 px-4">
+            <div className="fixed right-0 top-0 flex h-12 items-center gap-3 px-3">
               <Button
                 type="button"
                 size="icon"
@@ -179,7 +179,7 @@ export default function Page() {
               </Button>
             </div>
           </header>
-          <div className="px-1 md:pl-1 md:pr-0">
+          <div className="px-1">
             {isBrowser ? (
               <PhotoMasonry
                 photos={photos}

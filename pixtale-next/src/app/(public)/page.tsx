@@ -73,7 +73,7 @@ export default function PublicHomePage() {
         <div className="flex min-w-0 items-center px-5">
           <span className={`${hasChineseTitle ? "text-base font-bold" : "text-2xl font-bahamas font-semibold"}`}>{title}</span>
         </div>
-        <div className="fixed left-[calc(100vw-5.75rem)] top-0 flex h-12 items-center gap-1 px-4 md:left-[calc(100vw-6.25rem)]">
+        <div className="fixed right-0 top-0 flex h-12 items-center gap-1 px-3">
           <Button asChild variant="ghost" size="icon" className="group">
             <Link href="/public/albums">
               <GalleryVerticalEnd className="text-muted-foreground transition-colors group-hover:text-foreground" />
@@ -90,7 +90,7 @@ export default function PublicHomePage() {
           </Button>
         </div>
       </header>
-      <main className="px-1 md:pl-1 md:pr-0">
+      <main className="px-1">
         {isBrowser ? (
           <PhotoMasonry
             photos={photos}

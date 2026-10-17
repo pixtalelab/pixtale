@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "overlayscrollbars/overlayscrollbars.css";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "react-easy-crop/react-easy-crop.css";
@@ -96,6 +97,7 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
   --scrollbar-color: #8B8B8B;
+  --scrollbar-color-active: #4F4F4F;
 }
 
 .dark {
@@ -131,6 +133,7 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
   --scrollbar-color: oklch(0.4 0 0);
+  --scrollbar-color-active: oklch(0.6 0 0);
 }
 
 @layer base {
@@ -162,6 +165,46 @@ html {
 * {
     scrollbar-width: thin;
     scrollbar-color: var(--scrollbar-color) transparent;
+}
+
+/* 桌面端在自定义滚动条初始化前隐藏原生滚动条，避免刷新时闪现和宽度变化。 */
+@media (min-width: 768px) {
+    html {
+        scrollbar-width: none;
+    }
+
+    html::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.os-theme-page {
+    --os-size: 6px;
+    --os-handle-border-radius: 90px;
+    --os-handle-bg: var(--scrollbar-color);
+    --os-handle-bg-hover: var(--scrollbar-color-active);
+    --os-handle-bg-active: var(--scrollbar-color-active);
+}
+
+body > .os-theme-page {
+    z-index: 30;
+}
+
+/* 页面滚动由 html 承载，弹窗锁定同一元素，避免 body 成为 sticky 的滚动祖先。 */
+html[data-overlayscrollbars-viewport]:has(> body[data-scroll-locked]),
+html[data-overlayscrollbars-viewport]:has(> body.yarl__no_scroll) {
+    overflow: hidden !important;
+}
+
+html[data-overlayscrollbars-viewport] > body[data-scroll-locked],
+html[data-overlayscrollbars-viewport] > body.yarl__no_scroll {
+    overflow: visible !important;
+}
+
+/* 弹窗和照片查看器锁定页面时隐藏页面滚动条。 */
+body[data-scroll-locked] > .os-theme-page,
+body.yarl__no_scroll > .os-theme-page {
+    display: none;
 }
 
 .yarl__slide {

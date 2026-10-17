@@ -258,11 +258,11 @@ export default function Page() {
                 </BreadcrumbList>
               </Breadcrumb>
             </div>
-            <div className="fixed left-[calc(100vw-3.5rem)]  md:left-[calc(100vw-4rem)] top-0 flex h-12 items-center gap-3 px-4">
+            <div className="fixed right-0 top-0 flex h-12 items-center gap-3 px-3">
               <AlbumAddDialog title={t("addTitle")} onNameConfirm={addAlbum} />
             </div>
           </header>
-          <div className="px-2 pl-4 pr-4 pt-1 md:pt-2 md:pl-5 md:pr-4">
+          <div className="px-4 pt-1 md:pt-2 md:px-5">
             <AlbumMasonry
             albums={albums}
             resetKey={albumListKey}

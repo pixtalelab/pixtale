@@ -80,13 +80,13 @@ export default function PublicAlbumPhotosPage() {
         <div className="flex min-w-0 items-center px-5">
           <span className="text-base font-bold">{albumName}</span>
         </div>
-        <div className="fixed left-[calc(100vw-3.5rem)] top-0 flex h-12 items-center gap-1 px-4 md:left-[calc(100vw-4rem)]">
+        <div className="fixed right-0 top-0 flex h-12 items-center gap-1 px-3">
           <Button variant="ghost" size="icon" className="group" onClick={goBack}>
             <Undo2 className="text-muted-foreground transition-colors group-hover:text-foreground" />
           </Button>
         </div>
       </header>
-      <main className="px-1 md:pl-1 md:pr-0">
+      <main className="px-1">
         {isBrowser ? (
           <PhotoMasonry
             photos={photos}
