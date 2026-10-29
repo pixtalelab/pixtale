@@ -1,0 +1,116 @@
+{
+  "@@locale": "zh",
+  "tasks": "任务",
+  "logs": "日志",
+  "settings": "设置",
+  "chooseAlbums": "选择相册",
+  "done": "完成",
+  "cancel": "取消",
+  "save": "保存",
+  "noPhotoAlbums": "没有找到照片相册",
+  "unnamedAlbum": "未命名相册",
+  "sortDefault": "默认排序",
+  "sortNameAsc": "名称 A-Z",
+  "sortNameDesc": "名称 Z-A",
+  "sortCountAsc": "数量从少到多",
+  "sortCountDesc": "数量从多到少",
+  "photoAccessRequired": "需要照片访问权限",
+  "albumsLoadFailed": "读取相册失败，请稍后重试",
+  "signInFirst": "请先登录",
+  "stopSyncFirst": "请先停止同步",
+  "addAlbumsFailed": "添加相册失败，请稍后重试",
+  "addFolderFailed": "添加文件夹失败，请稍后重试",
+  "actionFailed": "操作失败，请稍后重试",
+  "localStorage": "本地存储",
+  "storageUnavailable": "存储失效",
+  "unavailable": "失效",
+  "syncComplete": "同步完成",
+  "photoCount": "{completed} / {total} 张照片",
+  "@photoCount": {
+    "placeholders": {
+      "completed": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "edit": "编辑",
+  "pinToTop": "置顶",
+  "delete": "删除",
+  "addTask": "添加任务",
+  "editTask": "编辑任务",
+  "storage": "存储",
+  "noStorageAvailable": "暂无可用存储",
+  "chooseStorage": "请选择存储",
+  "account": "账户",
+  "signedInAs": "当前登录为 {username}",
+  "@signedInAs": {
+    "placeholders": {
+      "username": {"type": "String"}
+    }
+  },
+  "signOut": "退出登录",
+  "preferences": "功能设置",
+  "notSignedIn": "未登录",
+  "tapToSignIn": "点击登录",
+  "uploadConcurrency": "并发上传",
+  "syncInterval": "定时同步",
+  "off": "关闭",
+  "minutes": "{count}分钟",
+  "@minutes": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "logRetention": "日志保留",
+  "logRetentionValue": "{count}条",
+  "@logRetentionValue": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "language": "系统语言",
+  "languageSystem": "跟随系统",
+  "languageChinese": "中文",
+  "languageEnglish": "English",
+  "dataFolder": "数据目录",
+  "open": "打开",
+  "cannotOpenDataFolder": "无法打开数据存放目录",
+  "value": "数值",
+  "enterInteger": "请输入整数",
+  "enterMinValue": "请输入不小于 {min} 的数值",
+  "@enterMinValue": {
+    "placeholders": {
+      "min": {"type": "int"}
+    }
+  },
+  "enterMaxValue": "请输入不大于 {max} 的数值",
+  "@enterMaxValue": {
+    "placeholders": {
+      "max": {"type": "int"}
+    }
+  },
+  "invalidEndpoint": "请输入有效的端点地址",
+  "signIn": "登录",
+  "endpoint": "端点",
+  "enterEndpoint": "请输入端点",
+  "username": "用户名",
+  "enterUsername": "请输入用户名",
+  "password": "密码",
+  "enterPassword": "请输入密码",
+  "clearLogsFailed": "清空日志失败，请稍后重试",
+  "loadLogsFailed": "读取日志失败",
+  "logFilterAll": "全部",
+  "logFilterSuccess": "成功",
+  "logFilterFailure": "失败",
+  "logStatusSuccess": "成功",
+  "logStatusFailure": "失败",
+  "notificationPermissionRequired": "需要通知权限才能后台同步",
+  "logAlbumAll": "全部相册",
+  "logEventStartSync": "开始同步",
+  "logEventOpenSync": "开启同步",
+  "logEventReadStorage": "读取存储",
+  "logEventReadAlbum": "读取相册",
+  "logEventRemoteCheck": "远程检测",
+  "logEventGetRemoteAlbum": "获取远程相册",
+  "logEventReadSyncSettings": "读取同步设置",
+  "logEventUpdateCount": "更新同步数量"
+}

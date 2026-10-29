@@ -1,0 +1,116 @@
+{
+  "@@locale": "en",
+  "tasks": "Tasks",
+  "logs": "Logs",
+  "settings": "Settings",
+  "chooseAlbums": "Choose albums",
+  "done": "Done",
+  "cancel": "Cancel",
+  "save": "Save",
+  "noPhotoAlbums": "No photo albums found",
+  "unnamedAlbum": "Untitled album",
+  "sortDefault": "Default order",
+  "sortNameAsc": "Name A-Z",
+  "sortNameDesc": "Name Z-A",
+  "sortCountAsc": "Fewest photos",
+  "sortCountDesc": "Most photos",
+  "photoAccessRequired": "Photo access is required",
+  "albumsLoadFailed": "Couldn't load albums. Try again later.",
+  "signInFirst": "Sign in first",
+  "stopSyncFirst": "Stop syncing first",
+  "addAlbumsFailed": "Couldn't add albums. Try again later.",
+  "addFolderFailed": "Couldn't add the folder. Try again later.",
+  "actionFailed": "Something went wrong. Try again later.",
+  "localStorage": "Local storage",
+  "storageUnavailable": "Storage unavailable",
+  "unavailable": "Unavailable",
+  "syncComplete": "Synced",
+  "photoCount": "{completed} / {total} photos",
+  "@photoCount": {
+    "placeholders": {
+      "completed": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "edit": "Edit",
+  "pinToTop": "Pin to top",
+  "delete": "Delete",
+  "addTask": "Add task",
+  "editTask": "Edit task",
+  "storage": "Storage",
+  "noStorageAvailable": "No storage available",
+  "chooseStorage": "Choose storage",
+  "account": "Account",
+  "signedInAs": "Signed in as {username}",
+  "@signedInAs": {
+    "placeholders": {
+      "username": {"type": "String"}
+    }
+  },
+  "signOut": "Sign out",
+  "preferences": "Preferences",
+  "notSignedIn": "Not signed in",
+  "tapToSignIn": "Tap to sign in",
+  "uploadConcurrency": "Upload concurrency",
+  "syncInterval": "Sync interval",
+  "off": "Off",
+  "minutes": "{count} min",
+  "@minutes": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "logRetention": "Log history",
+  "logRetentionValue": "{count}",
+  "@logRetentionValue": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "language": "Language",
+  "languageSystem": "System default",
+  "languageChinese": "中文",
+  "languageEnglish": "English",
+  "dataFolder": "Data folder",
+  "open": "Open",
+  "cannotOpenDataFolder": "Couldn't open the data folder",
+  "value": "Value",
+  "enterInteger": "Enter a whole number",
+  "enterMinValue": "Enter a number of at least {min}",
+  "@enterMinValue": {
+    "placeholders": {
+      "min": {"type": "int"}
+    }
+  },
+  "enterMaxValue": "Enter a number of at most {max}",
+  "@enterMaxValue": {
+    "placeholders": {
+      "max": {"type": "int"}
+    }
+  },
+  "invalidEndpoint": "Enter a valid server address",
+  "signIn": "Sign in",
+  "endpoint": "Server",
+  "enterEndpoint": "Enter a server address",
+  "username": "Username",
+  "enterUsername": "Enter a username",
+  "password": "Password",
+  "enterPassword": "Enter a password",
+  "clearLogsFailed": "Couldn't clear logs. Try again later.",
+  "loadLogsFailed": "Couldn't load logs",
+  "logFilterAll": "All",
+  "logFilterSuccess": "Success",
+  "logFilterFailure": "Failed",
+  "logStatusSuccess": "Success",
+  "logStatusFailure": "Failed",
+  "notificationPermissionRequired": "Notifications are required for background sync",
+  "logAlbumAll": "All albums",
+  "logEventStartSync": "Sync started",
+  "logEventOpenSync": "Start sync",
+  "logEventReadStorage": "Read storage",
+  "logEventReadAlbum": "Read album",
+  "logEventRemoteCheck": "Remote check",
+  "logEventGetRemoteAlbum": "Get remote album",
+  "logEventReadSyncSettings": "Read sync settings",
+  "logEventUpdateCount": "Update sync count"
+}
