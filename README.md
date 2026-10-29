@@ -2,13 +2,13 @@
     <img src="https://img.022335.xyz/logo.png" width="64px" />
     <h1 align="center">Pixtale</h1>
     <p></p>
-    <p align="center">一个自托管云存储相册应用</p>
+    <p align="center">一个自托管云相册应用</p>
     <p>
-        <a href="https://022335.xyz">在线演示</a> · <a href="https://docs.022335.xyz">部署文档</a> ·
-        <a align="center"><a href="README_EN.md">English</a> | 简体中文</a>
+        <a href="https://022335.xyz">在线演示</a> · <a href="https://pixtale.aslost.com">部署文档</a> ·
+        <a href="README_EN.md">English</a> | 简体中文
     </p>
     <img alt="Next.js" src="https://img.shields.io/badge/next.js-16-white?labelColor=black&logo=nextdotjs&logoColor=white&style=flat-square">
-    <img alt="Tauri" src="https://img.shields.io/badge/tauri-2-24C8D8?labelColor=black&logo=tauri&logoColor=white&style=flat-square">
+    <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3-06B6D4?labelColor=black&logo=flutter&logoColor=white&style=flat-square">
     <img alt="Docker" src="https://img.shields.io/badge/docker-ready-2496ED?labelColor=black&logo=docker&logoColor=white&style=flat-square">
     <img alt="AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-blue?labelColor=black&style=flat-square">
 </div>
@@ -16,7 +16,7 @@
 
 ## 💡 前言
 
-**Pixtale** 是一个自托管的云端存储照片相册应用，支持 **本地、S3、Telegram** 等方式作为存储空间，配合本项目的桌面同步工具 [Pixtale Sync](https://github.com/pixtalelab/pixtale/releases) 可自动化将本地照片同步至云端
+**Pixtale** 是一个自托管的云端存储相册应用，支持 **本地、S3、Telegram** 等方式作为存储空间，配合本项目的同步工具可自动将手机和PC设备照片同步至云端
 
 ## 💻 项目预览
 
@@ -45,7 +45,7 @@ docker run -d \
 ```
 将`ADMIN` `PASSWORD` `JWT_SECRET` 变量替换为自己的并执行， 浏览器访问`ip:8082`
 
-更多详细部署及使用教程见 [部署文档](https://doc.022335.xyz)
+更多详细部署及使用教程见 [部署文档](https://pixtale.aslost.com)
 
 ## ✨ 功能
 

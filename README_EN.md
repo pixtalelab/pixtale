@@ -2,22 +2,22 @@
     <img src="https://img.022335.xyz/logo.png" width="64px" />
     <h1 align="center">Pixtale</h1>
     <p></p>
-    <p align="center">A self-hosted cloud photo gallery app</p>
+    <p align="center">A self-hosted cloud photo gallery</p>
     <p>
-        <a href="https://022335.xyz">Live Demo</a> · <a href="https://docs.022335.xyz">Deployment Guide</a> ·
-        <a align="center">English | <a href="README.md">简体中文</a></a>
+        <a href="https://022335.xyz">Live Demo</a> · <a href="https://pixtale.aslost.com/en">Deployment Guide</a> ·
+        English | <a href="README.md">简体中文</a>
     </p>
     <img alt="Next.js" src="https://img.shields.io/badge/next.js-16-white?labelColor=black&logo=nextdotjs&logoColor=white&style=flat-square">
-    <img alt="Tauri" src="https://img.shields.io/badge/tauri-2-24C8D8?labelColor=black&logo=tauri&logoColor=white&style=flat-square">
+    <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3-06B6D4?labelColor=black&logo=flutter&logoColor=white&style=flat-square">
     <img alt="Docker" src="https://img.shields.io/badge/docker-ready-2496ED?labelColor=black&logo=docker&logoColor=white&style=flat-square">
     <img alt="AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-blue?labelColor=black&style=flat-square">
 </div>
 
 ## 💡 Introduction
 
-**Pixtale** is a self-hosted cloud photo gallery app that supports **local storage, S3, Telegram**, and other storage backends. Combined with the desktop synchronization tool [Pixtale Sync](https://github.com/pixtalelab/pixtale/releases), it can automatically sync local photos to the cloud.
+**Pixtale** is a self-hosted cloud photo gallery with support for **local storage, S3, Telegram**, and other storage backends. Use the companion sync app to automatically sync photos from your phone and PC to your gallery.
 
-## 💻 Preview
+## 💻 Screenshots
 
 <table>
   <tr>
@@ -32,7 +32,7 @@
 
 ## 🐋 Docker Deployment
 
-```yaml
+```bash
 docker run -d \
   --name pixtale \
   -p 8082:8082 \
@@ -43,23 +43,23 @@ docker run -d \
   pixtalelab/pixtale:latest
 ```
 
-Replace the `ADMIN`, `PASSWORD`, and `JWT_SECRET` values with your own before running the command, then visit `ip:8082` in your browser.
+Set `ADMIN`, `PASSWORD`, and `JWT_SECRET` to your own values, then run the command. Open `http://<your-server-ip>:8082` in your browser to access your gallery.
 
-For detailed deployment and usage instructions, see the [Deployment Guide](https://doc.022335.xyz).
+For detailed deployment and usage instructions, see the [Deployment Guide](https://pixtale.aslost.com/en).
 
 ## ✨ Features
 
 - **🖼️ Masonry Gallery:** Infinite scrolling with cursor pagination and virtualized rendering for improved performance.
 
-- **🔄 Automatic Sync:** Automatically sync local photos to the cloud with [Pixtale Sync](https://github.com/pixtalelab/pixtale/releases).
+- **🔄 Automatic Sync:** Automatically sync local photos to your gallery with [Pixtale Sync](https://github.com/pixtalelab/pixtale/releases).
 
 - **🌄 Optimized Thumbnails:** Generates thumbnails and high-resolution previews for a better experience on slower networks.
 
-- **📷 EXIF Metadata:** Parses photo EXIF metadata and arranges photos chronologically.
+- **📷 EXIF Metadata:** Reads EXIF metadata and organizes photos chronologically.
 
-- **💻 Responsive Design:** Automatically adapts to desktop and most mobile browsers.
+- **💻 Responsive Design:** Adapts to desktop and mobile screens.
 
-- **☁️ Aggregated Storage:** Combines local, Telegram, and S3 storage in one gallery.
+- **☁️ Multiple Storage Backends:** Brings photos from local storage, Telegram, and S3 together in one gallery.
 
 - **👥 Multi-user Support:** Create and manage multiple user accounts.
 
