@@ -157,7 +157,7 @@ void main() {
     expect(entries.single.albumName, '全部相册');
     expect(entries.single.event, '开始同步');
     expect(entries.single.status, LogStatus.success);
-    expect(entries.single.message, '成功');
+    expect(entries.single.message, 'Success');
   });
 
   test('切换为英语后新日志按英语写入', () async {
@@ -535,6 +535,192 @@ void main() {
     expect((await logs.list()).map((entry) => entry.event), ['开始同步']);
   });
 
+  for (final hasLastSync in [false, true]) {
+    test(
+      '读取存储失败后等待下一轮，${hasLastSync ? '旧同步时间不会导致立即重试' : '首次同步也可等待'}',
+      () async {
+        photos.albums = {
+          'a': [localPhoto('pending.jpg')],
+        };
+        await tasks.add(['a']);
+        await tasks.updateProgress('a', 7);
+        await storages.save([
+          const Storage(id: 'cached', name: '缓存存储', type: 1),
+        ], account: (await users.get())!);
+        if (hasLastSync) {
+          await (await database.database).update('settings', {
+            'last_sync_at': DateTime.now()
+                .toUtc()
+                .subtract(const Duration(days: 1))
+                .toIso8601String(),
+          }, where: 'id = 1');
+        }
+        await settings.updateTaskInterval(10);
+        service = SyncService(
+          tasks: tasks,
+          users: users,
+          settings: settings,
+          storages: storages,
+          logs: logs,
+          photos: photos,
+          apiFactory: (user, client) {
+            api = FakeApi(user, client)
+              ..onReadStorages = () async {
+                throw const ApiException('Network error');
+              };
+            return api;
+          },
+        );
+        final waiting = service.activities.firstWhere(
+          (activity) => activity.nextSyncAt != null,
+        );
+        final activeAlbums = <String?>[];
+        final progress = <SyncProgress>[];
+        final operation = service.start(
+          progress.add,
+          onAlbumChanged: activeAlbums.add,
+        );
+        final activity = await waiting.timeout(const Duration(seconds: 5));
+        final saved = await settings.get();
+
+        expect(api.storageReads, 3);
+        expect(await service.isRunning, isTrue);
+        expect(saved.taskStatus, 1);
+        expect(
+          activity.nextSyncAt,
+          DateTime.parse(saved.lastSyncAt!).add(const Duration(minutes: 10)),
+        );
+        expect(activity.nextSyncAt!.isAfter(DateTime.now().toUtc()), isTrue);
+        expect(activeAlbums, ['a', null]);
+        expect(progress, isEmpty);
+        expect(api.attempts, isEmpty);
+        expect((await tasks.list()).single.completedCount, 7);
+        expect((await storages.list()).single.id, 'cached');
+        final failures = await logs.list(failuresOnly: true);
+        expect(failures, hasLength(1));
+        expect(failures.single.event, '读取存储');
+        expect(failures.single.message, 'Network error');
+
+        await service.stop().timeout(const Duration(seconds: 1));
+        await operation;
+        expect((await settings.get()).taskStatus, 2);
+        expect(await logs.list(failuresOnly: true), hasLength(1));
+      },
+    );
+  }
+
+  for (final recovers in [false, true]) {
+    test('读取存储失败后下一轮${recovers ? '恢复并上传' : '仍失败也分别记录日志'}', () async {
+      photos.albums = {
+        'a': [localPhoto('pending.jpg')],
+      };
+      await tasks.add(['a']);
+      final scheduledSettings = DueSettings(database: database);
+      await scheduledSettings.updateTaskInterval(1);
+      service = SyncService(
+        tasks: tasks,
+        users: users,
+        settings: scheduledSettings,
+        storages: storages,
+        logs: logs,
+        photos: photos,
+        apiFactory: (user, client) {
+          api = FakeApi(user, client)
+            ..onReadStorages = () async {
+              if (!recovers || api.storageReads <= 3) {
+                throw const ApiException('Network error');
+              }
+            };
+          return api;
+        },
+      );
+
+      await service.start((_) {}).timeout(const Duration(seconds: 10));
+
+      expect(scheduledSettings.rounds, 2);
+      expect(api.storageReads, recovers ? 4 : 6);
+      expect(api.attempts, recovers ? {'pending.jpg': 1} : isEmpty);
+      expect((await tasks.list()).single.completedCount, recovers ? 1 : 0);
+      final failures = await logs.list(failuresOnly: true);
+      expect(failures, hasLength(recovers ? 1 : 2));
+      expect(failures.every((entry) => entry.event == '读取存储'), isTrue);
+      expect(
+        (await logs.list()).where((entry) => entry.event == '开始同步'),
+        hasLength(2),
+      );
+    });
+  }
+
+  test('读取存储时登录失效仍终止同步', () async {
+    photos.albums = {'a': []};
+    await tasks.add(['a']);
+    await settings.updateTaskInterval(10);
+    service = SyncService(
+      tasks: tasks,
+      users: users,
+      settings: settings,
+      storages: storages,
+      logs: logs,
+      photos: photos,
+      apiFactory: (user, client) {
+        api = FakeApi(user, client)
+          ..onReadStorages = () async {
+            throw const ApiException('Sign in again', statusCode: 401);
+          };
+        return api;
+      },
+    );
+
+    await expectLater(
+      service.start((_) {}),
+      throwsA(
+        isA<ApiException>().having((e) => e.statusCode, 'statusCode', 401),
+      ),
+    );
+
+    expect(api.storageReads, 1);
+    expect((await settings.get()).taskStatus, 2);
+    expect((await settings.get()).lastSyncAt, isNull);
+    expect(await logs.list(failuresOnly: true), hasLength(1));
+  });
+
+  test('读取存储期间账户退出仍终止同步', () async {
+    photos.albums = {'a': []};
+    await tasks.add(['a']);
+    await settings.updateTaskInterval(10);
+    service = SyncService(
+      tasks: tasks,
+      users: users,
+      settings: settings,
+      storages: storages,
+      logs: logs,
+      photos: photos,
+      apiFactory: (user, client) {
+        api = FakeApi(user, client)
+          ..onReadStorages = () async {
+            await users.remove('user');
+            throw const ApiException('Network error');
+          };
+        return api;
+      },
+    );
+
+    await expectLater(
+      service.start((_) {}),
+      throwsA(
+        isA<ApiException>().having(
+          (e) => e.message,
+          'message',
+          'Account changed, start sync again',
+        ),
+      ),
+    );
+
+    expect((await settings.get()).taskStatus, 2);
+    expect((await settings.get()).lastSyncAt, isNull);
+    expect(api.attempts, isEmpty);
+  });
+
   test('未登录时阻止访问图库和上传', () async {
     await users.remove('user');
     await expectLater(
@@ -568,7 +754,7 @@ void main() {
     expect(entries.map((entry) => entry.event), ['开始同步', '开始同步']);
     expect(entries.every((entry) => entry.albumName == '全部相册'), isTrue);
     expect(entries.every((entry) => entry.status == LogStatus.success), isTrue);
-    expect(entries.every((entry) => entry.message == '成功'), isTrue);
+    expect(entries.every((entry) => entry.message == 'Success'), isTrue);
   });
 
   for (final missingAlbum in [true, false]) {
@@ -871,12 +1057,14 @@ class FakeApi extends SyncApi {
   bool duplicate = false;
   String? badName;
   ApiException? inventoryError;
+  Future<void> Function()? onReadStorages;
   Future<void> Function(SyncPhoto)? onUpload;
 
   /// 返回固定的本地存储。
   @override
   Future<List<Storage>> getStorages() async {
     storageReads++;
+    await onReadStorages?.call();
     return storages;
   }
 

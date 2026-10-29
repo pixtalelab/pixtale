@@ -28,7 +28,7 @@ void main() {
     await database.close();
   });
 
-  test('成功统一显示 Success，失败保留错误，倒序分页和异常筛选', () async {
+  test('成功固定保存 Success，失败保留错误，倒序分页和异常筛选', () async {
     await logs.add(
       albumName: '旅行',
       event: '远程检测',
@@ -44,6 +44,7 @@ void main() {
       albumName: '工作',
       event: '远程检测',
       status: LogStatus.success,
+      message: '成功',
     );
     final first = await logs.list(limit: 2);
     expect(first.map((log) => log.albumName), ['工作', '旅行']);
@@ -56,6 +57,7 @@ void main() {
     expect(failures.single.createdAt.isUtc, isTrue);
     final successes = await logs.list(status: LogStatus.success);
     expect(successes.map((log) => log.event), ['远程检测', '远程检测']);
+    expect(successes.map((log) => log.message), ['Success', 'Success']);
   });
 
   test('保留数量默认 500，仅允许 10 至 1000 条', () async {

@@ -149,6 +149,7 @@ class SyncService {
       await _settings.updateTaskStatus(1);
       final api = _apiFactory(user, _client!);
       do {
+        _loggedErrors.clear();
         publishActivity(const SyncActivity());
         await _checkAccount(user);
         await _record(event: _LogEvent.startSync, status: LogStatus.success);
@@ -171,7 +172,7 @@ class SyncService {
     }
   }
 
-  /// 建立本轮远端索引，单个任务失败记录日志后跳过，不中断定时同步。
+  /// 读取存储或单个任务失败时记录日志并跳过，不中断定时同步。
   Future<void> _syncAlbums(
     SyncApi api,
     void Function(SyncProgress) onProgress,
@@ -187,7 +188,6 @@ class SyncService {
     }
 
     setCurrentAlbum(tasks.first.albumId);
-    var remoteEvent = _LogEvent.readStorage;
     try {
       final storages = await _retry(api.getStorages);
       _checkStopped();
@@ -370,8 +370,10 @@ class SyncService {
       }
     } catch (error) {
       _checkStopped();
-      await _recordFailure(error, event: remoteEvent);
-      rethrow;
+      await _recordFailure(error, event: _LogEvent.readStorage);
+      if (error is ApiException && error.statusCode == 401) rethrow;
+      await _checkAccount(api.user);
+      // 本轮失败也正常返回，由主循环更新时间并等待下一轮。
     } finally {
       setCurrentAlbum(null);
     }
@@ -433,9 +435,7 @@ class SyncService {
         albumName: albumName ?? text.logAlbumAll,
         event: eventText ?? _logEventLabel(text, event!),
         status: status,
-        message:
-            message ??
-            (status == LogStatus.success ? text.logStatusSuccess : null),
+        message: message,
       );
     } catch (error, stackTrace) {
       developer.log(

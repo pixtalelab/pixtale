@@ -25,7 +25,7 @@ class LogService {
   /// 后台服务写入日志后通知当前隔离区的页面重新读取。
   void notifyChanged() => _changes.add(null);
 
-  /// 写入一次最终结果。status 保存 0 或 1，成功文案由调用方按当前语言传入。
+  /// 写入一次最终结果。成功消息固定保存英文，失败保留原始消息。
   Future<void> add({
     required String albumName,
     required String event,
@@ -39,7 +39,7 @@ class LogService {
         'event': event,
         'status': status,
         'message': status == LogStatus.success
-            ? (message ?? 'Success')
+            ? 'Success'
             : (message ?? ''),
         'created_at': DateTime.now().toUtc().toIso8601String(),
       });
