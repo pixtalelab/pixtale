@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixtale_sync/components/common/app_notice.dart';
 
-// 验证底部提示的位置、去重、替换与自动关闭。
+// 验证顶部提示的位置、去重、替换与自动关闭。
 
-/// 执行底部提示组件测试。
+/// 执行顶部提示组件测试。
 void main() {
   tearDown(AppNotice.hide);
 
-  testWidgets('提示靠近底部且不改变页面布局或拦截点击', (tester) async {
+  testWidgets('提示靠近顶部栏且不改变页面布局或拦截点击', (tester) async {
     var taps = 0;
     tester.view.padding = const FakeViewPadding(top: 32);
     addTearDown(tester.view.resetPadding);
@@ -21,7 +21,7 @@ void main() {
               builder: (context) => TextButton(
                 onPressed: () {
                   taps++;
-                  AppNotice.show(context, '底部提示');
+                  AppNotice.show(context, '顶部提示');
                 },
                 child: const Text('显示提示'),
               ),
@@ -34,13 +34,14 @@ void main() {
     final position = tester.getTopLeft(button);
     await tester.tap(button);
     await tester.pump();
-    final message = find.text('底部提示');
+    final message = find.text('顶部提示');
     expect(message, findsOneWidget);
     final screenHeight =
         tester.view.physicalSize.height / tester.view.devicePixelRatio;
-    final bottom = tester.getBottomLeft(message).dy;
-    expect(bottom, greaterThan(screenHeight * 0.5));
-    expect(screenHeight - bottom, greaterThanOrEqualTo(96));
+    final top = tester.getTopLeft(message).dy;
+    expect(top, lessThan(screenHeight * 0.5));
+    expect(top, greaterThan(32));
+    expect(top, lessThan(32 + kToolbarHeight + 48));
     expect(tester.getTopLeft(button), position);
     await tester.tap(button);
     await tester.pump();

@@ -254,7 +254,7 @@ class _TaskPageState extends State<TaskPage> {
     await _onTaskStateChanged();
   }
 
-  /// 刷新同步图标和进度。开始同步时权限被拒，用底部提示告诉用户。
+  /// 刷新同步图标和进度。开始同步时权限被拒，用顶部提示告诉用户。
   void _onSyncChanged() {
     if (!mounted) return;
     final message = _sync.error;
@@ -559,9 +559,12 @@ class _TaskPageState extends State<TaskPage> {
   }
 
   /// 同步失败文案用固定英文识别，界面再翻成当前语言。
+  /// 通知提示写的是 Notifications，不含 permission，也要弹出来。
   bool _isPermissionMessage(String message) {
     final text = message.toLowerCase();
-    return text.contains('permission') || text.contains('photo access');
+    return text.contains('permission') ||
+        text.contains('photo access') ||
+        text.contains('notification');
   }
 
   /// 把捕获到的权限失败翻成当前语言，其他原文不改。

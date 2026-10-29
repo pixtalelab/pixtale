@@ -241,6 +241,41 @@ class AppLocalizationsZh extends AppLocalizations {
   String get notificationPermissionRequired => '需要通知权限才能后台同步';
 
   @override
+  String get syncNoticePreparing => '准备同步';
+
+  @override
+  String get syncNoticeReading => '正在读取同步任务';
+
+  @override
+  String get syncNoticeStopping => '正在停止同步';
+
+  @override
+  String get syncNoticeWaiting => '等待下次同步';
+
+  @override
+  String get syncNoticeSyncing => '正在同步';
+
+  @override
+  String get syncNoticeCancelling => '正在取消请求';
+
+  @override
+  String get syncNoticeChecking => '正在远程检测';
+
+  @override
+  String syncNoticeNext(String time) {
+    return '下次同步：$time';
+  }
+
+  @override
+  String get syncNoticeStop => '停止';
+
+  @override
+  String get syncNoticeChannel => '照片同步';
+
+  @override
+  String get syncNoticeChannelDescription => '照片同步进度和停止操作';
+
+  @override
   String get logAlbumAll => '全部相册';
 
   @override

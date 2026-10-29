@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:pixtale_sync/l10n/locale.dart';
+import 'package:pixtale_sync/l10n/localizations.dart';
 import 'package:pixtale_sync/models/sync.dart';
 import 'package:pixtale_sync/request/request.dart';
 import 'package:pixtale_sync/services/log_service.dart';
@@ -32,15 +34,21 @@ class ForegroundSyncService extends SyncService {
   static SyncService create({TaskService? tasks}) =>
       supported ? ForegroundSyncService() : SyncService(tasks: tasks);
 
+  /// 按已保存语言取通知文案。未指定语言时跟随系统。
+  static AppLocalizations noticeText() {
+    return AppLocale.strings(saved: AppLocale.instance.locale?.languageCode);
+  }
+
   /// 配置通知通道和隔离区通信，不在应用启动时请求权限。
   static void initialize() {
     if (!supported || _initialized) return;
+    final text = noticeText();
     FlutterForegroundTask.initCommunicationPort();
     FlutterForegroundTask.init(
       androidNotificationOptions: AndroidNotificationOptions(
         channelId: 'photo_sync',
-        channelName: 'Photo sync',
-        channelDescription: 'Photo sync progress and stop action',
+        channelName: text.syncNoticeChannel,
+        channelDescription: text.syncNoticeChannelDescription,
         onlyAlertOnce: true,
       ),
       iosNotificationOptions: const IOSNotificationOptions(
@@ -114,13 +122,16 @@ class ForegroundSyncService extends SyncService {
       if (!notificationGranted) {
         _onNotice?.call('Notifications are required for background sync');
       }
+      final text = noticeText();
       final result = await FlutterForegroundTask.startService(
         serviceId: 1001,
         serviceTypes: const [ForegroundServiceTypes.dataSync],
-        notificationTitle: 'Preparing to sync',
-        notificationText: 'Reading sync tasks',
+        notificationTitle: text.syncNoticePreparing,
+        notificationText: text.syncNoticeReading,
         notificationIcon: const NotificationIcon(metaDataName: 'sync_icon'),
-        notificationButtons: const [NotificationButton(id: 'stop', text: 'Stop')],
+        notificationButtons: [
+          NotificationButton(id: 'stop', text: text.syncNoticeStop),
+        ],
         callback: startSyncTask,
       );
       if (result is ServiceRequestFailure && !_finished!.isCompleted) {

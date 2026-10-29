@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:pixtale_sync/l10n/localizations_en.dart';
+import 'package:pixtale_sync/l10n/localizations_zh.dart';
 import 'package:pixtale_sync/models/sync.dart';
 import 'package:pixtale_sync/models/user.dart';
 import 'package:pixtale_sync/models/task.dart';
@@ -74,6 +76,7 @@ void main() {
       sync: sync,
       tasks: MemoryTasks(),
       logs: LogService(),
+      text: AppLocalizationsEn(),
     );
     addTearDown(() => handler.onDestroy(DateTime.now(), false));
     await handler.onStart(DateTime.now(), TaskStarter.developer);
@@ -81,7 +84,8 @@ void main() {
     sync.selectAlbum('a');
     handler.onRepeatEvent(DateTime.now());
     await _flush();
-    expect(_notification(calls)['notificationContentTitle'], 'Remote check · 相机');
+    expect(_notification(calls)['notificationContentTitle'], 'Syncing · 相机');
+    expect(_notification(calls)['notificationContentText'], 'Checking remotely');
 
     sync.report(_progress);
     handler.onRepeatEvent(DateTime.now());
@@ -89,7 +93,15 @@ void main() {
     expect(_notification(calls)['notificationContentTitle'], 'Syncing · 相机');
     expect(_notification(calls)['notificationContentText'], '35 / 123 photos');
 
+    sync.selectAlbum('b');
+    await _flush();
+    expect(_notification(calls)['notificationContentTitle'], 'Syncing · 旅行');
+    expect(_notification(calls)['notificationContentText'], 'Checking remotely');
+
     sync.selectAlbum(null);
+    await _flush();
+    expect(_notification(calls)['notificationContentTitle'], 'Syncing · 旅行');
+
     final next = DateTime.now().copyWith(hour: 14, minute: 30);
     sync.publishActivity(SyncActivity(nextSyncAt: next));
     await _flush();
@@ -103,8 +115,39 @@ void main() {
     await _flush();
     handler.onRepeatEvent(DateTime.now());
     await _flush();
-    expect(_notification(calls)['notificationContentTitle'], 'Remote check · 相机');
+    expect(_notification(calls)['notificationContentTitle'], 'Syncing · 相机');
     expect(_notification(calls)['allowWakeLock'], true);
+  });
+
+  test('中文环境下通知使用中文', () async {
+    final sync = ControlledSync();
+    final handler = SyncTaskHandler(
+      sync: sync,
+      tasks: MemoryTasks(),
+      logs: LogService(),
+      text: AppLocalizationsZh(),
+    );
+    addTearDown(() => handler.onDestroy(DateTime.now(), false));
+    await handler.onStart(DateTime.now(), TaskStarter.developer);
+    await sync.started.future;
+    sync.selectAlbum('a');
+    handler.onRepeatEvent(DateTime.now());
+    await _flush();
+    expect(_notification(calls)['notificationContentTitle'], '正在同步 · 相机');
+    expect(_notification(calls)['notificationContentText'], '正在远程检测');
+
+    sync.report(_progress);
+    handler.onRepeatEvent(DateTime.now());
+    await _flush();
+    expect(_notification(calls)['notificationContentTitle'], '正在同步 · 相机');
+    expect(_notification(calls)['notificationContentText'], '35 / 123 张照片');
+
+    sync.selectAlbum(null);
+    final next = DateTime.now().copyWith(hour: 14, minute: 30);
+    sync.publishActivity(SyncActivity(nextSyncAt: next));
+    await _flush();
+    expect(_notification(calls)['notificationContentTitle'], '等待下次同步');
+    expect(_notification(calls)['notificationContentText'], '下次同步：14:30');
   });
 
   test('通知停止按钮会取消同步并关闭服务，重复点击不重复停止', () async {
@@ -113,6 +156,7 @@ void main() {
       sync: sync,
       tasks: MemoryTasks(),
       logs: LogService(),
+      text: AppLocalizationsEn(),
     );
     addTearDown(() => handler.onDestroy(DateTime.now(), false));
     await handler.onStart(DateTime.now(), TaskStarter.developer);
@@ -289,6 +333,7 @@ class MemoryTasks extends TaskService {
   @override
   Future<List<Task>> list({User? account}) async => [
     Task(albumId: 'a', sortTime: DateTime.utc(2026), albumName: '相机'),
+    Task(albumId: 'b', sortTime: DateTime.utc(2026, 1, 2), albumName: '旅行'),
   ];
 }
 

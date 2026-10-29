@@ -104,6 +104,22 @@
   "logStatusSuccess": "成功",
   "logStatusFailure": "失败",
   "notificationPermissionRequired": "需要通知权限才能后台同步",
+  "syncNoticePreparing": "准备同步",
+  "syncNoticeReading": "正在读取同步任务",
+  "syncNoticeStopping": "正在停止同步",
+  "syncNoticeWaiting": "等待下次同步",
+  "syncNoticeSyncing": "正在同步",
+  "syncNoticeCancelling": "正在取消请求",
+  "syncNoticeChecking": "正在远程检测",
+  "syncNoticeNext": "下次同步：{time}",
+  "@syncNoticeNext": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "syncNoticeStop": "停止",
+  "syncNoticeChannel": "照片同步",
+  "syncNoticeChannelDescription": "照片同步进度和停止操作",
   "logAlbumAll": "全部相册",
   "logEventStartSync": "开始同步",
   "logEventOpenSync": "开启同步",

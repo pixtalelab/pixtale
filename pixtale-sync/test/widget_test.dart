@@ -588,6 +588,47 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('开始同步时没有通知权限会提示后台同步需要通知', (tester) async {
+    final tasks = DialogTaskService(database)
+      ..records.add(
+        Task(albumId: 'a', sortTime: DateTime.utc(2026), albumName: '相机'),
+      );
+    final sync = NoticeSyncService(tasks);
+    const channel = MethodChannel('com.fluttercandies/photo_manager');
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      channel,
+      (call) async => switch (call.method) {
+        'requestPermissionExtend' || 'getPermissionState' => 3,
+        'getAssetPathList' || 'fetchPathProperties' => {'data': []},
+        'getAssetCountFromPath' => 0,
+        'getAssetListRange' => {'data': []},
+        _ => null,
+      },
+    );
+    addTearDown(() {
+      AppNotice.hide();
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        channel,
+        null,
+      );
+    });
+    await tester.pumpWidget(
+      localizedApp(
+        home: TaskPage(
+          taskService: tasks,
+          storageService: DialogStorageService(database),
+          syncService: sync,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.play_arrow));
+    await tester.pump();
+    expect(find.text('需要通知权限才能后台同步'), findsOneWidget);
+    AppNotice.hide();
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }
 
 Future<void> _pumpTaskPage(
@@ -714,6 +755,22 @@ const _user = User(
   token: 'token',
   endpoint: 'https://example.test',
 );
+
+/// 模拟通知权限被拒绝后服务上报的英文提示。
+class NoticeSyncService extends SyncService {
+  /// 复用测试任务服务，避免默认数据库连接。
+  NoticeSyncService(TaskService tasks) : super(tasks: tasks);
+
+  /// 只上报通知权限提示，不访问设备或远端接口。
+  @override
+  Future<void> start(
+    void Function(SyncProgress) onProgress, {
+    void Function(String?)? onAlbumChanged,
+    void Function(String message)? onNotice,
+  }) async {
+    onNotice?.call('Notifications are required for background sync');
+  }
+}
 
 /// 保持同步开启，验证卡片菜单在同步期间不能操作。
 class WaitingSyncService extends SyncService {

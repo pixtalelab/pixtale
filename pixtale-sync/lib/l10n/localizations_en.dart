@@ -242,6 +242,42 @@ class AppLocalizationsEn extends AppLocalizations {
       'Notifications are required for background sync';
 
   @override
+  String get syncNoticePreparing => 'Preparing to sync';
+
+  @override
+  String get syncNoticeReading => 'Reading sync tasks';
+
+  @override
+  String get syncNoticeStopping => 'Stopping sync';
+
+  @override
+  String get syncNoticeWaiting => 'Waiting for next sync';
+
+  @override
+  String get syncNoticeSyncing => 'Syncing';
+
+  @override
+  String get syncNoticeCancelling => 'Cancelling request';
+
+  @override
+  String get syncNoticeChecking => 'Checking remotely';
+
+  @override
+  String syncNoticeNext(String time) {
+    return 'Next sync: $time';
+  }
+
+  @override
+  String get syncNoticeStop => 'Stop';
+
+  @override
+  String get syncNoticeChannel => 'Photo sync';
+
+  @override
+  String get syncNoticeChannelDescription =>
+      'Photo sync progress and stop action';
+
+  @override
   String get logAlbumAll => 'All albums';
 
   @override

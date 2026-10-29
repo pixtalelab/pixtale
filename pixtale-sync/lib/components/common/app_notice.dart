@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-// 应用共用的底部提示，不挤压页面内容或重复排队。
+// 应用共用的顶部提示，不挤压页面内容或重复排队。
 
-/// 在底部导航上方展示短暂提示。
+/// 在顶部栏下方展示短暂提示。
 class AppNotice {
   /// 当前显示的提示浮层。
   static OverlayEntry? _entry;
@@ -27,9 +27,14 @@ class AppNotice {
         child: IgnorePointer(
           child: SafeArea(
             child: Align(
-              alignment: Alignment.bottomCenter,
+              alignment: Alignment.topCenter,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                padding: const EdgeInsets.fromLTRB(
+                  16,
+                  kToolbarHeight + 8,
+                  16,
+                  16,
+                ),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 480),
                   child: Material(

@@ -196,7 +196,8 @@ class SyncService {
         account: api.user,
       );
 
-      for (final task in tasks) {
+      for (var index = 0; index < tasks.length; index++) {
+        final task = tasks[index];
         _loggedErrors.clear();
         _checkStopped();
         await _checkAccount(api.user);
@@ -362,7 +363,9 @@ class SyncService {
           await _recordFailure(error, event: event, albumName: albumName);
           if (error is ApiException && error.statusCode == 401) rethrow;
         } finally {
-          setCurrentAlbum(null);
+          // 直接切到下一个相册。只有本轮最后一个任务结束才清空，避免间隔里显示空闲。
+          final next = index + 1 < tasks.length ? tasks[index + 1].albumId : null;
+          setCurrentAlbum(next);
         }
       }
     } catch (error) {

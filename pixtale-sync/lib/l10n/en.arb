@@ -104,6 +104,22 @@
   "logStatusSuccess": "Success",
   "logStatusFailure": "Failed",
   "notificationPermissionRequired": "Notifications are required for background sync",
+  "syncNoticePreparing": "Preparing to sync",
+  "syncNoticeReading": "Reading sync tasks",
+  "syncNoticeStopping": "Stopping sync",
+  "syncNoticeWaiting": "Waiting for next sync",
+  "syncNoticeSyncing": "Syncing",
+  "syncNoticeCancelling": "Cancelling request",
+  "syncNoticeChecking": "Checking remotely",
+  "syncNoticeNext": "Next sync: {time}",
+  "@syncNoticeNext": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "syncNoticeStop": "Stop",
+  "syncNoticeChannel": "Photo sync",
+  "syncNoticeChannelDescription": "Photo sync progress and stop action",
   "logAlbumAll": "All albums",
   "logEventStartSync": "Sync started",
   "logEventOpenSync": "Start sync",

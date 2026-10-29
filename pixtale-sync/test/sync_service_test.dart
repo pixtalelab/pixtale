@@ -299,7 +299,7 @@ void main() {
     );
     await service.start(progress.add, onAlbumChanged: activeAlbums.add);
 
-    expect(activeAlbums, ['a', null, 'b', null]);
+    expect(activeAlbums, ['a', 'b', null]);
     expect(api.albumNames, ['相册 a']);
     expect(api.attempts, {'new.jpg': 1});
     expect(photos.opened, ['new.jpg']);

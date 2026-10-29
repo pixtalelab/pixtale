@@ -1,10 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:pixtale_sync/l10n/locale.dart';
+import 'package:pixtale_sync/l10n/localizations.dart';
 import 'package:pixtale_sync/models/sync.dart';
 import 'package:pixtale_sync/request/request.dart';
 import 'package:pixtale_sync/services/log_service.dart';
 import 'package:pixtale_sync/services/mobile_photo_service.dart';
+import 'package:pixtale_sync/services/settings_service.dart';
 import 'package:pixtale_sync/services/storage_service.dart';
 import 'package:pixtale_sync/services/sync_service.dart';
 import 'package:pixtale_sync/services/task_service.dart';
@@ -30,15 +33,23 @@ ForegroundTaskOptions syncTaskOptions({bool waiting = false}) =>
 /// 服务是 Android 同步的唯一执行者，页面只连接状态和发送命令。
 class SyncTaskHandler extends TaskHandler {
   /// 创建服务处理器，可注入依赖验证通知和停止行为。
-  SyncTaskHandler({SyncService? sync, TaskService? tasks, LogService? logs})
-    : _sync = sync ?? SyncService(photos: MobilePhotoService(background: true)),
-      _tasks = tasks ?? TaskService.instance,
-      _logService = logs ?? LogService.instance;
+  SyncTaskHandler({
+    SyncService? sync,
+    TaskService? tasks,
+    LogService? logs,
+    AppLocalizations? text,
+  }) : _sync = sync ?? SyncService(photos: MobilePhotoService(background: true)),
+       _tasks = tasks ?? TaskService.instance,
+       _logService = logs ?? LogService.instance,
+       _text = text;
 
   /// 后台复用业务服务，照片权限已由页面请求。
   final SyncService _sync;
   final TaskService _tasks;
   final LogService _logService;
+
+  /// 测试固定文案。正式运行时按设置和系统语言读取。
+  final AppLocalizations? _text;
 
   /// 页面断开后保留进度快照，检查期间也不归零已完成数量。
   final Map<String, SyncProgress> _progress = {};
@@ -110,12 +121,13 @@ class SyncTaskHandler extends TaskHandler {
     _send('progress', {'value': value.toJson()});
   }
 
-  /// 切换相册时显示远程检测，保留上轮进度供页面继续展示。
+  /// 轮到相册时立刻更新通知标题，保留上轮进度供页面继续展示。
   void _onAlbumChanged(String? id) {
     _albumId = id;
     _comparing = true;
     _dirty = true;
     _send('album', {'id': id});
+    unawaited(_updateNotification());
   }
 
   /// 等待时展示下次同步时间，通知停止按钮持续可用。
@@ -138,32 +150,55 @@ class SyncTaskHandler extends TaskHandler {
     _dirty = false;
     _updating = true;
     try {
+      final text = await _noticeText();
       final next = _activity.nextSyncAt?.toLocal();
       final progress = _comparing ? null : _progress[_albumId];
-      final name = _names[_albumId];
+      final syncing = _albumId != null && !_stopping;
+      final waiting = !_stopping && !syncing && next != null;
+      // 相册切换的空档还没进入定时等待，保持上一条通知。
+      if (!_stopping && !syncing && !waiting) return;
       final title = _stopping
-          ? 'Stopping sync'
+          ? text.syncNoticeStopping
+          : syncing
+          ? _withAlbum(text.syncNoticeSyncing, _names[_albumId])
+          : text.syncNoticeWaiting;
+      final body = _stopping
+          ? text.syncNoticeCancelling
+          : syncing
+          ? progress == null
+                ? text.syncNoticeChecking
+                : text.photoCount(progress.completed, progress.total)
           : next != null
-          ? 'Waiting for next sync'
-          : _albumId == null
-          ? 'Preparing to sync'
-          : '${progress == null ? 'Remote check' : 'Syncing'}'
-                '${name == null || name.isEmpty ? '' : ' · $name'}';
-      final text = _stopping
-          ? 'Cancelling request'
-          : next != null
-          ? 'Next sync: ${_formatTime(next)}'
-          : progress == null
-          ? 'Checking remotely'
-          : '${progress.completed} / ${progress.total} photos';
+          ? text.syncNoticeNext(_formatTime(next))
+          : text.syncNoticeWaiting;
       await FlutterForegroundTask.updateService(
         notificationTitle: title,
-        notificationText: text,
-        foregroundTaskOptions: syncTaskOptions(waiting: next != null),
+        notificationText: body,
+        foregroundTaskOptions: syncTaskOptions(
+          waiting: !syncing && next != null,
+        ),
       );
     } finally {
       _updating = false;
+      if (_dirty && !_destroyed && !_ended) unawaited(_updateNotification());
     }
+  }
+
+  /// 后台隔离区读取保存的语言，没有记录时跟随系统。
+  Future<AppLocalizations> _noticeText() async {
+    final fixed = _text;
+    if (fixed != null) return fixed;
+    var saved = '';
+    try {
+      saved = (await SettingsService.instance.get()).locale;
+    } catch (_) {}
+    return AppLocale.strings(saved: saved);
+  }
+
+  /// 相册名跟在动作后面，没有名称时只显示动作。
+  String _withAlbum(String action, String? name) {
+    if (name == null || name.isEmpty) return action;
+    return '$action · $name';
   }
 
   /// 本地时分展示下次时间，跨日期时同时显示月日。

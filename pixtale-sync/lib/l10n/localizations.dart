@@ -536,6 +536,72 @@ abstract class AppLocalizations {
   /// **'需要通知权限才能后台同步'**
   String get notificationPermissionRequired;
 
+  /// No description provided for @syncNoticePreparing.
+  ///
+  /// In zh, this message translates to:
+  /// **'准备同步'**
+  String get syncNoticePreparing;
+
+  /// No description provided for @syncNoticeReading.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在读取同步任务'**
+  String get syncNoticeReading;
+
+  /// No description provided for @syncNoticeStopping.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在停止同步'**
+  String get syncNoticeStopping;
+
+  /// No description provided for @syncNoticeWaiting.
+  ///
+  /// In zh, this message translates to:
+  /// **'等待下次同步'**
+  String get syncNoticeWaiting;
+
+  /// No description provided for @syncNoticeSyncing.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在同步'**
+  String get syncNoticeSyncing;
+
+  /// No description provided for @syncNoticeCancelling.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在取消请求'**
+  String get syncNoticeCancelling;
+
+  /// No description provided for @syncNoticeChecking.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在远程检测'**
+  String get syncNoticeChecking;
+
+  /// No description provided for @syncNoticeNext.
+  ///
+  /// In zh, this message translates to:
+  /// **'下次同步：{time}'**
+  String syncNoticeNext(String time);
+
+  /// No description provided for @syncNoticeStop.
+  ///
+  /// In zh, this message translates to:
+  /// **'停止'**
+  String get syncNoticeStop;
+
+  /// No description provided for @syncNoticeChannel.
+  ///
+  /// In zh, this message translates to:
+  /// **'照片同步'**
+  String get syncNoticeChannel;
+
+  /// No description provided for @syncNoticeChannelDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'照片同步进度和停止操作'**
+  String get syncNoticeChannelDescription;
+
   /// No description provided for @logAlbumAll.
   ///
   /// In zh, this message translates to:
