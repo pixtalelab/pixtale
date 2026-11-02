@@ -64,8 +64,8 @@ importers:
         specifier: ^4.12.18
         version: 4.12.29
       lucide-react:
-        specifier: ^1.16.0
-        version: 1.24.0(react@19.2.4)
+        specifier: ^1.57.0
+        version: 1.57.0(@types/react@19.2.17)(react@19.2.4)
       masonic:
         specifier: ^4.1.0
         version: 4.1.0(patch_hash=9e98645e441535e0580e921a9ae06fc34fae8e6c5a930898a4a46b7d1617add8)(react@19.2.4)
@@ -3765,10 +3765,14 @@ packages:
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
 
-  lucide-react@1.24.0:
-    resolution: {integrity: sha512-YT6mBD8lGKkg4nM39enlm94/sfJIiW0YKUT60fBy4YK8tai31ylg1VhGNWxkpSKHo9UagfnZqwIff3HTDQwXeA==}
+  lucide-react@1.57.0:
+    resolution: {integrity: sha512-bXFZEucYhAzLD62Jse76AbTR6LiSLTn3Tqir2f1n8rZrWAdLodYy7jnRZSPIT89dRLk/IseMOUWG82wJtTyTTw==}
     peerDependencies:
+      '@types/react': '*'
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
 
   luxon@3.7.2:
     resolution: {integrity: sha512-vtEhXh/gNjI9Yg1u4jX/0YVPMvxzHuGgCm6tC5kZyb08yjGWGnqAjGJvcXbqQR2P3MyMEFnRbpcdFS6PBcLqew==}
@@ -8744,9 +8748,11 @@ snapshots:
     dependencies:
       yallist: 3.1.1
 
-  lucide-react@1.24.0(react@19.2.4):
+  lucide-react@1.57.0(@types/react@19.2.17)(react@19.2.4):
     dependencies:
       react: 19.2.4
+    optionalDependencies:
+      '@types/react': 19.2.17
 
   luxon@3.7.2: {}
 

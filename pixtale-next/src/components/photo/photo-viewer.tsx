@@ -6,7 +6,7 @@ import { isImageSlide, type SlideImage, useController, useLightboxState } from "
 import Fullscreen from "yet-another-react-lightbox/plugins/fullscreen"
 import Thumbnails from "yet-another-react-lightbox/plugins/thumbnails"
 import Zoom from "yet-another-react-lightbox/plugins/zoom"
-import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, CircleAlertIcon, CircleIcon, Menu, LoaderCircleIcon, MaximizeIcon, PanelRightClose, PanelRightOpen, PlayIcon, RotateCwSquare } from "lucide-react"
+import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, CircleAlertIcon, CircleIcon, Menu, LoaderCircleIcon, MaximizeIcon, PanelRightClose, PanelRightOpen, RotateCwSquare } from "lucide-react"
 
 import { PhotoInfoSidebar, PhotoViewerBlurBackground } from "@/components/photo/photo-info-sidebar"
 import PhotoVideo, { type VideoSlide } from "@/components/photo/photo-video"
@@ -1011,9 +1011,6 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
                   event.currentTarget.style.display = "none"
                 }}
               />
-              {slide.type === "video" && (
-                <PlayIcon className="pointer-events-none absolute inset-0 m-auto size-5 fill-white text-white drop-shadow" aria-hidden />
-              )}
             </div>
           )
         }

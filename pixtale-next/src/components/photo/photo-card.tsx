@@ -1,7 +1,7 @@
 "use client"
 
 import { useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react"
-import { HeartIcon, PlayIcon } from "lucide-react"
+import { CircleFadingPlayIcon, HeartIcon } from "lucide-react"
 import { type RenderComponentProps } from "masonic"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -196,8 +196,14 @@ export function PhotoCard({
           }}
         />
       ) : null}
-      {data.type.startsWith("video/") && (
-        <PlayIcon className="pointer-events-none absolute inset-0 m-auto size-6 fill-white text-white drop-shadow" aria-hidden />
+      {data.type.startsWith("video/") && data.status !== PhotoStatusEnum.DELETE && (
+        <CircleFadingPlayIcon
+          className="pointer-events-none absolute top-2 left-2 size-4.75 text-white"
+          style={{
+            filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.4)) drop-shadow(0 0 1px rgba(0,0,0,0.3))",
+          }}
+          aria-hidden
+        />
       )}
       {selected && (
         <div className="pointer-events-none absolute inset-0 bg-black/60" />
