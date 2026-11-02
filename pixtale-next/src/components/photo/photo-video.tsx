@@ -1,9 +1,11 @@
 "use client"
 
 import Artplayer from "artplayer"
-import { useLocale, useTranslations } from "next-intl"
+import { useLocale } from "next-intl"
 import { useLayoutEffect, useRef } from "react"
 import type { ContainerRect, GenericSlide } from "yet-another-react-lightbox"
+
+import { getThumbHashUrl } from "@/lib/thumb-hash"
 
 export type VideoSlide = GenericSlide & {
   type: "video"
@@ -23,14 +25,13 @@ declare module "yet-another-react-lightbox" {
   }
 }
 
-// 进入视频详情时展示播放器和封面，并在切换和关闭时释放播放资源。
+// 当前视频进入时创建播放器，切走时销毁，预渲染封面保持滑动衔接。
 export default function PhotoVideo({ slide, rect, active }: {
   slide: VideoSlide
   rect: ContainerRect
   active: boolean
 }) {
   const locale = useLocale()
-  const t = useTranslations("photos.viewer")
   // containerRef 是 ArtPlayer 管理的 DOM 容器。
   const containerRef = useRef<HTMLDivElement>(null)
   // playerRef 保存当前播放器实例，用于判断全屏状态。
@@ -39,6 +40,8 @@ export default function PhotoVideo({ slide, rect, active }: {
   const ratio = slide.width && slide.height ? slide.width / slide.height : 16 / 9
   const width = Math.min(rect.width, rect.height * ratio)
   const height = width / ratio
+  // 所有预渲染 item 都提前显示封面，当前播放器挂载前和切走后也有画面衔接。
+  const coverBackground = getThumbHashUrl(slide.thumbHash)
 
   // 在浏览器绘制前创建播放器，避免首次进入时先显示空的黑色容器。
   useLayoutEffect(() => {
@@ -49,6 +52,7 @@ export default function PhotoVideo({ slide, rect, active }: {
       container: containerRef.current,
       url: slide.src,
       poster: slide.poster,
+      theme: "#ffffff",
       lang: locale === "zh" ? "zh-cn" : "en",
       autoplay: false,
       playsInline: true,
@@ -86,26 +90,18 @@ export default function PhotoVideo({ slide, rect, active }: {
       player.template.$poster.style.display = "none"
     }
 
-    // 为播放器自带的中央播放按钮补充键盘操作。
-    function handlePlayKey(event: Event) {
-      const keyEvent = event as KeyboardEvent
-      if (keyEvent.key === "Enter" || keyEvent.key === " ") {
-        keyEvent.preventDefault()
-        void player.play().catch((error: DOMException) => {
-          if (!player.isDestroy && error.name !== "AbortError") {
-            player.notice.show = t("playFailed")
-          }
-        })
-      }
+    // 清除播放和暂停时在左上角显示的状态提示。
+    function hidePlaybackNotice() {
+      player.notice.show = ""
     }
 
     player.on("video:loadstart", showIdleControls)
     player.on("video:play", keepPoster)
     player.on("video:playing", hidePoster)
-    player.template.$state.setAttribute("role", "button")
-    player.template.$state.setAttribute("aria-label", t("play"))
-    player.template.$state.tabIndex = 0
-    player.proxy(player.template.$state, "keydown", handlePlayKey)
+    player.on("play", hidePlaybackNotice)
+    player.on("pause", hidePlaybackNotice)
+    // 隐藏中央播放按钮，播放操作保留在底部控制栏。
+    player.template.$state.style.display = "none"
     showIdleControls()
 
     // 切换或关闭时销毁播放器，停止声音和视频下载。
@@ -113,7 +109,7 @@ export default function PhotoVideo({ slide, rect, active }: {
       playerRef.current = null
       player.destroy()
     }
-  }, [active, slide.src, slide.poster, locale, t])
+  }, [active, slide.src, slide.poster, locale])
 
   // 播放器内的拖动和点击由播放器处理，避免进度条触发图库切换。
   function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
@@ -129,11 +125,19 @@ export default function PhotoVideo({ slide, rect, active }: {
 
   return (
     <div
-      className="photo-video relative shrink-0 overflow-hidden bg-black"
-      style={{ width, height }}
+      className="photo-video relative shrink-0 overflow-hidden bg-black bg-contain bg-center bg-no-repeat"
+      style={{ width, height, backgroundImage: coverBackground ? `url("${coverBackground}")` : undefined }}
       onPointerDown={handlePointerDown}
       onKeyDown={handleKeyDown}
     >
+      {slide.poster && (
+        <img
+          src={slide.poster}
+          alt={slide.alt}
+          draggable={false}
+          className="pointer-events-none absolute inset-0 h-full w-full select-none object-contain"
+        />
+      )}
       <div ref={containerRef} className="absolute inset-0" />
     </div>
   )

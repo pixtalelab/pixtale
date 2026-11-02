@@ -860,6 +860,7 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
       }}
       carousel={{
         spacing: 0,
+        padding: 0,
         preload: innerWidth < 768 ? 10 : 22,
       }}
       animation={{
@@ -932,7 +933,22 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
         buttonZoom: () => null,
         slide: ({ slide, offset, rect }) => {
           if (slide.type === "video") {
-            return <PhotoVideo key={slide.photoId} slide={slide} rect={rect} active={offset === 0} />
+            return (
+              <div
+                className="relative flex h-full w-full items-center justify-center overflow-hidden"
+                onPointerDown={handleSlidePointerDown}
+                onPointerUp={handleSlidePointerUp}
+                onPointerCancel={handleSlidePointerCancel}
+              >
+                <img
+                  src={getThumbHashUrl(slide.thumbHash)}
+                  alt=""
+                  className="pointer-events-none absolute inset-0 h-full w-full scale-110 blur-sm"
+                  aria-hidden
+                />
+                <PhotoVideo key={slide.photoId} slide={slide} rect={rect} active={offset === 0} />
+              </div>
+            )
           }
 
           if (!isImageSlide(slide)) {
