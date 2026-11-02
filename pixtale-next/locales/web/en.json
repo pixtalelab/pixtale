@@ -15,6 +15,8 @@
   "photos.selectDateRange": "Select Dates",
   "photos.viewer.loading": "Loading",
   "photos.viewer.loadFailed": "Load failed",
+  "photos.viewer.play": "Play video",
+  "photos.viewer.playFailed": "Unable to play video. Please try again.",
   "photos.upload.title": "Upload Photos and Videos",
   "photos.upload.previewFailed": "Couldn't create a preview for {name}",
   "photos.upload.invalidStorage": "Select a valid storage location",

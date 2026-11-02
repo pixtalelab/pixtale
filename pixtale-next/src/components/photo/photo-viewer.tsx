@@ -2,14 +2,14 @@
 
 import { type CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import Lightbox from "yet-another-react-lightbox"
-import { isImageSlide, type SlideImage, type SlideVideo, useController, useLightboxState } from "yet-another-react-lightbox"
+import { isImageSlide, type SlideImage, useController, useLightboxState } from "yet-another-react-lightbox"
 import Fullscreen from "yet-another-react-lightbox/plugins/fullscreen"
 import Thumbnails from "yet-another-react-lightbox/plugins/thumbnails"
 import Zoom from "yet-another-react-lightbox/plugins/zoom"
-import Video from "yet-another-react-lightbox/plugins/video"
 import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, CircleAlertIcon, CircleIcon, Menu, LoaderCircleIcon, MaximizeIcon, PanelRightClose, PanelRightOpen, PlayIcon, RotateCwSquare } from "lucide-react"
 
 import { PhotoInfoSidebar, PhotoViewerBlurBackground } from "@/components/photo/photo-info-sidebar"
+import PhotoVideo, { type VideoSlide } from "@/components/photo/photo-video"
 import { useTapAction } from "@/hooks/use-tap-action"
 import { Button } from "@/components/ui/button"
 import { getThumbHashUrl } from "@/lib/thumb-hash"
@@ -44,8 +44,6 @@ type PhotoSlide = SlideImage & {
   // thumbHash 转换后的模糊色背景。
   thumbHash: string
 }
-
-type VideoSlide = SlideVideo & Pick<PhotoSlide, "photoId" | "thumbnail" | "thumbHash" | "alt">
 
 type FullscreenButtonProps = {
   // 当前是否处于全屏状态。
@@ -604,7 +602,7 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
   // slidePointerStartRef 记录 slide 上 pointerdown 坐标，用于区分点击与拖动切换。
   const slidePointerStartRef = useRef<{ x: number; y: number } | null>(null)
 
-  // 图片沿用自定义渲染，视频交给 Video 插件播放，派生预览图作为封面。
+  // 图片沿用自定义渲染，视频交给 ArtPlayer 播放，派生预览图作为封面。
   const slides = useMemo<(PhotoSlide | VideoSlide)[]>(() => (
     photos.map((photo): PhotoSlide | VideoSlide => {
       const common = {
@@ -621,7 +619,7 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
           ...common,
           type: "video",
           poster: photo.preview || photo.thumbnail || "",
-          sources: [{ src: photo.key, type: photo.type }],
+          src: photo.key,
         }
       }
 
@@ -850,13 +848,7 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
           style: photoViewerPortalStyle,
         },
       }}
-      plugins={fullscreenOpen ? [Fullscreen, Zoom, Video] : [Thumbnails, Fullscreen, Zoom, Video]}
-      video={{
-        controls: true,
-        autoPlay: false,
-        playsInline: true,
-        preload: "none",
-      }}
+      plugins={fullscreenOpen ? [Fullscreen, Zoom] : [Thumbnails, Fullscreen, Zoom]}
       zoom={{
         scrollToZoom: true,
         wheelZoomDistanceFactor: 100,
@@ -907,6 +899,7 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
         },
       }}
       render={{
+        iconLoading: () => null,
         buttonPrev: () => <PrevButton key="prev" showActions={actionsVisible} />,
         buttonNext: () => <NextButton key="next" showActions={actionsVisible} />,
         controls: () => (
@@ -937,7 +930,11 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
         ),
         buttonFullscreen: () => null,
         buttonZoom: () => null,
-        slide: ({ slide }) => {
+        slide: ({ slide, offset, rect }) => {
+          if (slide.type === "video") {
+            return <PhotoVideo key={slide.photoId} slide={slide} rect={rect} active={offset === 0} />
+          }
+
           if (!isImageSlide(slide)) {
             return null
           }

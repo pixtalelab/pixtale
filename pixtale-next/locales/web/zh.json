@@ -15,6 +15,8 @@
   "photos.selectDateRange": "选择时间",
   "photos.viewer.loading": "加载中",
   "photos.viewer.loadFailed": "加载失败",
+  "photos.viewer.play": "播放视频",
+  "photos.viewer.playFailed": "无法播放视频，请点击播放重试",
   "photos.upload.title": "照片与视频上传",
   "photos.upload.previewFailed": "{name} 预览生成失败",
   "photos.upload.invalidStorage": "无效存储",
