@@ -6,7 +6,7 @@ import '@/server/storage/local-storage';
 import '@/server/storage/s3-storage';
 import '@/server/storage/telegram-storage';
 import { resolveStorageStrategy } from '@/server/storage/storage-registry';
-import { type StorageObject, type StorageStrategy, type StorageUploadObject } from '@/server/storage/storage-types';
+import { type StorageObject, type StorageRange, type StorageStrategy, type StorageUploadObject } from '@/server/storage/storage-types';
 
 // 这个模块按策略选择存储实现。
 
@@ -53,10 +53,10 @@ const storage = {
     return createStorageStrategy(fileStorage)!.put(files, fileStorage);
   },
 
-  // 根据存储 id 查询配置、选择策略并读取文件。
-  async get(key: string, storageId: string): Promise<StorageObject> {
+  // 根据存储 id 查询配置、选择策略并读取完整文件或指定字节范围。
+  async get(key: string, storageId: string, range?: StorageRange): Promise<StorageObject> {
     const fileStorage = await getStorage(storageId);
-    return createStorageStrategy(fileStorage)!.get(key, fileStorage);
+    return createStorageStrategy(fileStorage)!.get(key, fileStorage, range);
   },
 
   // 根据存储 id 查询配置、选择策略并删除文件，无效类型直接跳过。

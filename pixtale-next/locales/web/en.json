@@ -15,7 +15,7 @@
   "photos.selectDateRange": "Select Dates",
   "photos.viewer.loading": "Loading",
   "photos.viewer.loadFailed": "Load failed",
-  "photos.upload.title": "Upload Photos",
+  "photos.upload.title": "Upload Photos and Videos",
   "photos.upload.previewFailed": "Couldn't create a preview for {name}",
   "photos.upload.invalidStorage": "Select a valid storage location",
   "photos.upload.demoReadonly": "Operations are not allowed in demo mode.",

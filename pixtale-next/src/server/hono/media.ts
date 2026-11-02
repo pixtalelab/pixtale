@@ -17,6 +17,7 @@ import { i18nMiddleware, t } from '@/server/i18n';
 import { getUserId } from '@/server/security/context';
 import { security } from '../security/security';
 import type { HonoEnv } from './type';
+import { parseByteRange } from '@/server/lib/http-range';
 
 // 这个模块处理照片媒体读取接口，路径为 /media/{key}。
 
@@ -39,6 +40,7 @@ async function getPhotoFile(key: string) {
       key: fileTab.key,
       type: fileTab.type,
       fileType: fileTab.fileType,
+      size: fileTab.size,
       name: photoTab.name,
       photoId: photoTab.photoId,
       storageId: photoTab.storageId,
@@ -89,9 +91,17 @@ media.get('*', async (c: Context, next: Next) => {
   const photoKey = photoFile.key;
   const storageId = photoFile.storageId;
 
-  // 读取照片文件并生成媒体响应。
+  // 通过原有权限校验后读取媒体，视频按播放器请求返回分段内容。
   const sendPhoto = async () => {
-    const obj = await storage.get(photoKey, storageId);
+    const rangeHeader = photoFile.fileType.startsWith('video/') && !c.req.header('If-Range')
+      ? c.req.header('Range')
+      : undefined;
+    const range = rangeHeader ? parseByteRange(rangeHeader, photoFile.size) : undefined;
+    if (range === null) {
+      return c.body(null, 416, { 'Content-Range': `bytes */${photoFile.size}` });
+    }
+
+    const obj = await storage.get(photoKey, storageId, range);
     const disposition = getContentDisposition(photoFile.name, photoFile.type);
     const headers: Record<string, string> = {
       'Cache-Control': 'private, max-age=604800',
@@ -106,7 +116,14 @@ media.get('*', async (c: Context, next: Next) => {
       headers['Content-Disposition'] = disposition;
     }
 
-    return c.body(obj.body, 200, headers);
+    if (obj.acceptRanges) {
+      headers['Accept-Ranges'] = 'bytes';
+    }
+    if (obj.contentRange) {
+      headers['Content-Range'] = obj.contentRange;
+    }
+
+    return c.body(obj.body, obj.contentRange ? 206 : 200, headers);
   };
 
   if (photoFile.albumPublic === AlbumPublicEnum.ENABLE) {

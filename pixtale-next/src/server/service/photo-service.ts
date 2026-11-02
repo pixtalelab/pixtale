@@ -37,6 +37,8 @@ import { buildPhotoKey, buildPreviewKey, buildThumbnailKey } from '@/server/lib/
 import { type File as PhotoFile, fileTab } from '@/server/entity/file';
 import { fileService } from '@/server/service/file-service';
 import { FileTypeEnum } from '@/server/enums/file-enum';
+import { getMediaType } from '@/lib/media';
+import { readVideoFrame } from '@/server/lib/video-process';
 
 // 这个模块处理照片数据查询相关业务。
 
@@ -356,7 +358,7 @@ const photoService = {
     return { duplicate: Boolean(duplicatePhoto) };
   },
 
-  // 上传单张照片，后端生成 preview、thumbnail 和元信息。
+  // 上传照片或视频，视频先提取第一帧，再生成 preview、thumbnail 和元信息。
   async add(form: FormData, userId: string): Promise<PhotoAddResultVo> {
 
     const file = form.get('file') as File;
@@ -386,7 +388,8 @@ const photoService = {
       return { photo: null, duplicate: true };
     }
 
-    const images = await processPhotoImages(buffer);
+    const cover = type.startsWith('video/') ? await readVideoFrame(buffer) : buffer;
+    const images = await processPhotoImages(cover);
     const meta = await readPhotoExifFromBuffer(buffer);
     const takenTime = meta.takenTime ?? new Date(lastModified > 0 ? lastModified : Date.now()).toISOString();
     const key = await this.resolvePhotoKey(userId, name);
@@ -764,7 +767,7 @@ const photoService = {
       buffer: Buffer.from(await file.arrayBuffer()),
       name: file.name.trim(),
       size: file.size,
-      type: file.type || '',
+      type: getMediaType(file),
     };
   }
 }

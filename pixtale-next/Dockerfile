@@ -23,11 +23,12 @@ FROM node:22-alpine AS runner
 
 WORKDIR /app
 
-# exiftool-vendored.pl 依赖系统 Perl 才能读 EXIF
-RUN apk add --no-cache perl
+# EXIF 读取依赖 Perl，视频封面使用系统 FFmpeg。
+RUN apk add --no-cache perl ffmpeg
 
 ENV NODE_ENV=production
 ENV PORT=8082
+ENV FFMPEG_PATH=/usr/bin/ffmpeg
 
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./

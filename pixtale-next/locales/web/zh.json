@@ -15,7 +15,7 @@
   "photos.selectDateRange": "选择时间",
   "photos.viewer.loading": "加载中",
   "photos.viewer.loadFailed": "加载失败",
-  "photos.upload.title": "照片上传",
+  "photos.upload.title": "照片与视频上传",
   "photos.upload.previewFailed": "{name} 预览生成失败",
   "photos.upload.invalidStorage": "无效存储",
   "photos.upload.demoReadonly": "演示模式禁止操作",

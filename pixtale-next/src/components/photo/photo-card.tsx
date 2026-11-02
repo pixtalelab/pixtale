@@ -1,7 +1,7 @@
 "use client"
 
 import { useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react"
-import { HeartIcon } from "lucide-react"
+import { HeartIcon, PlayIcon } from "lucide-react"
 import { type RenderComponentProps } from "masonic"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -196,6 +196,9 @@ export function PhotoCard({
           }}
         />
       ) : null}
+      {data.type.startsWith("video/") && (
+        <PlayIcon className="pointer-events-none absolute inset-0 m-auto size-6 fill-white text-white drop-shadow" aria-hidden />
+      )}
       {selected && (
         <div className="pointer-events-none absolute inset-0 bg-black/60" />
       )}

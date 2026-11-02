@@ -1,7 +1,7 @@
 import { createReadStream } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { type StorageObject, type StorageStrategy, type StorageUploadObject } from '@/server/storage/storage-types';
+import { type StorageObject, type StorageRange, type StorageStrategy, type StorageUploadObject } from '@/server/storage/storage-types';
 import { registerStorageStrategy } from '@/server/storage/storage-registry';
 import { type Storage } from '@/server/entity/storage';
 import { StorageTypeEnum } from '@/server/enums/storage-enum';
@@ -36,16 +36,18 @@ class LocalStorageStrategy implements StorageStrategy {
     }));
   }
 
-  // 从本地读取文件并以流的方式返回。
-  async get(key: string, storage: Storage): Promise<StorageObject> {
+  // 从本地读取完整文件或指定字节范围，并以流的方式返回。
+  async get(key: string, storage: Storage, range?: StorageRange): Promise<StorageObject> {
     void storage;
     const filePath = this.getLocalPath(key);
     const { size } = await fs.stat(filePath);
 
     return {
-      body: createReadStream(filePath),
-      size,
-      type: ''
+      body: createReadStream(filePath, range),
+      size: range ? range.end - range.start + 1 : size,
+      type: '',
+      contentRange: range ? `bytes ${range.start}-${range.end}/${size}` : undefined,
+      acceptRanges: true,
     };
   }
 

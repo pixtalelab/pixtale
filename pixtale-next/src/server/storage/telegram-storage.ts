@@ -1,4 +1,4 @@
-import { type StorageObject, type StorageStrategy, type StorageUploadObject } from '@/server/storage/storage-types';
+import { type StorageObject, type StorageRange, type StorageStrategy, type StorageUploadObject } from '@/server/storage/storage-types';
 import { registerStorageStrategy } from '@/server/storage/storage-registry';
 import { type Storage } from '@/server/entity/storage';
 import { StorageTypeEnum } from '@/server/enums/storage-enum';
@@ -65,8 +65,8 @@ class TelegramStorageStrategy implements StorageStrategy {
     });
   }
 
-  // 从 Telegram 下载文件并返回媒体流。
-  async get(key: string, storage: Storage): Promise<StorageObject> {
+  // 从 Telegram 下载文件，透传字节范围并保留上游实际返回的分段信息。
+  async get(key: string, storage: Storage, range?: StorageRange): Promise<StorageObject> {
     const { token } = this.getConfig(storage);
 
     const file = await this.callApi<TelegramFile>(storage, token, 'getFile', new URLSearchParams({
@@ -78,7 +78,9 @@ class TelegramStorageStrategy implements StorageStrategy {
     }
 
     const domain = formatHttpUrl(storage.domain) || 'https://api.telegram.org';
-    const response = await fetch(`${domain}/file/bot${token}/${file.file_path}`);
+    const response = await fetch(`${domain}/file/bot${token}/${file.file_path}`, {
+      headers: range ? { Range: `bytes=${range.start}-${range.end}` } : undefined,
+    });
 
     if (!response.ok || !response.body) {
       throw new Error('Failed to read the file from Telegram.');
@@ -88,6 +90,8 @@ class TelegramStorageStrategy implements StorageStrategy {
       body: response.body,
       size: Number(response.headers.get('content-length') ?? 0),
       type: response.headers.get('content-type') ?? '',
+      contentRange: response.status === 206 ? response.headers.get('content-range') ?? undefined : undefined,
+      acceptRanges: response.headers.get('accept-ranges') === 'bytes' || response.status === 206,
     };
   }
 

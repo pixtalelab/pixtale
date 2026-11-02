@@ -1,5 +1,5 @@
 import { DeleteObjectsCommand, GetObjectCommand, PutObjectCommand, type PutObjectCommandInput, S3Client } from '@aws-sdk/client-s3';
-import { type ReadBody, type StorageObject, type StorageStrategy, type StorageUploadObject } from '@/server/storage/storage-types';
+import { type ReadBody, type StorageObject, type StorageRange, type StorageStrategy, type StorageUploadObject } from '@/server/storage/storage-types';
 import { registerStorageStrategy } from '@/server/storage/storage-registry';
 import { type Storage } from '@/server/entity/storage';
 import { StorageTypeEnum } from '@/server/enums/storage-enum';
@@ -83,8 +83,8 @@ class S3StorageStrategy implements StorageStrategy {
     }
   }
 
-  // 从 S3 读取文件并转成响应 body。
-  async get(key: string, storage: Storage): Promise<StorageObject> {
+  // 从 S3 读取完整文件或指定字节范围，并转成响应 body。
+  async get(key: string, storage: Storage, range?: StorageRange): Promise<StorageObject> {
     const client = this.createClient(storage);
     const bucket = storage.bucket?.trim();
 
@@ -94,7 +94,8 @@ class S3StorageStrategy implements StorageStrategy {
 
     const res = await client.send(new GetObjectCommand({
       Bucket: bucket,
-      Key: key
+      Key: key,
+      Range: range ? `bytes=${range.start}-${range.end}` : undefined,
     }));
 
     if (!res.Body) {
@@ -104,7 +105,9 @@ class S3StorageStrategy implements StorageStrategy {
     return {
       body: res.Body as ReadBody,
       size: res.ContentLength ?? 0,
-      type: res.ContentType ?? ''
+      type: res.ContentType ?? '',
+      contentRange: res.ContentRange,
+      acceptRanges: res.AcceptRanges === 'bytes' || Boolean(res.ContentRange),
     };
   }
 

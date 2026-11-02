@@ -29,7 +29,7 @@ app.post('/photo/takenDateList', async (c: Context) => {
   return c.json(result.ok(data));
 })
 
-// 上传单张照片，后端生成 preview、thumbnail 和元信息。
+// 上传照片或视频，后端生成 preview、thumbnail 和元信息。
 app.post('/photo/add', async (c: Context) => {
   const form = await c.req.formData();
   const lock = form.get('lock');

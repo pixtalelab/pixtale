@@ -2,11 +2,12 @@
 
 import { type CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import Lightbox from "yet-another-react-lightbox"
-import { isImageSlide, type SlideImage, useController, useLightboxState } from "yet-another-react-lightbox"
+import { isImageSlide, type SlideImage, type SlideVideo, useController, useLightboxState } from "yet-another-react-lightbox"
 import Fullscreen from "yet-another-react-lightbox/plugins/fullscreen"
 import Thumbnails from "yet-another-react-lightbox/plugins/thumbnails"
 import Zoom from "yet-another-react-lightbox/plugins/zoom"
-import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, CircleAlertIcon, CircleIcon, Menu, LoaderCircleIcon, MaximizeIcon, PanelRightClose, PanelRightOpen, RotateCwSquare } from "lucide-react"
+import Video from "yet-another-react-lightbox/plugins/video"
+import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, CircleAlertIcon, CircleIcon, Menu, LoaderCircleIcon, MaximizeIcon, PanelRightClose, PanelRightOpen, PlayIcon, RotateCwSquare } from "lucide-react"
 
 import { PhotoInfoSidebar, PhotoViewerBlurBackground } from "@/components/photo/photo-info-sidebar"
 import { useTapAction } from "@/hooks/use-tap-action"
@@ -43,6 +44,8 @@ type PhotoSlide = SlideImage & {
   // thumbHash 转换后的模糊色背景。
   thumbHash: string
 }
+
+type VideoSlide = SlideVideo & Pick<PhotoSlide, "photoId" | "thumbnail" | "thumbHash" | "alt">
 
 type FullscreenButtonProps = {
   // 当前是否处于全屏状态。
@@ -343,10 +346,6 @@ function FullscreenButton({
   showActions: boolean
   onHideActions: () => void
 }) {
-  if (fullscreen) {
-    return null
-  }
-
   // 进入全屏状态后隐藏查看器操作按钮。
   function openFullscreen() {
     enter()
@@ -354,6 +353,10 @@ function FullscreenButton({
   }
 
   const tap = useTapAction(openFullscreen)
+
+  if (fullscreen) {
+    return null
+  }
 
   return (
     <Button
@@ -421,6 +424,10 @@ function RotateButton({ showActions, onRotate }: { showActions: boolean, onRotat
 
   const tap = useTapAction(rotatePhoto)
 
+  if (!photoSlide) {
+    return null
+  }
+
   return (
     <Button
       type="button"
@@ -467,6 +474,10 @@ function LoadOriginalButton({
   }
 
   const tap = useTapAction(loadOriginal)
+
+  if (!photoSlide) {
+    return null
+  }
 
   return (
     <Button
@@ -593,20 +604,35 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
   // slidePointerStartRef 记录 slide 上 pointerdown 坐标，用于区分点击与拖动切换。
   const slidePointerStartRef = useRef<{ x: number; y: number } | null>(null)
 
-  // lightbox 需要的图片列表。
-  const slides = useMemo<PhotoSlide[]>(() => (
-    photos.map((photo) => ({
-      photoId: photo.photoId,
-      key: photo.key,
-      originalSize: photo.size,
-      preview: photo.preview || "",
-      src: photo.thumbnail || photo.preview || "",
-      thumbnail: photo.thumbnail || photo.preview || "",
-      thumbHash: photo.thumbHash ?? "",
-      width: photo.width ?? undefined,
-      height: photo.height ?? undefined,
-      alt: photo.name,
-    }))
+  // 图片沿用自定义渲染，视频交给 Video 插件播放，派生预览图作为封面。
+  const slides = useMemo<(PhotoSlide | VideoSlide)[]>(() => (
+    photos.map((photo): PhotoSlide | VideoSlide => {
+      const common = {
+        photoId: photo.photoId,
+        thumbnail: photo.thumbnail || photo.preview || "",
+        thumbHash: photo.thumbHash ?? "",
+        width: photo.width ?? undefined,
+        height: photo.height ?? undefined,
+        alt: photo.name,
+      }
+
+      if (photo.type.startsWith("video/")) {
+        return {
+          ...common,
+          type: "video",
+          poster: photo.preview || photo.thumbnail || "",
+          sources: [{ src: photo.key, type: photo.type }],
+        }
+      }
+
+      return {
+        ...common,
+        key: photo.key,
+        originalSize: photo.size,
+        preview: photo.preview || "",
+        src: photo.thumbnail || photo.preview || "",
+      }
+    })
   ), [photos])
   const actionsVisible = showActions && zoomLevel <= 1
 
@@ -672,6 +698,8 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
   // 处理照片切换后的原图加载。
   function handleView(nextIndex: number) {
     setViewIndex(nextIndex)
+    setZoomLevel(1)
+    setShowActions(true)
 
     const photo = photos[nextIndex]
     const preview = photo.preview
@@ -686,8 +714,9 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
     setOriginalProgress(null)
     setOriginalError(false)
     setShowOriginalProgress(false)
+    setOriginalPhoto(null)
 
-    if (!preview) {
+    if (!preview || photo.type.startsWith("video/")) {
       return
     }
 
@@ -701,10 +730,10 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
       const nextPhotoIndex = nextIndex < photos.length - 1 ? nextIndex + 1 : 0
       const targets = new Map<string, PhotoVo>()
 
-      if (photos[prevIndex]?.preview) {
+      if (photos[prevIndex]?.preview && !photos[prevIndex].type.startsWith("video/")) {
         targets.set(photos[prevIndex].photoId, photos[prevIndex])
       }
-      if (photos[nextPhotoIndex]?.preview) {
+      if (photos[nextPhotoIndex]?.preview && !photos[nextPhotoIndex].type.startsWith("video/")) {
         targets.set(photos[nextPhotoIndex].photoId, photos[nextPhotoIndex])
       }
 
@@ -821,7 +850,13 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
           style: photoViewerPortalStyle,
         },
       }}
-      plugins={fullscreenOpen ? [Fullscreen, Zoom] : [Thumbnails, Fullscreen, Zoom]}
+      plugins={fullscreenOpen ? [Fullscreen, Zoom, Video] : [Thumbnails, Fullscreen, Zoom, Video]}
+      video={{
+        controls: true,
+        autoPlay: false,
+        playsInline: true,
+        preload: "none",
+      }}
       zoom={{
         scrollToZoom: true,
         wheelZoomDistanceFactor: 100,
@@ -932,11 +967,11 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
           )
         },
         thumbnail: ({ slide, rect }) => {
-          if (!isImageSlide(slide)) {
+          if (!isImageSlide(slide) && slide.type !== "video") {
             return null
           }
 
-          const photoSlide = slide as PhotoSlide
+          const photoSlide = slide as PhotoSlide | VideoSlide
 
           return (
             <div
@@ -963,6 +998,9 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
                   event.currentTarget.style.display = "none"
                 }}
               />
+              {slide.type === "video" && (
+                <PlayIcon className="pointer-events-none absolute inset-0 m-auto size-5 fill-white text-white drop-shadow" aria-hidden />
+              )}
             </div>
           )
         }

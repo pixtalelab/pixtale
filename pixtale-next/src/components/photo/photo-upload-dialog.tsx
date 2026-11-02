@@ -50,7 +50,7 @@ type UploadStatus = "new" | "waiting" | "uploading" | "success" | "failed" | "sk
 
 interface UploadPreview {
   id: string
-  cover: ImageBitmap
+  cover: ImageBitmap | null
   file: File
   albumId: string | null
   progress: number
@@ -177,7 +177,7 @@ export function PhotoUploadDialog() {
   useEffect(() => {
     return () => {
       previewGenerationRef.current += 1
-      previewsRef.current.forEach((preview) => preview.cover.close())
+      previewsRef.current.forEach((preview) => preview.cover?.close())
     }
   }, [])
 
@@ -195,7 +195,7 @@ export function PhotoUploadDialog() {
   // 清空弹窗内已生成的预览。
   function resetUpload() {
     previewGenerationRef.current += 1
-    previewsRef.current.forEach((preview) => preview.cover.close())
+    previewsRef.current.forEach((preview) => preview.cover?.close())
     uploadQueueRef.current = []
     uploadingRef.current = false
     setUploading(false)
@@ -213,7 +213,7 @@ export function PhotoUploadDialog() {
   async function addPhoto(file: File, generation: number) {
     const cover = await createPhotoCover(file)
     if (generation !== previewGenerationRef.current) {
-      cover.close()
+      cover?.close()
       return
     }
 
@@ -529,7 +529,7 @@ function PhotoUploadHeader({ drawer = false }: PhotoUploadHeaderProps) {
       <DrawerHeader className="text-left">
         <DrawerTitle>{t("title")}</DrawerTitle>
         <DrawerDescription className="sr-only">
-          Select photos to upload to the current photo list.
+          Select photos and videos to upload to the current photo list.
         </DrawerDescription>
       </DrawerHeader>
     )
@@ -539,7 +539,7 @@ function PhotoUploadHeader({ drawer = false }: PhotoUploadHeaderProps) {
     <DialogHeader>
       <DialogTitle>{t("title")}</DialogTitle>
       <DialogDescription className="sr-only">
-        Select photos to upload to the current photo list.
+        Select photos and videos to upload to the current photo list.
       </DialogDescription>
     </DialogHeader>
   )
@@ -571,7 +571,7 @@ function PhotoUploadGrid({ previews, onAddPhoto }: PhotoUploadGridProps) {
     <div className="grid grid-cols-3 content-start gap-1 md:grid-cols-4">
         {previews.map((preview) => (
           <div key={preview.id} className="relative aspect-square w-full overflow-hidden bg-muted [contain-intrinsic-size:160px_160px] [content-visibility:auto]">
-            <PhotoUploadCover cover={preview.cover} name={preview.file.name} />
+            {preview.cover && <PhotoUploadCover cover={preview.cover} name={preview.file.name} />}
             {preview.progress < 100 && (
               <div
                 className="pointer-events-none absolute inset-x-0 bottom-0 bg-black/60 transition-[height] duration-200"
@@ -626,7 +626,7 @@ function PhotoUploadFooter({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,video/*,.mkv,.mts,.m2ts"
         multiple
         className="hidden"
         onChange={onFileChange}
