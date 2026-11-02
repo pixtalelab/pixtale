@@ -36,6 +36,8 @@ export default function PhotoVideo({ slide, rect, active }: {
   const containerRef = useRef<HTMLDivElement>(null)
   // playerRef 保存当前播放器实例，用于判断全屏状态。
   const playerRef = useRef<Artplayer | null>(null)
+  // pointerRef 记录画面按下位置和拖动状态，避免拖动结束后误触播放。
+  const pointerRef = useRef<{ x: number; y: number; dragged: boolean } | null>(null)
   // 根据视频比例和查看器可用空间固定播放器尺寸，避免加载时布局跳动。
   const ratio = slide.width && slide.height ? slide.width / slide.height : 16 / 9
   const width = Math.min(rect.width, rect.height * ratio)
@@ -111,9 +113,33 @@ export default function PhotoVideo({ slide, rect, active }: {
     }
   }, [active, slide.src, slide.poster, locale])
 
-  // 播放器内的拖动和点击由播放器处理，避免进度条触发图库切换。
+  // 视频画面允许拖动切换，播放器控件和全屏操作仍由播放器处理。
   function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
-    event.stopPropagation()
+    const target = event.target as Element
+    pointerRef.current = null
+    if (playerRef.current?.fullscreen || (target.closest(".art-video-player") && !target.closest(".art-video"))) {
+      event.stopPropagation()
+      return
+    }
+
+    pointerRef.current = { x: event.clientX, y: event.clientY, dragged: false }
+  }
+
+  // 区分单击与拖动，不影响图库自身的滑动跟手逻辑。
+  function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    const pointer = pointerRef.current
+    if (pointer && (Math.abs(event.clientX - pointer.x) > 10 || Math.abs(event.clientY - pointer.y) > 10)) {
+      pointer.dragged = true
+    }
+  }
+
+  // 在播放器收到点击前拦截拖动产生的点击，防止误播放或暂停。
+  function handleClickCapture(event: React.MouseEvent<HTMLDivElement>) {
+    if (pointerRef.current?.dragged) {
+      event.preventDefault()
+      event.stopPropagation()
+    }
+    pointerRef.current = null
   }
 
   // 保留 Esc 关闭查看器，播放器全屏时则先交给浏览器退出全屏。
@@ -128,6 +154,8 @@ export default function PhotoVideo({ slide, rect, active }: {
       className="photo-video relative shrink-0 overflow-hidden bg-black bg-contain bg-center bg-no-repeat"
       style={{ width, height, backgroundImage: coverBackground ? `url("${coverBackground}")` : undefined }}
       onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onClickCapture={handleClickCapture}
       onKeyDown={handleKeyDown}
     >
       {slide.poster && (
