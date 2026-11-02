@@ -2,14 +2,14 @@
 
 import { type CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import Lightbox from "yet-another-react-lightbox"
-import { isImageSlide, type SlideImage, useController, useLightboxState } from "yet-another-react-lightbox"
+import { isImageSlide, type SlideImage, type SlideVideo, useController, useLightboxState } from "yet-another-react-lightbox"
 import Fullscreen from "yet-another-react-lightbox/plugins/fullscreen"
 import Thumbnails from "yet-another-react-lightbox/plugins/thumbnails"
+import Video from "yet-another-react-lightbox/plugins/video"
 import Zoom from "yet-another-react-lightbox/plugins/zoom"
 import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, CircleAlertIcon, CircleIcon, Menu, LoaderCircleIcon, MaximizeIcon, PanelRightClose, PanelRightOpen, RotateCwSquare } from "lucide-react"
 
 import { PhotoInfoSidebar, PhotoViewerBlurBackground } from "@/components/photo/photo-info-sidebar"
-import PhotoVideo, { type VideoSlide } from "@/components/photo/photo-video"
 import { useTapAction } from "@/hooks/use-tap-action"
 import { Button } from "@/components/ui/button"
 import { getThumbHashUrl } from "@/lib/thumb-hash"
@@ -44,6 +44,8 @@ type PhotoSlide = SlideImage & {
   // thumbHash 转换后的模糊色背景。
   thumbHash: string
 }
+
+type VideoSlide = SlideVideo & Pick<PhotoSlide, "photoId" | "thumbnail" | "thumbHash" | "alt">
 
 type FullscreenButtonProps = {
   // 当前是否处于全屏状态。
@@ -602,7 +604,7 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
   // slidePointerStartRef 记录 slide 上 pointerdown 坐标，用于区分点击与拖动切换。
   const slidePointerStartRef = useRef<{ x: number; y: number } | null>(null)
 
-  // 图片沿用自定义渲染，视频交给 ArtPlayer 播放，派生预览图作为封面。
+  // 图片沿用自定义渲染，视频使用图库自带插件，派生预览图作为封面。
   const slides = useMemo<(PhotoSlide | VideoSlide)[]>(() => (
     photos.map((photo): PhotoSlide | VideoSlide => {
       const common = {
@@ -619,7 +621,7 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
           ...common,
           type: "video",
           poster: photo.preview || photo.thumbnail || "",
-          src: photo.key,
+          sources: [{ src: photo.key, type: photo.type }],
         }
       }
 
@@ -848,7 +850,13 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
           style: photoViewerPortalStyle,
         },
       }}
-      plugins={fullscreenOpen ? [Fullscreen, Zoom] : [Thumbnails, Fullscreen, Zoom]}
+      plugins={fullscreenOpen ? [Fullscreen, Zoom, Video] : [Thumbnails, Fullscreen, Zoom, Video]}
+      video={{
+        controls: true,
+        autoPlay: false,
+        playsInline: true,
+        preload: "metadata",
+      }}
       zoom={{
         scrollToZoom: true,
         wheelZoomDistanceFactor: 100,
@@ -931,26 +939,26 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
         ),
         buttonFullscreen: () => null,
         buttonZoom: () => null,
-        slide: ({ slide, offset, rect }) => {
+        slideContainer: ({ slide, children }) => {
           if (slide.type === "video") {
+            const videoSlide = slide as VideoSlide
+
             return (
-              <div
-                className="relative flex h-full w-full items-center justify-center overflow-hidden"
-                onPointerDown={handleSlidePointerDown}
-                onPointerUp={handleSlidePointerUp}
-                onPointerCancel={handleSlidePointerCancel}
-              >
+              <div className="photo-video relative flex h-full w-full items-center justify-center overflow-hidden">
                 <img
-                  src={getThumbHashUrl(slide.thumbHash)}
+                  src={getThumbHashUrl(videoSlide.thumbHash)}
                   alt=""
                   className="pointer-events-none absolute inset-0 h-full w-full scale-110 blur-sm"
                   aria-hidden
                 />
-                <PhotoVideo key={slide.photoId} slide={slide} rect={rect} active={offset === 0} />
+                {children}
               </div>
             )
           }
 
+          return children
+        },
+        slide: ({ slide }) => {
           if (!isImageSlide(slide)) {
             return null
           }
