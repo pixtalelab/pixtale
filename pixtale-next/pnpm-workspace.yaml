@@ -11,3 +11,13 @@ allowBuilds:
 patchedDependencies:
   masonic@4.1.0: patches/masonic@4.1.0.patch
   yet-another-react-lightbox@3.32.1: patches/yet-another-react-lightbox@3.32.0.patch
+
+minimumReleaseAgeExclude:
+  - '@videojs/core@10.3.0'
+  - '@videojs/media@10.3.0'
+  - '@videojs/native-hls-video@10.3.0'
+  - '@videojs/react@10.3.0'
+  - '@videojs/spf@10.3.0'
+  - '@videojs/store@10.3.0'
+  - '@videojs/utils@10.3.0'
+  - video.js@10.3.0

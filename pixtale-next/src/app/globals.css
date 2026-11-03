@@ -6,6 +6,7 @@
 @import "yet-another-react-lightbox/styles.css";
 @import "yet-another-react-lightbox/plugins/counter.css";
 @import "yet-another-react-lightbox/plugins/thumbnails.css";
+@import "@videojs/react/video/skin.css";
 
 @font-face {
   font-family: "Bahamas Bold";
@@ -216,11 +217,24 @@ body.yarl__no_scroll > .os-theme-page {
 .yarl__slide {
     padding: 0 !important;
 }
-/* 原生视频位于模糊背景上方，并按查看器空间适配宽高。 */
-.photo-video .yarl__video_container {
-    position: relative;
-    z-index: 1;
-    max-width: 100% !important;
+/* 默认皮肤沿用图库的直角边缘和按比例完整显示。 */
+.photo-video {
+    --media-border-radius: 0;
+    --media-border-color: transparent;
+    --media-object-fit: contain;
+}
+/* 去掉控制条向画面延伸的渐变阴影。 */
+.photo-video .video-controls-backdrop {
+    display: none;
+}
+/* 首次播放前只显示中间按钮，悬浮或触摸也不显示控制条。 */
+.photo-video .video-skin:has(.photo-video-start:not([data-started])) .video-controls-content {
+    display: none;
+}
+/* 开始播放后由默认控制条接管，关闭中间的播放状态动画。 */
+.photo-video .photo-video-start[data-started],
+.photo-video .media-playback-status-indicator {
+    display: none;
 }
 .yarl__thumbnails_bottom .yarl__thumbnails_container {
     padding-top: 0;
