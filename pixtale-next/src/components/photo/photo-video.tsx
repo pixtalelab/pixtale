@@ -48,6 +48,11 @@ export default function PhotoVideo({ slide, rect, active, previewCover }: {
   const videoRef = useRef<HTMLVideoElement>(null)
   // 有效导航动画等待结束，回弹动画不触发播放器重建。
   const changing = Boolean(animation?.increment && animation.duration)
+  // activeRef / changingRef 给延迟触发的 play 读取当前切页状态。
+  const activeRef = useRef(active)
+  const changingRef = useRef(changing)
+  activeRef.current = active
+  changingRef.current = changing
   // poster 优先用高清封面，未加载完时沿用缩图。
   const poster = previewCover || slide.poster
   // 按视频比例铺满查看器的一个维度，不额外添加边距。
@@ -89,20 +94,35 @@ export default function PhotoVideo({ slide, rect, active, previewCover }: {
   // React 管理播放器挂载，清理时释放原生视频的资源。
   useLayoutEffect(() => {
     const video = videoRef.current
+    if (!video) {
+      return
+    }
+
+    const play = video.play.bind(video)
+    // 拖动松手会被播放器当成点击，切页过程中不允许开始播放。
+    video.play = () => {
+      if (!activeRef.current || changingRef.current) {
+        return Promise.resolve()
+      }
+      return play()
+    }
+
+    if (!active || changing) {
+      video.pause()
+    }
 
     return () => {
-      if (video) {
-        video.pause()
-        // 提交结束后仅清理已移除的节点，兼容开发模式重复挂载 effect。
-        queueMicrotask(() => {
-          if (!video.isConnected) {
-            video.removeAttribute("src")
-            video.load()
-          }
-        })
-      }
+      video.play = play
+      video.pause()
+      // 提交结束后仅清理已移除的节点，兼容开发模式重复挂载 effect。
+      queueMicrotask(() => {
+        if (!video.isConnected) {
+          video.removeAttribute("src")
+          video.load()
+        }
+      })
     }
-  }, [prepared, slide.src])
+  }, [prepared, slide.src, active, changing])
 
   // 画面允许图库拖动；控件和播放器全屏时的操作交给 Video.js。
   function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
@@ -166,7 +186,7 @@ export default function PhotoVideo({ slide, rect, active, previewCover }: {
                 aria-label={slide.alt}
               />
               <PlayButton className="photo-video-start absolute left-1/2 top-1/2 z-10 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center bg-transparent text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
-                <Play className="ml-1.5 h-10 md:h-12 w-10 md:w12 drop-shadow-md" fill="currentColor" aria-hidden="true" />
+                <Play className="ml-1.5 h-10 md:h-12 w-10 md:w-12 drop-shadow-md" fill="currentColor" aria-hidden="true" />
               </PlayButton>
               <BufferingIndicator className="photo-video-buffering pointer-events-none absolute inset-0 z-30 hidden items-center justify-center data-[visible]:flex">
                 <LoaderCircle className="h-6 w-6 md:h-8 md:w-8 animate-spin text-white drop-shadow-md" aria-hidden="true" />
