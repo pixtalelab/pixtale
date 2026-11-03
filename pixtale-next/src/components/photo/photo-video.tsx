@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useLocale } from "next-intl"
 import { LoaderCircle, Play } from "lucide-react"
 import { BufferingIndicator, PlayButton } from "@videojs/react"
@@ -8,6 +8,7 @@ import { I18nProvider } from "@videojs/react/i18n"
 import "@videojs/react/i18n/locales/zh/register"
 import { Video, VideoPlayer, VideoSkin } from "@videojs/react/video"
 import { useController, useLightboxState, type ContainerRect, type GenericSlide } from "yet-another-react-lightbox"
+import { getThumbHashUrl } from "@/lib/thumb-hash"
 
 export type VideoSlide = GenericSlide & {
   type: "video"
@@ -55,6 +56,8 @@ export default function PhotoVideo({ slide, rect, active, previewCover }: {
   changingRef.current = changing
   // poster 优先用高清封面，未加载完时沿用缩图。
   const poster = previewCover || slide.poster
+  // 缩图尚未绘出时，用模糊图盖住播放器黑底。
+  const blurCover = useMemo(() => getThumbHashUrl(slide.thumbHash), [slide.thumbHash])
   // 按视频比例铺满查看器的一个维度，不额外添加边距。
   const ratio = slide.width && slide.height ? slide.width / slide.height : 16 / 9
   const width = Math.min(rect.width, rect.height * ratio)
@@ -153,6 +156,18 @@ export default function PhotoVideo({ slide, rect, active, previewCover }: {
       onPointerDown={handlePointerDown}
       onKeyDown={handleKeyDown}
     >
+      {blurCover && (
+        <img
+          src={blurCover}
+          alt=""
+          draggable={false}
+          className="photo-video-cover pointer-events-none absolute inset-0 z-[1] h-full w-full scale-110 select-none object-cover blur-sm"
+          aria-hidden
+          onError={(event) => {
+            event.currentTarget.style.display = "none"
+          }}
+        />
+      )}
       {slide.poster && (
         <img
           src={slide.poster}
@@ -160,6 +175,9 @@ export default function PhotoVideo({ slide, rect, active, previewCover }: {
           draggable={false}
           className="photo-video-cover pointer-events-none absolute inset-0 z-[1] h-full w-full select-none object-contain"
           aria-hidden
+          onError={(event) => {
+            event.currentTarget.style.display = "none"
+          }}
         />
       )}
       {previewCover && previewCover !== slide.poster && (
@@ -168,6 +186,9 @@ export default function PhotoVideo({ slide, rect, active, previewCover }: {
           alt={slide.alt}
           draggable={false}
           className="photo-video-cover pointer-events-none absolute inset-0 z-[1] h-full w-full select-none object-contain"
+          onError={(event) => {
+            event.currentTarget.style.display = "none"
+          }}
         />
       )}
       <span className="photo-video-cover-play photo-video-start pointer-events-none absolute left-1/2 top-1/2 z-10 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center bg-transparent text-white" aria-hidden="true">
@@ -189,7 +210,7 @@ export default function PhotoVideo({ slide, rect, active, previewCover }: {
                 <Play className="ml-1.5 h-10 md:h-12 w-10 md:w-12 drop-shadow-md" fill="currentColor" aria-hidden="true" />
               </PlayButton>
               <BufferingIndicator className="photo-video-buffering pointer-events-none absolute inset-0 z-30 hidden items-center justify-center data-[visible]:flex">
-                <LoaderCircle className="h-6 w-6 md:h-8 md:w-8 animate-spin text-white drop-shadow-md" aria-hidden="true" />
+                <LoaderCircle className="h-6 w-6 animate-spin text-white drop-shadow-md" aria-hidden="true" />
               </BufferingIndicator>
             </VideoSkin>
           </VideoPlayer>

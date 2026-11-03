@@ -232,6 +232,10 @@ body.yarl__no_scroll > .os-theme-page {
 .photo-video:has(.photo-video-start[data-started]) .photo-video-cover-play {
     display: none;
 }
+/* 播放器自带封面加载失败时不显示裂开的图片。 */
+.photo-video .media-poster[data-error] {
+    display: none;
+}
 /* 去掉控制条向画面延伸的渐变阴影。 */
 .photo-video .video-controls-backdrop {
     display: none;
