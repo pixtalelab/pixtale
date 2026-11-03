@@ -222,6 +222,15 @@ body.yarl__no_scroll > .os-theme-page {
     --media-border-radius: 0;
     --media-border-color: transparent;
     --media-object-fit: contain;
+    --media-background: transparent;
+}
+/* 播放前用封面盖住播放器黑底，开始播放后再露出画面。 */
+.photo-video:has(.photo-video-start[data-started]) {
+    --media-background: oklch(0% 0 0);
+}
+.photo-video:has(.photo-video-start[data-started]) .photo-video-cover,
+.photo-video:has(.photo-video-start[data-started]) .photo-video-cover-play {
+    display: none;
 }
 /* 去掉控制条向画面延伸的渐变阴影。 */
 .photo-video .video-controls-backdrop {
@@ -236,6 +245,19 @@ body.yarl__no_scroll > .os-theme-page {
 .photo-video .media-playback-status-indicator {
     display: none;
 }
+/* 隐藏皮肤自带的 loading，改用 LoaderCircle。 */
+.photo-video .media-buffering-indicator {
+    display: none;
+}
+/* 中间播放按钮不使用播放器默认的悬浮底色。 */
+.photo-video .photo-video-start,
+.photo-video .photo-video-start:hover,
+.photo-video .photo-video-start:focus-visible,
+.photo-video .photo-video-start[data-highlighted] {
+    background-color: transparent;
+    color: inherit;
+}
+
 .yarl__thumbnails_bottom .yarl__thumbnails_container {
     padding-top: 0;
     padding-bottom: 0;

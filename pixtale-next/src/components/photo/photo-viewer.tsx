@@ -602,7 +602,7 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
   // slidePointerStartRef 记录 slide 上 pointerdown 坐标，用于区分点击与拖动切换。
   const slidePointerStartRef = useRef<{ x: number; y: number } | null>(null)
 
-  // 图片沿用自定义渲染，视频使用 Video.js，派生预览图作为封面。
+  // 图片沿用自定义渲染；视频先显示缩图，高清封面加载后再替换。
   const slides = useMemo<(PhotoSlide | VideoSlide)[]>(() => (
     photos.map((photo): PhotoSlide | VideoSlide => {
       const common = {
@@ -618,7 +618,8 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
         return {
           ...common,
           type: "video",
-          poster: photo.preview || photo.thumbnail || "",
+          poster: photo.thumbnail || photo.preview || "",
+          preview: photo.preview || "",
           src: photo.key,
         }
       }
@@ -714,11 +715,11 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
     setShowOriginalProgress(false)
     setOriginalPhoto(null)
 
-    if (!preview || photo.type.startsWith("video/")) {
+    if (!preview) {
       return
     }
 
-    // 当前照片加载完成后，再静默预热前后两张。
+    // 当前项加载完成后，再静默预热前后两张的高清图或视频封面。
     loadPreviewImage(preview, photo.photoId, currentPhotoIdRef, setOriginalPhoto, previewRequestsRef, getPhotoCache, setPhotoCache, () => {
       if (photos.length < 2) {
         return
@@ -728,10 +729,10 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
       const nextPhotoIndex = nextIndex < photos.length - 1 ? nextIndex + 1 : 0
       const targets = new Map<string, PhotoVo>()
 
-      if (photos[prevIndex]?.preview && !photos[prevIndex].type.startsWith("video/")) {
+      if (photos[prevIndex]?.preview) {
         targets.set(photos[prevIndex].photoId, photos[prevIndex])
       }
-      if (photos[nextPhotoIndex]?.preview && !photos[nextPhotoIndex].type.startsWith("video/")) {
+      if (photos[nextPhotoIndex]?.preview) {
         targets.set(photos[nextPhotoIndex].photoId, photos[nextPhotoIndex])
       }
 
@@ -941,7 +942,13 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
                   className="pointer-events-none absolute inset-0 h-full w-full scale-110 blur-sm"
                   aria-hidden
                 />
-                <PhotoVideo key={slide.photoId} slide={slide} rect={rect} active={offset === 0} />
+                <PhotoVideo
+                  key={slide.photoId}
+                  slide={slide}
+                  rect={rect}
+                  active={offset === 0}
+                  previewCover={originalPhoto?.key === slide.preview ? originalPhoto.key : undefined}
+                />
               </div>
             )
           }
