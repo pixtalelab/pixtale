@@ -303,7 +303,6 @@ class SyncService {
               _checkStopped();
               final photo = missing[next++];
               if (!isAllowedMediaName(photo.name)) continue;
-              if (storage.type == 3 && photo.size > 20 * 1024 * 1024) continue;
               try {
                 await _checkAccount(api.user);
                 final accepted = await _upload(

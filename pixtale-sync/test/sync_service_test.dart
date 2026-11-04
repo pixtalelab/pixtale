@@ -868,32 +868,6 @@ void main() {
     expect(records.map((task) => task.completedCount), [1, 1]);
   });
 
-  test('类型 3 的存储跳过超过 20MB 的文件', () async {
-    const limit = 20 * 1024 * 1024;
-    photos.albums = {
-      'a': [
-        localPhoto('small.jpg'),
-        localPhoto('exact.jpg', size: limit),
-        localPhoto('big.jpg', size: limit + 1),
-      ],
-      'b': [localPhoto('disk.jpg', size: limit + 1)],
-    };
-    await tasks.add([
-      'a',
-    ], storage: const Storage(id: 's3', name: '云存储', type: 3));
-    await tasks.add([
-      'b',
-    ], storage: const Storage(id: 'local-id', name: '本地照片', type: 1));
-    await service.start((_) {});
-    expect(api.attempts.keys, {'small.jpg', 'exact.jpg', 'disk.jpg'});
-    expect(
-      photos.opened,
-      unorderedEquals(['small.jpg', 'exact.jpg', 'disk.jpg']),
-    );
-    expect(await logs.list(failuresOnly: true), isEmpty);
-    expect((await tasks.list()).map((task) => task.completedCount), [2, 1]);
-  });
-
   test('所选存储失效时记录失败并跳过，不自动切到其他存储', () async {
     await storages.save([
       const Storage(id: 'deleted', name: '已删除存储', type: 3),
