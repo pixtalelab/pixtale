@@ -26,7 +26,8 @@ interface StorageObject {
 
 interface StorageUploadObject {
   key: string;
-  body: Uint8Array;
+  body?: Uint8Array;
+  path?: string;
   type?: string;
   metadata?: string[][];
 }

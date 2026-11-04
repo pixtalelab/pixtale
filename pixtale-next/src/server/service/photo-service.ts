@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { and, asc, count, desc, eq, getTableColumns, gte, inArray, isNotNull, like, lt, lte, notExists, or, sql, sum } from 'drizzle-orm';
 import { createId } from '@/server/lib/id';
 import { type Photo, photoTab } from '@/server/entity/photo';
@@ -28,16 +29,16 @@ import { albumService } from '@/server/service/album-service';
 import { settingService } from '@/server/service/setting-service';
 import { SettingPhotoDedupEnum, SettingSyncDeleteEnum } from '@/server/enums/setting-enum';
 import { formatHttpUrl, toMediaUrl } from '@/lib/url';
-import { fileChecksum } from '@/server/lib/crypto';
+import { fileChecksumFromPath } from '@/server/lib/crypto';
 import { processPhotoImages } from '@/server/lib/photo-process';
-import { readPhotoExifFromBuffer } from '@/server/lib/photo-exif';
+import { readPhotoExif } from '@/server/lib/photo-exif';
 import { type Exif } from '@/server/entity/exif';
 import { exifService } from '@/server/service/exif-service';
 import { buildPhotoKey, buildPreviewKey, buildThumbnailKey } from '@/server/lib/photo-path';
 import { type File as PhotoFile, fileTab } from '@/server/entity/file';
 import { fileService } from '@/server/service/file-service';
 import { FileTypeEnum } from '@/server/enums/file-enum';
-import { getMediaType } from '@/lib/media';
+import { type PhotoUpload } from '@/server/lib/photo-upload';
 import { readVideoFrame } from '@/server/lib/video-process';
 
 // 这个模块处理照片数据查询相关业务。
@@ -359,16 +360,9 @@ const photoService = {
   },
 
   // 上传照片或视频，视频先提取第一帧，再生成 preview、thumbnail 和元信息。
-  async add(form: FormData, userId: string): Promise<PhotoAddResultVo> {
+  async add(upload: PhotoUpload, userId: string): Promise<PhotoAddResultVo> {
 
-    const file = form.get('file') as File;
-    const storageId = String(form.get('storageId') ?? '');
-    const albumId = String(form.get('albumId') ?? '');
-    const lastModified = Number(form.get('lastModified') ?? 0);
-
-    if (!file) {
-      throw new BizError('photo.selectRequired');
-    }
+    const { name, path, size, type, storageId, albumId, lastModified } = upload;
 
     if (!storageId) {
       throw new BizError('storage.configRequired');
@@ -381,16 +375,17 @@ const photoService = {
       throw new BizError('storage.notFound');
     }
 
-    const { buffer, name, size, type } = await this.readPhotoUpload(file);
-    const checksum = await fileChecksum(new Blob([buffer]));
+    const checksum = await fileChecksumFromPath(path);
 
     if ((await this.exists({ checksum, name }, userId)).duplicate) {
       return { photo: null, duplicate: true };
     }
 
-    const cover = type.startsWith('video/') ? await readVideoFrame(buffer) : buffer;
-    const images = await processPhotoImages(cover);
-    const meta = await readPhotoExifFromBuffer(buffer);
+    const coverPath = type.startsWith('video/')
+      ? await readVideoFrame(path, join(upload.directory, 'frame.png'))
+      : path;
+    const images = await processPhotoImages(coverPath);
+    const meta = await readPhotoExif(path);
     const takenTime = meta.takenTime ?? new Date(lastModified > 0 ? lastModified : Date.now()).toISOString();
     const key = await this.resolvePhotoKey(userId, name);
     const photoId = createId();
@@ -414,7 +409,7 @@ const photoService = {
     const uploadFiles = [
       {
         key,
-        body: buffer,
+        path,
         type,
         metadata: originalMetadata,
       },
@@ -760,16 +755,6 @@ const photoService = {
         : null
     };
   },
-
-  // 从上传文件读取照片 buffer 及名称、大小、类型。
-  async readPhotoUpload(file: File): Promise<{ buffer: Buffer; name: string; size: number; type: string }> {
-    return {
-      buffer: Buffer.from(await file.arrayBuffer()),
-      name: file.name.trim(),
-      size: file.size,
-      type: getMediaType(file),
-    };
-  }
 }
 
 export { photoService }

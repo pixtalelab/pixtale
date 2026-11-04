@@ -5,15 +5,15 @@ import { rgbaToThumbHash } from "thumbhash"
 
 sharp.cache(false)
 
-// 用 sharp 生成 preview、thumbnail、thumbHash 和宽高。
-export async function processPhotoImages(buffer: Buffer) {
-  const metadata = await sharp(buffer).metadata()
+// 从图片文件路径生成 preview、thumbnail、thumbHash 和宽高。
+export async function processPhotoImages(filePath: string) {
+  const metadata = await sharp(filePath).metadata()
   // EXIF Orientation 5 到 8 会交换宽高，保存摆正后的原图尺寸而非预览尺寸。
   const swapDimensions = (metadata.orientation ?? 1) >= 5 && (metadata.orientation ?? 1) <= 8
   const width = (swapDimensions ? metadata.height : metadata.width) ?? 0
   const height = (swapDimensions ? metadata.width : metadata.height) ?? 0
   // 摆正并缩小后再导出像素，避免持有完整原图的 raw 缓冲区。
-  const { data, info } = await sharp(buffer)
+  const { data, info } = await sharp(filePath)
     .autoOrient()
     .resize({ width: 1440, height: 1440, fit: "outside", withoutEnlargement: true })
     .raw()

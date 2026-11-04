@@ -1,3 +1,5 @@
+import { createReadStream } from 'node:fs';
+import { stat } from 'node:fs/promises';
 import { DeleteObjectsCommand, GetObjectCommand, PutObjectCommand, type PutObjectCommandInput, S3Client } from '@aws-sdk/client-s3';
 import { type ReadBody, type StorageObject, type StorageRange, type StorageStrategy, type StorageUploadObject } from '@/server/storage/storage-types';
 import { registerStorageStrategy } from '@/server/storage/storage-registry';
@@ -72,15 +74,36 @@ class S3StorageStrategy implements StorageStrategy {
 
     for (const file of files) {
       const putOptions = file.metadata ? this.buildPutOptions(file.metadata) : {};
+      const upload = await this.openBody(file);
 
       await client.send(new PutObjectCommand({
         Bucket: bucket,
         Key: file.key,
-        Body: file.body,
+        Body: upload.body,
+        ContentLength: upload.contentLength,
         ...putOptions,
         ...(file.type ? { ContentType: file.type } : {}),
       }));
     }
+  }
+
+  // 打开上传内容。路径按文件流读取，避免把原文件载入内存。
+  private async openBody(file: StorageUploadObject): Promise<{ body: PutObjectCommandInput['Body']; contentLength: number }> {
+    if (file.path) {
+      return {
+        body: createReadStream(file.path),
+        contentLength: (await stat(file.path)).size,
+      };
+    }
+
+    if (file.body) {
+      return {
+        body: file.body,
+        contentLength: file.body.byteLength,
+      };
+    }
+
+    throw new Error('上传内容为空');
   }
 
   // 从 S3 读取完整文件或指定字节范围，并转成响应 body。

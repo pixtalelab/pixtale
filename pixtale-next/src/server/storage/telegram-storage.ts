@@ -1,3 +1,4 @@
+import { openAsBlob } from 'node:fs';
 import { type StorageObject, type StorageRange, type StorageStrategy, type StorageUploadObject } from '@/server/storage/storage-types';
 import { registerStorageStrategy } from '@/server/storage/storage-registry';
 import { type Storage } from '@/server/entity/storage';
@@ -29,20 +30,19 @@ class TelegramStorageStrategy implements StorageStrategy {
     const { token, chatId } = this.getConfig(storage);
     const formData = new FormData();
 
-    const media = files.map((file, index) => {
+    const media = [];
+
+    for (const [index, file] of files.entries()) {
       const fieldName = `file${index}`;
       const filename = this.getFilename(file);
-      const document = new Blob([file.body], {
-        type: file.type || 'application/octet-stream',
-      });
+      const document = await this.openBody(file);
 
       formData.append(fieldName, document, filename);
-
-      return {
+      media.push({
         type: 'document',
         media: `attach://${fieldName}`,
-      };
-    });
+      });
+    }
 
     formData.append('chat_id', chatId);
     formData.append('media', JSON.stringify(media));
@@ -63,6 +63,21 @@ class TelegramStorageStrategy implements StorageStrategy {
 
       files[index].key = fileId;
     });
+  }
+
+  // 打开上传内容。路径使用文件 Blob，避免先把原文件读进内存。
+  private async openBody(file: StorageUploadObject): Promise<Blob> {
+    const type = file.type || 'application/octet-stream';
+
+    if (file.path) {
+      return openAsBlob(file.path, { type });
+    }
+
+    if (file.body) {
+      return new Blob([file.body], { type });
+    }
+
+    throw new Error('上传内容为空');
   }
 
   // 从 Telegram 下载文件，透传字节范围并保留上游实际返回的分段信息。

@@ -1,8 +1,5 @@
 // 这个模块从原图 Exif 读取拍摄元数据。
 
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
-import { tmpdir } from "node:os"
-import { join } from "node:path"
 import { ExifDateTime, ExifTool, type Tags } from "exiftool-vendored"
 
 // 启用时区推断的 exiftool 实例。
@@ -179,14 +176,9 @@ function buildExifJson(tags: Tags) {
   return Object.keys(data).length ? JSON.stringify(data) : null
 }
 
-// 从原图 Exif 读取拍摄时间、经纬度与 exif JSON 字符串。
-export async function readPhotoExifFromBuffer(input: ArrayBuffer | Buffer) {
-  const source = input instanceof Buffer ? input : Buffer.from(input)
-  const dir = await mkdtemp(join(tmpdir(), "album-exif-"))
-  const filePath = join(dir, "photo")
-
+// 从原图文件路径读取拍摄时间、经纬度与 exif JSON 字符串。
+export async function readPhotoExif(filePath: string) {
   try {
-    await writeFile(filePath, source)
     const tags = await exiftool.read(filePath, { readArgs })
 
     return {
@@ -205,7 +197,5 @@ export async function readPhotoExifFromBuffer(input: ArrayBuffer | Buffer) {
       altitude: null,
       exif: null,
     }
-  } finally {
-    await rm(dir, { recursive: true, force: true })
   }
 }

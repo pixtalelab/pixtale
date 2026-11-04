@@ -1,7 +1,9 @@
+import { rm } from 'node:fs/promises';
 import { app } from '../hono/hono';
 import { Context } from "hono";
 import result from '@/server/model/result';
 import { photoService } from '@/server/service/photo-service';
+import { readPhotoUploadRequest } from '@/server/lib/photo-upload';
 import { getUserId } from "@/server/security/context";
 import { type PhotoDeleteBo, type PhotoExistsBo, type PhotoFavoriteBo, type PhotoListBo, type PhotoRecycleBo, type PhotoRestoreBo, type PhotoTakenDateListBo } from '@/server/entity/bo/photo';
 import { cache } from '@/server/infra/cache';
@@ -31,22 +33,25 @@ app.post('/photo/takenDateList', async (c: Context) => {
 
 // 上传照片或视频，后端生成 preview、thumbnail 和元信息。
 app.post('/photo/add', async (c: Context) => {
-  const form = await c.req.formData();
-  const lock = form.get('lock');
+  const upload = await readPhotoUploadRequest(c.req.raw);
 
-  if (typeof lock !== 'string' || !lock.trim()) {
-    return c.json(result.fail('Upload lock is required', 400), 400);
-  }
-
-  // 为上传锁添加用户命名空间，避免影响其他用户和业务缓存。
-  const userId = getUserId();
-  const key = `photo:upload:${userId}:${lock}`;
-  await cache.lock(key);
   try {
-    const data = await photoService.add(form, userId);
-    return c.json(result.ok(data));
+    if (!upload.lock) {
+      return c.json(result.fail('Upload lock is required', 400), 400);
+    }
+
+    // 为上传锁添加用户命名空间，避免影响其他用户和业务缓存。
+    const userId = getUserId();
+    const key = `photo:upload:${userId}:${upload.lock}`;
+    await cache.lock(key);
+    try {
+      const data = await photoService.add(upload, userId);
+      return c.json(result.ok(data));
+    } finally {
+      await cache.unlock(key);
+    }
   } finally {
-    await cache.unlock(key);
+    await rm(upload.directory, { recursive: true, force: true });
   }
 })
 

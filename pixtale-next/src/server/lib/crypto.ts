@@ -1,3 +1,6 @@
+import { createHash } from 'node:crypto';
+import { createReadStream } from 'node:fs';
+
 const encoder = new TextEncoder();
 
 interface HashResult {
@@ -27,17 +30,15 @@ export async function genHashPassword(password: string, salt: string): Promise<s
   return btoa(String.fromCharCode(...hashArray));
 }
 
-// 把哈希二进制转成 hex 字符串。
-function hashToHex(buffer: ArrayBuffer) {
-  return Array.from(new Uint8Array(buffer))
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('');
-}
+// 按文件路径流式计算 SHA-1 校验和。
+export async function fileChecksumFromPath(filePath: string) {
+  const hash = createHash('sha1');
 
-// 计算文件 SHA-1 校验和。
-export async function fileChecksum(file: Blob) {
-  const hashBuffer = await crypto.subtle.digest('SHA-1', await file.arrayBuffer());
-  return hashToHex(hashBuffer);
+  for await (const chunk of createReadStream(filePath)) {
+    hash.update(chunk);
+  }
+
+  return hash.digest('hex');
 }
 
 // 校验输入密码是否匹配保存的哈希。

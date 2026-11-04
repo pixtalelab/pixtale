@@ -32,7 +32,18 @@ class LocalStorageStrategy implements StorageStrategy {
     await Promise.all(files.map(async (file) => {
       const filePath = this.getLocalPath(file.key);
       await fs.mkdir(path.dirname(filePath), { recursive: true });
-      await fs.writeFile(filePath, file.body);
+
+      if (file.path) {
+        await fs.copyFile(file.path, filePath);
+        return;
+      }
+
+      if (file.body) {
+        await fs.writeFile(filePath, file.body);
+        return;
+      }
+
+      throw new Error('上传内容为空');
     }));
   }
 
