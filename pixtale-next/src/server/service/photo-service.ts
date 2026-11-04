@@ -19,12 +19,12 @@ import {
 import { PHOTO_LIST_PAGE_SIZE } from '@/server/const/global';
 import { PhotoFavoriteEnum, PhotoStatusEnum } from '@/server/enums/photo-enum';
 import { AlbumPublicEnum } from '@/server/enums/album-enum';
-import { StorageTypeEnum, StorageTypeOptions } from '@/server/enums/storage-enum';
+import { StorageTypeOptions } from '@/server/enums/storage-enum';
 import { type PageVo } from '@/server/entity/vo/common';
 import { type PhotoAddResultVo, type PhotoExistsVo, type PhotoNameSizeVo, type PhotoTakenDateVo, type PhotoTypeUsageVo, type PhotoVo } from '@/server/entity/vo/photo';
 import { type Storage } from '@/server/entity/storage';
 import { storageService } from '@/server/service/storage-service';
-import { buildContentDisposition, buildContentName, formatFileTimestamp, splitFileName } from '@/server/lib/file';
+import { buildContentDisposition, formatFileTimestamp, splitFileName } from '@/server/lib/file';
 import { albumService } from '@/server/service/album-service';
 import { settingService } from '@/server/service/setting-service';
 import { SettingPhotoDedupEnum, SettingSyncDeleteEnum } from '@/server/enums/setting-enum';
@@ -729,26 +729,15 @@ const photoService = {
     const preview = this.getFileKey(files, FileTypeEnum.PREVIEW) ?? '';
     const thumbnail = this.getFileKey(files, FileTypeEnum.THUMBNAIL) ?? '';
 
-    const isTelegramProxy = fileStorage?.type === StorageTypeEnum.TELEGRAM && Boolean(domain);
-    let originalDisposition = '';
-    let previewDisposition = '';
-    let thumbnailDisposition = '';
-
-    if (isTelegramProxy) {
-      originalDisposition = buildContentName(photo.name);
-      previewDisposition = buildContentName(photo.name, '_preview.jpg');
-      thumbnailDisposition = buildContentName(photo.name, '_thumb.webp');
-    }
-
     return {
       ...photo,
       exif: exifRow?.exif ?? null,
       latitude: exifRow?.latitude ?? null,
       longitude: exifRow?.longitude ?? null,
       altitude: exifRow?.altitude ?? null,
-      key: isTelegramProxy ? `${toMediaUrl(key, domain)}&${originalDisposition}` : toMediaUrl(key, domain) ?? null,
-      preview: isTelegramProxy ? `${toMediaUrl(preview, domain)}&${previewDisposition}` : toMediaUrl(preview, domain) ?? null,
-      thumbnail: isTelegramProxy ? `${toMediaUrl(thumbnail, domain)}&${thumbnailDisposition}` : toMediaUrl(thumbnail, domain) ?? null,
+      key: toMediaUrl(key, domain) ?? null,
+      preview: toMediaUrl(preview, domain) ?? null,
+      thumbnail: toMediaUrl(thumbnail, domain) ?? null,
       storageName: fileStorage?.name ?? null,
       storageTypeDesc: fileStorage
         ? StorageTypeOptions.find((item) => item.value === fileStorage.type)?.label ?? null

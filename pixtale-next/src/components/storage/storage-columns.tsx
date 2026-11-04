@@ -85,7 +85,7 @@ export function useStorageColumns({ onEdit, onSetTop, onToggleStatus, onDelete }
           return t("local")
         }
 
-        return row.original.type === StorageTypeEnum.TELEGRAM ? t("telegram") : t("objectStorage")
+        return t("objectStorage")
       },
     },
     {

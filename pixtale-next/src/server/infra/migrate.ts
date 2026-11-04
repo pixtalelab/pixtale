@@ -97,8 +97,6 @@ const createTableSqlList = [
         endpoint TEXT,
         access_key TEXT,
         secret_key TEXT,
-        tg_token TEXT,
-        tg_chat_id TEXT,
         user_id TEXT,
         sort INTEGER NOT NULL DEFAULT 0,
         status INTEGER DEFAULT 0

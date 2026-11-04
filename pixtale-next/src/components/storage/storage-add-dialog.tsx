@@ -39,8 +39,6 @@ function createStorageForm(storage?: StorageVo | null): StorageAddForm {
       endpoint: storage.endpoint ?? "",
       accessKey: storage.accessKey ?? "",
       secretKey: storage.secretKey ?? "",
-      tgToken: storage.tgToken ?? "",
-      tgChatId: storage.tgChatId ?? "",
       status: storage.status,
     }
   }
@@ -54,8 +52,6 @@ function createStorageForm(storage?: StorageVo | null): StorageAddForm {
     endpoint: "",
     accessKey: "",
     secretKey: "",
-    tgToken: "",
-    tgChatId: "",
   }
 }
 
@@ -65,7 +61,6 @@ export function StorageAddDialog({ title, open, storage, onOpenChange, onStorage
   const storageTypeOptions = [
     { label: t("local"), value: StorageTypeEnum.LOCAL, disabled: true },
     { label: t("objectStorage"), value: StorageTypeEnum.S3, disabled: false },
-    { label: t("telegram"), value: StorageTypeEnum.TELEGRAM, disabled: false },
   ]
   // resetTimerRef 保存关闭动画结束后重置表单的定时器。
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -75,7 +70,6 @@ export function StorageAddDialog({ title, open, storage, onOpenChange, onStorage
   const [errors, setErrors] = useState<StorageAddFormErrors>({})
 
   const isS3 = form.type === StorageTypeEnum.S3
-  const isTelegram = form.type === StorageTypeEnum.TELEGRAM
   // 编辑本地存储时不允许修改类型。
   const typeLocked = Boolean(storage && storage.type === StorageTypeEnum.LOCAL)
 
@@ -159,16 +153,6 @@ export function StorageAddDialog({ title, open, storage, onOpenChange, onStorage
       }
     }
 
-    if (isTelegram) {
-      if (!form.tgToken?.trim()) {
-        nextErrors.tgToken = t("tgTokenRequired")
-      }
-
-      if (!form.tgChatId?.trim()) {
-        nextErrors.tgChatId = t("tgChatIdRequired")
-      }
-    }
-
     setErrors(nextErrors)
 
     return Object.keys(nextErrors).length === 0
@@ -186,14 +170,12 @@ export function StorageAddDialog({ title, open, storage, onOpenChange, onStorage
       ...form,
       storageId: storage?.storageId ?? "",
       name,
-      domain: isS3 || isTelegram ? form.domain?.trim() || null : null,
+      domain: isS3 ? form.domain?.trim() || null : null,
       bucket: isS3 ? form.bucket?.trim() || null : null,
       region: isS3 ? form.region?.trim() || null : null,
       endpoint: isS3 ? form.endpoint?.trim() || null : null,
       accessKey: isS3 ? form.accessKey?.trim() || null : null,
       secretKey: isS3 ? form.secretKey?.trim() || null : null,
-      tgToken: isTelegram ? form.tgToken?.trim() || null : null,
-      tgChatId: isTelegram ? form.tgChatId?.trim() || null : null,
     })
     handleOpenChange(false)
   }
@@ -309,39 +291,6 @@ export function StorageAddDialog({ title, open, storage, onOpenChange, onStorage
                 onChange={(event) => updateField("secretKey", event.target.value)}
               />
               {errors.secretKey && <p className="text-sm text-destructive">{errors.secretKey}</p>}
-            </div>
-          </div>
-        )}
-
-        {isTelegram && (
-          <div className="grid gap-3">
-            <div className="grid gap-2">
-              <Input
-                value={form.domain ?? ""}
-                placeholder={t("telegramDomainPlaceholder")}
-                aria-label={t("telegramDomain")}
-                onChange={(event) => updateField("domain", event.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Input
-                value={form.tgChatId ?? ""}
-                placeholder="Chat ID"
-                aria-label="Token"
-                aria-invalid={Boolean(errors.tgChatId)}
-                onChange={(event) => updateField("tgChatId", event.target.value)}
-              />
-              {errors.tgChatId && <p className="text-sm text-destructive">{errors.tgChatId}</p>}
-            </div>
-            <div className="grid gap-2">
-              <Input
-                value={form.tgToken ?? ""}
-                placeholder="TG Token"
-                aria-label="TG Token"
-                aria-invalid={Boolean(errors.tgToken)}
-                onChange={(event) => updateField("tgToken", event.target.value)}
-              />
-              {errors.tgToken && <p className="text-sm text-destructive">{errors.tgToken}</p>}
             </div>
           </div>
         )}

@@ -4,7 +4,6 @@ import BizError from '@/server/error/biz-error';
 import { storageService } from '@/server/service/storage-service';
 import '@/server/storage/local-storage';
 import '@/server/storage/s3-storage';
-import '@/server/storage/telegram-storage';
 import { resolveStorageStrategy } from '@/server/storage/storage-registry';
 import { type StorageObject, type StorageRange, type StorageStrategy, type StorageUploadObject } from '@/server/storage/storage-types';
 

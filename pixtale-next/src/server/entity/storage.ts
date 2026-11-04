@@ -11,8 +11,6 @@ export const storageTab = sqliteTable('storage', {
   endpoint: text('endpoint'), // 接入端点
   accessKey: text('access_key'), // access
   secretKey: text('secret_key'), // secret
-  tgToken: text('tg_token'), // Telegram Bot Token
-  tgChatId: text('tg_chat_id'), // Telegram Chat ID
   userId: text('user_id'), // 创建用户id
   sort: integer('sort').default(0).notNull(), // 排序时间戳 值越大越靠前
   status: integer('status').default(0) // 状态 0启用 1禁用

@@ -120,8 +120,6 @@ export default function Page() {
       endpoint: storage.endpoint ?? null,
       accessKey: storage.accessKey ?? null,
       secretKey: storage.secretKey ?? null,
-      tgToken: storage.tgToken ?? null,
-      tgChatId: storage.tgChatId ?? null,
       userId: editingStorage.userId,
       sort: editingStorage.sort,
       status: storage.status ?? editingStorage.status,

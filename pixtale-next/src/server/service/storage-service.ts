@@ -216,8 +216,6 @@ const storageService = {
         endpoint: params.endpoint?.trim() || null,
         accessKey: params.accessKey?.trim() || null,
         secretKey: params.secretKey?.trim() || null,
-        tgToken: params.tgToken?.trim() || null,
-        tgChatId: params.tgChatId?.trim() || null,
         status: params.status ?? StorageStatusEnum.NORMAL
       })
       .where(eq(storageTab.storageId, params.storageId));
