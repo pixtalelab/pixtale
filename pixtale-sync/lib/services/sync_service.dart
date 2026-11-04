@@ -302,7 +302,7 @@ class SyncService {
             while (!_stopped && next < missing.length) {
               _checkStopped();
               final photo = missing[next++];
-              if (!isAllowedImageName(photo.name)) continue;
+              if (!isAllowedMediaName(photo.name)) continue;
               if (storage.type == 3 && photo.size > 20 * 1024 * 1024) continue;
               try {
                 await _checkAccount(api.user);
@@ -447,7 +447,7 @@ class SyncService {
     }
   }
 
-  /// 上传照片。重复文件视为已成功，文件头不在白名单时跳过。
+  /// 上传照片或视频。重复文件视为已成功，文件头不在白名单时跳过。
   Future<bool> _upload(
     SyncApi api,
     SyncPhoto photo,
@@ -459,7 +459,7 @@ class SyncService {
     try {
       final file = await _photos.getFile(photo, token);
       _checkStopped();
-      if (!isAllowedImageHeader(await readImageHeader(file))) return false;
+      if (!isAllowedMediaHeader(await readMediaHeader(file))) return false;
       // 重试保留相同锁，防止服务端并行处理同一份上传。
       final lock = '${DateTime.now().microsecondsSinceEpoch}-${photo.id}';
       await _retry(

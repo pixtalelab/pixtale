@@ -88,6 +88,47 @@ void main() {
     }
   });
 
+  test('最新文件是视频时，封面仍使用最新图片', () async {
+    final video = File(p.join(directory.path, 'new.mp4'));
+    await video.writeAsBytes(const [
+      0x00, 0x00, 0x00, 0x18, //
+      0x66, 0x74, 0x79, 0x70, // ftyp
+      0x71, 0x74, 0x20, 0x20, // qt
+    ]);
+    await video.setLastModified(DateTime(2024));
+    final image = File(p.join(directory.path, 'old.png'));
+    await image.writeAsBytes(await createImage(80, 40));
+    await image.setLastModified(DateTime(2020));
+
+    final info = await service.getInfo(album);
+    expect(info.count, 2);
+    final codec = await ui.instantiateImageCodec(info.cover!);
+    try {
+      final frame = (await codec.getNextFrame()).image;
+      try {
+        expect(frame.width, 80);
+        expect(frame.height, 40);
+      } finally {
+        frame.dispose();
+      }
+    } finally {
+      codec.dispose();
+    }
+  });
+
+  test('只有视频时保留数量，不生成封面', () async {
+    final video = File(p.join(directory.path, 'only.mov'));
+    await video.writeAsBytes(const [
+      0x00, 0x00, 0x00, 0x14, //
+      0x66, 0x74, 0x79, 0x70, // ftyp
+      0x71, 0x74, 0x20, 0x20, // qt
+    ]);
+
+    final info = await service.getInfo(album);
+    expect(info.count, 1);
+    expect(info.cover, isNull);
+  });
+
   test('扩展名和文件头都在白名单才保留', () async {
     const jpeg = [0xFF, 0xD8, 0xFF];
     const png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
@@ -95,6 +136,26 @@ void main() {
     const webp = [
       0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, // RIFF
       0x57, 0x45, 0x42, 0x50, // WEBP
+    ];
+    final mp4 = [
+      0x00, 0x00, 0x00, 0x18, //
+      0x66, 0x74, 0x79, 0x70, // ftyp
+      0x69, 0x73, 0x6F, 0x6D, // isom
+    ];
+    final mov = [
+      0x00, 0x00, 0x00, 0x14, //
+      0x66, 0x74, 0x79, 0x70, // ftyp
+      0x71, 0x74, 0x20, 0x20, // qt
+    ];
+    final ebml = [0x1A, 0x45, 0xDF, 0xA3];
+    final avi = [
+      0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, // RIFF
+      0x41, 0x56, 0x49, 0x20, // AVI
+    ];
+    final gp = [
+      0x00, 0x00, 0x00, 0x18, //
+      0x66, 0x74, 0x79, 0x70, // ftyp
+      0x33, 0x67, 0x70, 0x35, // 3gp5
     ];
     final accepted = {
       'a.jpg': jpeg,
@@ -104,6 +165,11 @@ void main() {
       'e.webp': webp,
       'f.gif': gif,
       'mismatch.jpg': png,
+      'movie.mp4': mp4,
+      'clip.mov': mov,
+      'browser.webm': ebml,
+      'film.mkv': ebml,
+      'old.avi': avi,
     };
     for (final entry in accepted.entries) {
       await File(p.join(directory.path, entry.key)).writeAsBytes(entry.value);
@@ -126,8 +192,22 @@ void main() {
       0,
       0,
     ];
+    const heic = [
+      0x00, 0x00, 0x00, 0x18, //
+      0x66, 0x74, 0x79, 0x70, // ftyp
+      0x68, 0x65, 0x69, 0x63, // heic
+    ];
     for (final name in [
       'broken.jpg',
+      'bad.mp4',
+      'photo.mp4',
+      'renamed.mp4',
+      'phone.m4v',
+      'disc.mpg',
+      'disc.mpeg',
+      'mobile.3gp',
+      'camera.mts',
+      'camera.m2ts',
       'g.avif',
       'h.heic',
       'i.heif',
@@ -139,20 +219,41 @@ void main() {
       final bytes = switch (name) {
         'h.heic' => jpeg,
         'g.avif' => avif,
+        'photo.mp4' => heic,
+        'renamed.mp4' => gp,
         _ => const [1, 2, 3],
       };
       await File(p.join(directory.path, name)).writeAsBytes(bytes);
     }
 
     expect(await service.count(album), accepted.length);
-    final names = await service
+    final photos = await service
         .scanAlbum(album, isStopped: () => false)
         .expand((page) => page)
-        .map((photo) => photo.name.toLowerCase())
         .toList();
     expect(
-      names,
+      photos.map((photo) => photo.name.toLowerCase()),
       unorderedEquals(accepted.keys.map((name) => name.toLowerCase())),
+    );
+    expect(
+      photos.singleWhere((photo) => photo.name == 'movie.mp4').mimeType,
+      'video/mp4',
+    );
+    expect(
+      photos.singleWhere((photo) => photo.name == 'clip.mov').mimeType,
+      'video/quicktime',
+    );
+    expect(
+      photos.singleWhere((photo) => photo.name == 'browser.webm').mimeType,
+      'video/webm',
+    );
+    expect(
+      photos.singleWhere((photo) => photo.name == 'film.mkv').mimeType,
+      'video/x-matroska',
+    );
+    expect(
+      photos.singleWhere((photo) => photo.name == 'old.avi').mimeType,
+      'video/x-msvideo',
     );
   });
 }

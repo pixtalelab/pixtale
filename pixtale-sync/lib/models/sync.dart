@@ -5,7 +5,7 @@ import 'package:mime/mime.dart';
 import 'package:path/path.dart' as p;
 import 'package:photo_manager/photo_manager.dart';
 
-// 同步使用的本地照片、远端配置及进度数据。
+// 同步使用的本地照片、视频、远端配置及进度数据。
 
 /// 电脑筛选和手机上传都接受的图片扩展名。
 const allowedImageExtensions = {
@@ -17,7 +17,16 @@ const allowedImageExtensions = {
   '.gif',
 };
 
-/// 文件头识别结果里允许上传的 MIME。
+/// 允许上传的视频扩展名。
+const allowedVideoExtensions = {
+  '.mp4',
+  '.mov',
+  '.webm',
+  '.mkv',
+  '.avi',
+};
+
+/// 文件头识别结果里允许上传的图片 MIME。
 const _allowedImageMimeTypes = {
   'image/jpeg',
   'image/png',
@@ -25,12 +34,52 @@ const _allowedImageMimeTypes = {
   'image/webp',
 };
 
-/// 按文件名判断扩展名是否在白名单内。
+/// 文件头识别结果里允许上传的视频 MIME。
+const _allowedVideoMimeTypes = {
+  'video/mp4',
+  'video/quicktime',
+  'video/webm',
+  'video/x-matroska',
+  'video/x-msvideo',
+};
+
+/// MP4 和 MOV 的 ftyp 品牌。3GP、M4V 等其他品牌不在其中。
+const _videoBrands = {
+  'isom',
+  'iso2',
+  'iso3',
+  'iso4',
+  'iso5',
+  'iso6',
+  'mp41',
+  'mp42',
+  'mp71',
+  'avc1',
+  'avc3',
+  'hev1',
+  'hvc1',
+  'qt  ',
+  'dash',
+  'MSNV',
+  'dvhe',
+  'dvh1',
+  'av01',
+  'mmp4',
+};
+
+/// 按文件名判断扩展名是否为允许的图片。
 bool isAllowedImageName(String name) =>
     allowedImageExtensions.contains(p.extension(name).toLowerCase());
 
-/// 读取图片开头，长度足够匹配 mime 的全部文件头。
-Future<Uint8List> readImageHeader(File file) async {
+/// 按文件名判断扩展名是否为允许的图片或视频。
+bool isAllowedMediaName(String name) {
+  final extension = p.extension(name).toLowerCase();
+  return allowedImageExtensions.contains(extension) ||
+      allowedVideoExtensions.contains(extension);
+}
+
+/// 读取文件开头，供扩展名之外的类型判断。
+Future<Uint8List> readMediaHeader(File file) async {
   final handle = await file.open();
   try {
     return await handle.read(defaultMagicNumbersMaxLength);
@@ -39,10 +88,39 @@ Future<Uint8List> readImageHeader(File file) async {
   }
 }
 
-/// 文件头是否属于白名单中的图片。扩展名和真实类型可以不同。
-bool isAllowedImageHeader(List<int> bytes) {
+/// 文件头是否属于白名单中的图片或视频。扩展名和真实类型可以不同。
+bool isAllowedMediaHeader(List<int> bytes) {
   final mimeType = lookupMimeType('header', headerBytes: bytes);
-  return _allowedImageMimeTypes.contains(mimeType);
+  if (_allowedImageMimeTypes.contains(mimeType)) return true;
+  if (_allowedVideoMimeTypes.contains(mimeType)) return true;
+  // WebM 和 MKV 的 EBML 头会被识别成 audio/weba。
+  if (mimeType == 'audio/weba') return true;
+  return _isMp4OrMov(bytes) || _isAvi(bytes);
+}
+
+/// ftyp 品牌是否属于 MP4 或 MOV。mime 包只认识其中一部分 MP4。
+bool _isMp4OrMov(List<int> bytes) {
+  if (bytes.length < 12) return false;
+  if (bytes[4] != 0x66 ||
+      bytes[5] != 0x74 ||
+      bytes[6] != 0x79 ||
+      bytes[7] != 0x70) {
+    return false;
+  }
+  return _videoBrands.contains(String.fromCharCodes(bytes.sublist(8, 12)));
+}
+
+/// RIFF 容器的类型是否为 AVI。
+bool _isAvi(List<int> bytes) {
+  if (bytes.length < 12) return false;
+  return bytes[0] == 0x52 &&
+      bytes[1] == 0x49 &&
+      bytes[2] == 0x46 &&
+      bytes[3] == 0x46 &&
+      bytes[8] == 0x41 &&
+      bytes[9] == 0x56 &&
+      bytes[10] == 0x49 &&
+      bytes[11] == 0x20;
 }
 
 /// 扫描出的本地照片，文件大小仅用于本轮查重。

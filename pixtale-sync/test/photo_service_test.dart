@@ -6,7 +6,7 @@ import 'package:media_store/media_store.dart';
 import 'package:pixtale_sync/services/mobile_photo_service.dart';
 import 'package:pixtale_sync/services/photo_service.dart';
 
-// 验证照片直接计数与混合媒体封面互不影响。
+// 验证图片和视频一起计数，封面仍取混合媒体中的最新一项。
 
 /// 执行移动端照片数量与封面查询测试。
 void main() {
@@ -64,30 +64,30 @@ void main() {
         .setMockMethodCallHandler(channel, null);
   });
 
-  test('Recent 大相册只发起一次照片计数，不读取分页或重新恢复相册', () async {
+  test('Recent 大相册只发起一次图片和视频计数，不读取分页或重新恢复相册', () async {
     imageCount = 25000;
     mediaCount = 30000;
 
-    expect(await service.count(album), 25000);
+    expect(await service.count(album), 30000);
     expect(calls.map((call) => call.method), ['getAssetCountFromPath']);
     expect(calls.single.arguments['id'], 'isAll');
-    expect(calls.single.arguments['type'], RequestType.image.value);
+    expect(calls.single.arguments['type'], RequestType.common.value);
     expect(calls.single.arguments['option'], entity.filterOption!.toMap());
     expect(entity.type, RequestType.common);
     expect(entity.isAll, isTrue);
   });
 
-  test('纯视频相册照片为零，仍从混合媒体中读取最新视频封面', () async {
+  test('纯视频相册计入视频数量，并从混合媒体读取最新视频封面', () async {
     mediaCount = 12;
     final info = await service.getInfo(album);
 
-    expect(info.count, 0);
+    expect(info.count, 12);
     expect(info.cover, orderedEquals(cover));
     final counts = calls.where(
       (call) => call.method == 'getAssetCountFromPath',
     );
     expect(counts.map((call) => call.arguments['type']), [
-      RequestType.image.value,
+      RequestType.common.value,
       RequestType.common.value,
     ]);
     final range = calls.singleWhere(
@@ -155,7 +155,7 @@ void main() {
     expect(albums.last.entity?.lastModified, DateTime.fromMillisecondsSinceEpoch(100000));
   });
 
-  test('照片计数失败交给调用方处理，不回退成包含视频的错误数量', () async {
+  test('图片和视频计数失败交给调用方处理', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
           calls.add(call);

@@ -9,7 +9,7 @@ import 'package:pixtale_sync/models/sync.dart';
 import 'package:pixtale_sync/request/request.dart';
 import 'package:pixtale_sync/services/photo_service.dart';
 
-// 使用文件系统读取 Windows、macOS 和 Linux 的本地图片目录。
+// 使用文件系统读取 Windows、macOS 和 Linux 的本地图片和视频目录。
 
 /// 桌面端目录扫描实现。
 class DirectoryPhotoService extends PhotoService {
@@ -54,17 +54,23 @@ class DirectoryPhotoService extends PhotoService {
     );
   }
 
-  /// 读取目录中的图片数量和最新修改图片的缩略封面。
+  /// 读取目录中的图片和视频数量，封面使用最新的图片。
   @override
   Future<PhotoAlbumInfo> getInfo(
     PhotoAlbum album, {
-    bool imagesOnly = true,
+    bool imagesOnly = false,
   }) async {
     final photos = await _files(album);
+    File? coverFile;
+    for (final file in photos) {
+      if (!isAllowedImageName(file.path)) continue;
+      coverFile = file;
+      break;
+    }
     return PhotoAlbumInfo(
       album: album,
       count: photos.length,
-      cover: photos.isEmpty ? null : await _readCover(photos.first),
+      cover: coverFile == null ? null : await _readCover(coverFile),
     );
   }
 
@@ -93,11 +99,11 @@ class DirectoryPhotoService extends PhotoService {
     }
   }
 
-  /// 统计目录中的图片数量。
+  /// 统计目录中的图片和视频数量。
   @override
   Future<int> count(PhotoAlbum album) async => (await _files(album)).length;
 
-  /// 分页扫描目录图片，并按修改时间倒序返回。
+  /// 分页扫描目录中的图片和视频，并按修改时间倒序返回。
   @override
   Stream<List<SyncPhoto>> scanAlbum(
     PhotoAlbum album, {
@@ -120,7 +126,7 @@ class DirectoryPhotoService extends PhotoService {
             size: stat.size,
             path: file.path,
             modifiedDateTime: stat.modified,
-            mimeType: imageMimeType(file.path),
+            mimeType: mediaMimeType(file.path),
           ),
         );
       }
@@ -128,7 +134,7 @@ class DirectoryPhotoService extends PhotoService {
     }
   }
 
-  /// 收集当前目录下的图片并按修改时间倒序排列。
+  /// 收集当前目录下的图片和视频，并按修改时间倒序排列。
   Future<List<File>> _files(PhotoAlbum album) async {
     final directory = album.directory;
     if (directory == null) {
@@ -139,8 +145,8 @@ class DirectoryPhotoService extends PhotoService {
       recursive: false,
       followLinks: false,
     )) {
-      if (entity is! File || !isAllowedImageName(entity.path)) continue;
-      if (!isAllowedImageHeader(await readImageHeader(entity))) continue;
+      if (entity is! File || !isAllowedMediaName(entity.path)) continue;
+      if (!isAllowedMediaHeader(await readMediaHeader(entity))) continue;
       files.add(entity);
     }
     final stats = <String, FileStat>{
@@ -155,7 +161,7 @@ class DirectoryPhotoService extends PhotoService {
 }
 
 /// 根据文件扩展名提供上传 MIME 类型。
-String imageMimeType(String filePath) {
+String mediaMimeType(String filePath) {
   switch (p.extension(filePath).toLowerCase()) {
     case '.jpg':
     case '.jpeg':
@@ -167,6 +173,16 @@ String imageMimeType(String filePath) {
       return 'image/gif';
     case '.webp':
       return 'image/webp';
+    case '.mp4':
+      return 'video/mp4';
+    case '.mov':
+      return 'video/quicktime';
+    case '.webm':
+      return 'video/webm';
+    case '.mkv':
+      return 'video/x-matroska';
+    case '.avi':
+      return 'video/x-msvideo';
     default:
       return 'application/octet-stream';
   }

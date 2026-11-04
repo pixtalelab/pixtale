@@ -487,6 +487,12 @@ void main() {
       0x0A,
     ];
     photos.headers['broken.jpg'] = const [1, 2, 3, 4];
+    photos.headers['clip.mp4'] = const [
+      0x00, 0x00, 0x00, 0x18, //
+      0x66, 0x74, 0x79, 0x70, // ftyp
+      0x71, 0x74, 0x20, 0x20, // qt
+    ];
+    photos.headers['bad.mp4'] = const [1, 2, 3, 4];
     photos.albums = {
       'a': [
         localPhoto('keep.jpg'),
@@ -494,6 +500,8 @@ void main() {
         localPhoto('broken.jpg'),
         localPhoto('skip.heic'),
         localPhoto('skip.bmp'),
+        localPhoto('clip.mp4'),
+        localPhoto('bad.mp4'),
         const SyncPhoto(
           name: 'raw',
           size: 123,
@@ -504,13 +512,19 @@ void main() {
     };
     await tasks.add(['a']);
     await service.start((_) {});
-    expect(api.attempts.keys, {'keep.jpg', 'mismatch.jpg'});
+    expect(api.attempts.keys, {'keep.jpg', 'mismatch.jpg', 'clip.mp4'});
     expect(
       photos.opened,
-      unorderedEquals(['keep.jpg', 'mismatch.jpg', 'broken.jpg']),
+      unorderedEquals([
+        'keep.jpg',
+        'mismatch.jpg',
+        'broken.jpg',
+        'clip.mp4',
+        'bad.mp4',
+      ]),
     );
     expect(await logs.list(failuresOnly: true), isEmpty);
-    expect((await tasks.list()).single.completedCount, 2);
+    expect((await tasks.list()).single.completedCount, 3);
   });
 
   test('完成一轮后保持定时开启，停止可立即结束等待', () async {

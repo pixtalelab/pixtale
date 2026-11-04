@@ -60,20 +60,20 @@ class PhotoService {
     );
   }
 
-  /// 读取相册数量和最新封面。
+  /// 读取相册中的图片和视频数量，以及最新封面。
   Future<PhotoAlbumInfo> getInfo(
     PhotoAlbum album, {
-    bool imagesOnly = true,
+    bool imagesOnly = false,
   }) async {
     final entity = album.entity;
     if (entity == null) throw const ApiException("Couldn't read the local album");
-    final count = imagesOnly
+    final total = imagesOnly
         ? await countImages(entity)
-        : await entity.assetCountAsync;
+        : await count(album);
     final assets = await entity.getAssetListRange(start: 0, end: 1);
     return PhotoAlbumInfo(
       album: album,
-      count: count,
+      count: total,
       cover: assets.isEmpty
           ? null
           : await assets.first.thumbnailDataWithSize(
@@ -89,7 +89,7 @@ class PhotoService {
     return entity.assetCountAsync;
   }
 
-  /// 扫描相册中的图片。
+  /// 扫描相册中的图片和视频。
   Stream<List<SyncPhoto>> scanAlbum(
     PhotoAlbum album, {
     required bool Function() isStopped,
@@ -101,11 +101,11 @@ class PhotoService {
     return scan(entity, isStopped: isStopped);
   }
 
-  /// 统计相册中的图片。
+  /// 统计相册中的图片和视频。
   Future<int> count(PhotoAlbum album) async {
     final entity = album.entity;
     if (entity == null) throw const ApiException("Couldn't read the local album");
-    return countImages(entity);
+    return entity.assetCountAsync;
   }
 
   /// 根据已保存的系统 ID 恢复相册。系统查不到该相册时返回空。
@@ -139,7 +139,7 @@ class PhotoService {
       final assets = await album.getAssetListPaged(
         page: page,
         size: scanPageSize,
-        type: RequestType.image,
+        type: RequestType.common,
       );
       if (assets.isEmpty) return;
       var useAndroidPage = Platform.isAndroid;
