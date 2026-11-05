@@ -25,6 +25,7 @@ interface PhotoListBo {
 interface PhotoExistsBo {
   checksum: string;
   name: string;
+  albumId?: string | null;
 }
 
 interface PhotoRecycleBo {

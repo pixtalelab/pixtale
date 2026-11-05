@@ -1,6 +1,6 @@
 import { SETTING_KEY } from '@/server/const/global';
 import { type Setting } from '@/server/entity/setting';
-import { SettingListStyleEnum, SettingPhotoDedupEnum, SettingPublicAlbumEnum, SettingSyncDeleteEnum } from '@/server/enums/setting-enum';
+import { SettingListStyleEnum, SettingPublicAlbumEnum, SettingSyncDeleteEnum } from '@/server/enums/setting-enum';
 import { db } from '@/server/infra/db';
 
 // 这个模块负责数据库表结构初始化。
@@ -10,7 +10,6 @@ const settingDefaults: Setting = {
   title: 'Pixtale',
   syncDelete: SettingSyncDeleteEnum.ENABLE,
   clearLast: 7,
-  photoDedup: SettingPhotoDedupEnum.ENABLE,
   publicAlbum: SettingPublicAlbumEnum.DISABLE,
   listStyle: SettingListStyleEnum.MASONRY,
 };

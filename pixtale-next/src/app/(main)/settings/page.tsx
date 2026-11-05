@@ -31,7 +31,6 @@ import { SettingItem } from "@/components/setting/setting-item"
 import { settingSet } from "@/request/setting"
 import { type Setting } from "@/server/entity/setting"
 import {
-  SettingPhotoDedupEnum,
   SettingPublicAlbumEnum,
   SettingListStyleEnum,
   SettingSyncDeleteEnum,
@@ -67,14 +66,6 @@ export default function Page() {
     setSetting((prev) => ({
       ...prev,
       publicAlbum: checked ? SettingPublicAlbumEnum.ENABLE : SettingPublicAlbumEnum.DISABLE,
-    }))
-  }
-
-  // 修改照片去重开关值。
-  function changePhotoDedup(checked: boolean) {
-    setSetting((prev) => ({
-      ...prev,
-      photoDedup: checked ? SettingPhotoDedupEnum.ENABLE : SettingPhotoDedupEnum.DISABLE,
     }))
   }
 
@@ -167,12 +158,6 @@ export default function Page() {
               <Switch
                 checked={setting.syncDelete === SettingSyncDeleteEnum.ENABLE}
                 onCheckedChange={changeSyncDelete}
-              />
-            </SettingItem>
-            <SettingItem title={t("photoDeduplication")} description={t("photoDeduplicationDescription")}>
-              <Switch
-                checked={setting.photoDedup === SettingPhotoDedupEnum.ENABLE}
-                onCheckedChange={changePhotoDedup}
               />
             </SettingItem>
             <SettingItem title={t("listStyle")} description={t("listStyleDescription")}>

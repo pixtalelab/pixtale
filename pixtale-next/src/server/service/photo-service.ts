@@ -27,7 +27,7 @@ import { storageService } from '@/server/service/storage-service';
 import { buildContentDisposition, formatFileTimestamp, splitFileName } from '@/server/lib/file';
 import { albumService } from '@/server/service/album-service';
 import { settingService } from '@/server/service/setting-service';
-import { SettingPhotoDedupEnum, SettingSyncDeleteEnum } from '@/server/enums/setting-enum';
+import { SettingSyncDeleteEnum } from '@/server/enums/setting-enum';
 import { formatHttpUrl, toMediaUrl } from '@/lib/url';
 import { fileChecksumFromPath } from '@/server/lib/crypto';
 import { processPhotoImages } from '@/server/lib/photo-process';
@@ -332,19 +332,13 @@ const photoService = {
     return key;
   },
 
-  // 根据去重设置和 SHA-1 判断当前用户是否已有相同文件。
+  // 根据文件名和 SHA-1 判断当前用户是否已有相同文件，重复且带相册 id 时补一次关联。
   async exists(params: PhotoExistsBo, userId: string): Promise<PhotoExistsVo> {
     const checksum = params.checksum?.trim();
     const name = params.name?.trim();
 
     if (!checksum || !name) {
-      return { duplicate: false };
-    }
-
-    const setting = await settingService.get();
-
-    if (setting.photoDedup !== SettingPhotoDedupEnum.ENABLE) {
-      return { duplicate: false };
+      return { duplicate: false, photoId: null };
     }
 
     const [duplicatePhoto] = await orm
@@ -357,7 +351,21 @@ const photoService = {
       ))
       .limit(1);
 
-    return { duplicate: Boolean(duplicatePhoto) };
+    if (!duplicatePhoto) {
+      return { duplicate: false, photoId: null };
+    }
+
+    const albumId = params.albumId?.trim();
+
+    // 上传前发现重复文件时，只补相册关联，不返回新照片。
+    if (albumId) {
+      await albumService.addPhoto({
+        albumIds: [albumId],
+        photoIds: [duplicatePhoto.photoId],
+      }, userId);
+    }
+
+    return { duplicate: true, photoId: duplicatePhoto.photoId };
   },
 
   // 上传照片或视频，视频先提取第一帧，再生成 preview、thumbnail 和元信息。
@@ -377,8 +385,17 @@ const photoService = {
     }
 
     const checksum = await fileChecksumFromPath(path);
+    const existed = await this.exists({ checksum, name }, userId);
 
-    if ((await this.exists({ checksum, name }, userId)).duplicate) {
+    // 文件已存在时不再入库；带了相册 id 就补一次关联。
+    if (existed.duplicate) {
+      if (albumId && existed.photoId) {
+        await albumService.addPhoto({
+          albumIds: [albumId],
+          photoIds: [existed.photoId],
+        }, userId);
+      }
+
       return { photo: null, duplicate: true };
     }
 

@@ -95,8 +95,6 @@
   "settings.syncDeleteDescription": "Delete the saved file when a photo is deleted.",
   "settings.publicAlbum": "Public Albums",
   "settings.publicAlbumDescription": "Public albums are displayed on the home page.",
-  "settings.photoDeduplication": "Skip Duplicate Photos",
-  "settings.photoDeduplicationDescription": "Skip uploads that have the same file name and hash.",
   "settings.listStyle": "List Style",
   "settings.listStyleDescription": "Change the layout style of the photo list.",
   "settings.masonry": "Masonry",

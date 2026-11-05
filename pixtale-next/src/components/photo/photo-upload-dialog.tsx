@@ -325,7 +325,11 @@ export function PhotoUploadDialog() {
 
     try {
       const checksum = await getFileChecksum(item.file)
-      const existsResult = await photoExists({ checksum, name: item.file.name })
+      const existsResult = await photoExists({
+        checksum,
+        name: item.file.name,
+        albumId: item.albumId,
+      })
 
       if (existsResult.duplicate) {
         setPreviews(previewsRef.current.map((p) => (

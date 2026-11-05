@@ -26,6 +26,7 @@ interface PhotoAddResultVo {
 
 interface PhotoExistsVo {
   duplicate: boolean;
+  photoId: string | null;
 }
 
 interface PhotoNameSizeVo {
