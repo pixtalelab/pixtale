@@ -8,6 +8,7 @@ import 'package:pixtale_sync/theme/app_theme.dart';
 import 'package:pixtale_sync/l10n/locale.dart';
 import 'package:pixtale_sync/services/window_service.dart';
 import 'package:pixtale_sync/services/foreground_sync_service.dart';
+import 'package:window_manager/window_manager.dart';
 
 // 应用入口，负责启动并配置根组件。
 
@@ -24,7 +25,7 @@ Future<void> main() async {
   runApp(const MyApp());
 }
 
-/// 应用根组件，配置主题、语言和底部导航入口。
+/// 应用根组件，配置主题、语言和导航入口。
 class MyApp extends StatefulWidget {
   /// 创建应用根组件。
   const MyApp({super.key});
@@ -60,6 +61,10 @@ class _MyAppState extends State<MyApp> {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       theme: buildAppTheme(),
+      builder: WindowService.showsTitleBar
+          ? (context, child) =>
+                VirtualWindowFrame(child: child ?? const SizedBox.shrink())
+          : null,
       home: const AppPage(),
     );
   }

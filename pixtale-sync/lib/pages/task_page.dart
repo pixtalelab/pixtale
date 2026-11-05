@@ -125,7 +125,7 @@ class _TaskPageState extends State<TaskPage> {
 
   // 事件处理
 
-  /// 刷新存储关联及失效状态，保留卡片封面、统计和同步进度。
+  /// 刷新存储、失效状态，以及同步写入的封面和张数。保留卡片同步进度。
   Future<void> _onTaskStateChanged() async {
     final account = _account;
     if (account == null) return;
@@ -143,9 +143,11 @@ class _TaskPageState extends State<TaskPage> {
           if (task == null) continue;
           _tasks[index] = TaskPreview(
             albumId: current.albumId,
-            albumName: current.albumName,
-            count: current.count,
-            cover: current.cover,
+            albumName: task.albumName,
+            count: task.photoCount,
+            cover: _sameCover(current.cover, task.cover)
+                ? current.cover
+                : task.cover,
             completedCount: current.completedCount,
             storageName: _storageName(task),
             storageMissing: _storageMissing(task),

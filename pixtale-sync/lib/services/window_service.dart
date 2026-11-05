@@ -20,13 +20,19 @@ class WindowService with WindowListener, TrayListener {
   static final instance = WindowService();
 
   /// 没有有效记录时使用的逻辑像素尺寸。
-  static const defaultSize = Size(600, 960);
+  static const defaultSize = Size(960, 800);
 
   /// 常规屏幕上的窗口最小尺寸。
-  static const minimumSize = Size(600, 480);
+  static const minimumSize = Size(600, 630);
 
   /// 用户数据目录中的窗口尺寸文件，不写入数据库。
   static const windowFileName = 'window.json';
+
+  /// 桌面且不是测试时画出自定义标题栏，并藏掉系统那一条。
+  static bool get showsTitleBar {
+    if (Platform.environment['FLUTTER_TEST'] == 'true') return false;
+    return Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+  }
 
   bool _exiting = false;
 
@@ -75,6 +81,8 @@ class WindowService with WindowListener, TrayListener {
           math.min(minimumSize.height, bounds.height),
         ),
         title: 'Pixtale Sync',
+        titleBarStyle: TitleBarStyle.hidden,
+        windowButtonVisibility: false,
       ),
     );
     await windowManager.setBounds(bounds);

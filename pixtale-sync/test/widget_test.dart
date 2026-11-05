@@ -258,6 +258,12 @@ void main() {
     await tester.runAsync(() async {
       await database.database;
     });
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(400, 800);
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
     await tester.pumpWidget(
       localizedApp(
         home: AppPage(
@@ -303,6 +309,56 @@ void main() {
     expect(find.widgetWithText(AppBar, '任务'), findsOneWidget);
     expect(find.byIcon(Icons.add), findsOneWidget);
     expect(tester.state(find.byType(TaskPage)), same(taskState));
+  });
+
+  testWidgets('宽屏竖向和横屏使用左侧导航，窄屏竖向仍在底部', (tester) async {
+    await tester.runAsync(() async {
+      await database.database;
+    });
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    Future<void> showAt(Size size) async {
+      tester.view.physicalSize = size;
+      await tester.pumpWidget(
+        localizedApp(
+          home: AppPage(
+            taskService: TaskService(database: database),
+            storageService: StorageService(database: database),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await showAt(const Size(400, 800));
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.byType(NavigationRail), findsNothing);
+    expect(find.image(const AssetImage('assets/logo.png')), findsNothing);
+
+    await showAt(const Size(600, 960));
+    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.image(const AssetImage('assets/logo.png')), findsOneWidget);
+    final taskState = tester.state(find.byType(TaskPage));
+    await tester.tap(find.byIcon(Icons.receipt_long_outlined));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<NavigationRail>(find.byType(NavigationRail)).selectedIndex,
+      1,
+    );
+    expect(find.widgetWithText(AppBar, '日志'), findsOneWidget);
+    expect(
+      tester.state(find.byType(TaskPage, skipOffstage: false)),
+      same(taskState),
+    );
+
+    await showAt(const Size(800, 500));
+    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
   });
 
   testWidgets('相册卡片按名称、存储、照片进度排列，窄屏没有溢出', (tester) async {

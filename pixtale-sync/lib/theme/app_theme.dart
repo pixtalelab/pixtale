@@ -3,6 +3,12 @@ import 'package:flutter/material.dart';
 
 // 应用主题。
 
+/// 桌面自定义标题栏背景。
+const appTitleBarColor = Color(0xFFE3E2E1);
+
+/// 桌面左侧导航背景。
+const appSideMenuColor = Color(0xFFF0EDED);
+
 /// 构建应用主题。背景用白色，强调色用科技黑，标题和正文保持原来的颜色。
 ThemeData buildAppTheme() {
   const background = Color(0xFFFFFFFF);

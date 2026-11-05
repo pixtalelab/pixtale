@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:photo_manager/photo_manager.dart';
 import 'package:pixtale_sync/l10n/locale.dart';
 import 'package:pixtale_sync/l10n/localizations.dart';
+import 'package:pixtale_sync/models/photo.dart';
 import 'package:pixtale_sync/models/sync.dart';
 import 'package:pixtale_sync/models/log.dart';
 import 'package:pixtale_sync/models/storage.dart';
@@ -269,6 +270,13 @@ class SyncService {
             missing.add(photo);
           }
           var total = await _photos.count(album);
+          await _refreshAlbumCacheIfCountChanged(
+            albumId: task.albumId,
+            album: album,
+            total: total,
+            cachedCount: task.photoCount,
+            account: api.user,
+          );
           var completed = (locals.length - missing.length).clamp(0, total);
           final storageName = storage.name;
 
@@ -342,21 +350,6 @@ class SyncService {
               (_) => worker(),
             ),
           );
-          _checkStopped();
-          event = _LogEvent.updateCount;
-          // 同步期间图库可能变化，完成后刷新分母并限制有效范围。
-          final latestTotal = await _photos.count(album);
-          if (latestTotal != total) {
-            total = latestTotal;
-            completed = completed.clamp(0, total);
-            _checkStopped();
-            await _tasks.updateProgress(
-              task.albumId,
-              completed,
-              account: api.user,
-            );
-            publishProgress();
-          }
         } catch (error) {
           _checkStopped();
           await _recordFailure(error, event: event, albumName: albumName);
@@ -375,6 +368,35 @@ class SyncService {
       // 本轮失败也正常返回，由主循环更新时间并等待下一轮。
     } finally {
       setCurrentAlbum(null);
+    }
+  }
+
+  /// 开始同步时总数和缓存不同，则重读封面、名称和张数。刷新失败不影响上传。
+  Future<void> _refreshAlbumCacheIfCountChanged({
+    required String albumId,
+    required PhotoAlbum album,
+    required int total,
+    required int cachedCount,
+    required User account,
+  }) async {
+    if (total == cachedCount) return;
+    try {
+      final info = await _photos.getInfo(album);
+      _checkStopped();
+      await _tasks.updateInfo(
+        albumId,
+        albumName: info.album.name,
+        photoCount: info.count,
+        cover: info.cover,
+        account: account,
+      );
+    } catch (error, stackTrace) {
+      developer.log(
+        'Cannot refresh saved album $albumId',
+        name: 'pixtale_sync.sync',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
   }
 

@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:pixtale_sync/components/common/window_title_bar.dart';
+import 'package:pixtale_sync/services/window_service.dart';
 
 // 应用共用的顶部提示，不挤压页面内容或重复排队。
 
@@ -29,9 +31,11 @@ class AppNotice {
             child: Align(
               alignment: Alignment.topCenter,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(
+                padding: EdgeInsets.fromLTRB(
                   16,
-                  kToolbarHeight + 8,
+                  kToolbarHeight +
+                      (WindowService.showsTitleBar ? WindowTitleBar.height : 0) +
+                      8,
                   16,
                   16,
                 ),

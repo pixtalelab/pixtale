@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pixtale_sync/l10n/localizations.dart';
+import 'package:pixtale_sync/components/common/window_title_bar.dart';
 import 'package:pixtale_sync/pages/log_page.dart';
 import 'package:pixtale_sync/pages/settings_page.dart';
 import 'package:pixtale_sync/pages/task_page.dart';
@@ -9,8 +10,10 @@ import 'package:pixtale_sync/services/foreground_sync_service.dart';
 import 'package:pixtale_sync/services/task_service.dart';
 import 'package:pixtale_sync/services/storage_service.dart';
 import 'package:pixtale_sync/services/user_service.dart';
+import 'package:pixtale_sync/services/window_service.dart';
+import 'package:pixtale_sync/theme/app_theme.dart';
 
-// 应用主页面，管理底部导航与各页面状态。
+// 应用主页面。窄屏竖向时导航贴底，宽屏或横屏时导航在左侧。
 
 /// 任务、日志和设置的导航容器。
 class AppPage extends StatefulWidget {
@@ -28,9 +31,12 @@ class AppPage extends StatefulWidget {
   State<AppPage> createState() => _AppPageState();
 }
 
-/// 管理底部导航索引，并保留各页面的状态。
+/// 管理导航索引，并保留各页面的状态。
 class _AppPageState extends State<AppPage> {
   // 状态与依赖
+
+  /// 桌面窗口最窄就是这个宽度，所以这里起改用左侧导航。
+  static const _sideMenuMinWidth = 600.0;
 
   /// 当前选中的导航项。
   int _index = 0;
@@ -60,7 +66,7 @@ class _AppPageState extends State<AppPage> {
 
   // 事件处理
 
-  /// 切换底部导航页面。
+  /// 切换导航页面。
   void _selectPage(int index) => setState(() => _index = index);
 
   /// 释放共用的同步状态。
@@ -73,23 +79,50 @@ class _AppPageState extends State<AppPage> {
 
   // 页面渲染
 
-  /// 构建底部导航，切页时保留任务列表状态。
+  /// 三个页面叠在一起，切页时保留任务列表状态。
+  Widget _pages() {
+    return IndexedStack(
+      index: _index,
+      children: [
+        TaskPage(
+          taskService: widget.taskService,
+          storageService: widget.storageService,
+          sync: _sync,
+        ),
+        LogPage(active: _index == 1),
+        SettingsPage(sync: _sync),
+      ],
+    );
+  }
+
+  /// 竖屏窄窗口把导航放在底部，横屏或够宽时放在左侧。桌面再叠一条自定义标题栏。
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      body: IndexedStack(
-        index: _index,
+    final page = OrientationBuilder(
+      builder: (context, orientation) {
+        final width = MediaQuery.sizeOf(context).width;
+        final side =
+            orientation == Orientation.landscape || width >= _sideMenuMinWidth;
+        return side ? _sideMenu(context, l10n) : _bottomMenu(context, l10n);
+      },
+    );
+    if (!WindowService.showsTitleBar) return page;
+    return ColoredBox(
+      color: appSideMenuColor,
+      child: Column(
         children: [
-          TaskPage(
-            taskService: widget.taskService,
-            storageService: widget.storageService,
-            sync: _sync,
-          ),
-          LogPage(active: _index == 1),
-          SettingsPage(sync: _sync),
+          const WindowTitleBar(),
+          Expanded(child: page),
         ],
       ),
+    );
+  }
+
+  /// 移动端竖屏的底部导航。
+  Widget _bottomMenu(BuildContext context, AppLocalizations l10n) {
+    return Scaffold(
+      body: _pages(),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: _selectPage,
@@ -112,6 +145,57 @@ class _AppPageState extends State<AppPage> {
             selectedIcon: const Icon(Icons.settings),
             label: l10n.settings,
           ),
+        ],
+      ),
+    );
+  }
+
+  /// 宽屏和横屏的左侧导航。文字始终显示，入口排在 logo 下面。
+  Widget _sideMenu(BuildContext context, AppLocalizations l10n) {
+    final labelStyle = Theme.of(context).textTheme.labelLarge;
+    return Scaffold(
+      backgroundColor: appSideMenuColor,
+      body: Row(
+        children: [
+          SafeArea(
+            right: false,
+            child: NavigationRail(
+              backgroundColor: appSideMenuColor,
+              indicatorColor: const Color(0xFFE4E4E7),
+              groupAlignment: -1,
+              selectedLabelTextStyle: labelStyle,
+              unselectedLabelTextStyle: labelStyle,
+              leading: const Padding(
+                padding: EdgeInsets.only(top: 8, bottom: 16),
+                child: Image(
+                  image: AssetImage('assets/logo.png'),
+                  width: 42,
+                  height: 42,
+                ),
+              ),
+              labelType: NavigationRailLabelType.all,
+              selectedIndex: _index,
+              onDestinationSelected: _selectPage,
+              destinations: [
+                NavigationRailDestination(
+                  icon: const Icon(Icons.assignment_turned_in_outlined),
+                  selectedIcon: const Icon(Icons.assignment_turned_in),
+                  label: Text(l10n.tasks),
+                ),
+                NavigationRailDestination(
+                  icon: const Icon(Icons.receipt_long_outlined),
+                  selectedIcon: const Icon(Icons.receipt_long),
+                  label: Text(l10n.logs),
+                ),
+                NavigationRailDestination(
+                  icon: const Icon(Icons.settings_outlined),
+                  selectedIcon: const Icon(Icons.settings),
+                  label: Text(l10n.settings),
+                ),
+              ],
+            ),
+          ),
+          Expanded(child: _pages()),
         ],
       ),
     );

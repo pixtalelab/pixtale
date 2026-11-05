@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -7,6 +8,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:pixtale_sync/db/db.dart';
 import 'package:pixtale_sync/models/settings.dart';
 import 'package:pixtale_sync/models/log.dart';
+import 'package:pixtale_sync/models/photo.dart';
 import 'package:pixtale_sync/models/sync.dart';
 import 'package:pixtale_sync/models/storage.dart';
 import 'package:pixtale_sync/models/user.dart';
@@ -120,6 +122,42 @@ void main() {
     photos.albums['a'] = [];
     await service.start((_) {});
     expect((await tasks.list()).every((task) => !task.isInvalid), isTrue);
+  });
+
+  test('相册张数变化时刷新封面和总数缓存', () async {
+    photos.albums = {
+      'a': [localPhoto('new.jpg')],
+    };
+    photos.covers['a'] = Uint8List.fromList([9, 9, 9]);
+    await tasks.add(['a']);
+    await tasks.updateInfo(
+      'a',
+      albumName: '旅行',
+      photoCount: 123,
+      cover: Uint8List.fromList([1, 2, 3]),
+    );
+    await service.start((_) {});
+    final task = (await tasks.list()).single;
+    expect(photos.infoReads, 1);
+    expect(task.photoCount, 1);
+    expect(task.cover, Uint8List.fromList([9, 9, 9]));
+    expect(task.albumName, '相册 a');
+  });
+
+  test('相册张数不变时不刷新封面', () async {
+    photos.albums = {
+      'a': [localPhoto('old.jpg')],
+    };
+    photos.covers['a'] = Uint8List.fromList([9, 9, 9]);
+    await tasks.add(['a']);
+    final cover = Uint8List.fromList([1, 2, 3]);
+    await tasks.updateInfo('a', albumName: '旅行', photoCount: 1, cover: cover);
+    await service.start((_) {});
+    final task = (await tasks.list()).single;
+    expect(photos.infoReads, 0);
+    expect(task.photoCount, 1);
+    expect(task.cover, cover);
+    expect(task.albumName, '旅行');
   });
 
   test('分页核对期间保留缓存，已完成相册只一次发布完整数量', () async {
@@ -943,6 +981,8 @@ RemotePhoto remotePhoto(String name, {int size = 123}) => RemotePhoto.fromJson({
 /// 提供不依赖系统图库的分页扫描。
 class FakePhotos extends PhotoService {
   Map<String, List<SyncPhoto>> albums = {};
+  final Map<String, Uint8List> covers = {};
+  int infoReads = 0;
 
   /// 用指定文件头覆盖默认的 JPEG 头。
   final Map<String, List<int>> headers = {};
@@ -968,6 +1008,21 @@ class FakePhotos extends PhotoService {
     final photos = albums[id];
     if (photos == null) return null;
     return FakeAlbum(id, photos.length);
+  }
+
+  /// 返回当前张数和预设封面，供同步在数量变化时刷新缓存。
+  @override
+  Future<PhotoAlbumInfo> getInfo(
+    PhotoAlbum album, {
+    bool imagesOnly = false,
+  }) async {
+    infoReads++;
+    final photos = albums[album.id] ?? [];
+    return PhotoAlbumInfo(
+      album: album,
+      count: photos.length,
+      cover: covers[album.id],
+    );
   }
 
   /// 按页提供预设照片。

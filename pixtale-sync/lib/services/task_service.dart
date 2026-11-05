@@ -180,6 +180,7 @@ ORDER BY task.sort_time ASC
       where: 'user_id = ? AND album_id = ?',
       whereArgs: [user.userId, albumId],
     );
+    notifyChanged();
   }
 
   /// 修改目标存储，保留任务已有的完成数量。
