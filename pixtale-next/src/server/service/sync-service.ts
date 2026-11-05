@@ -1,5 +1,6 @@
 import { type SyncCheckBo, type SyncConfigBo } from '@/server/entity/bo/sync';
 import { type SyncCheckVo, type SyncGetConfigVo } from '@/server/entity/vo/sync';
+import BizError from '@/server/error/biz-error';
 import { albumService } from '@/server/service/album-service';
 import { photoService } from '@/server/service/photo-service';
 import { storageService } from '@/server/service/storage-service';
@@ -26,14 +27,51 @@ const syncService = {
     return { album, storageExists };
   },
 
-  // 筛选当前用户照片库中不存在的文件。
-  async check(params: SyncCheckBo[], userId: string): Promise<SyncCheckVo[]> {
-    const photos = await photoService.listNameSize(userId);
-    const photoMap = new Map(
-      photos.map((photo) => [`${photo.name}\0${photo.size}`, true])
-    );
+  // 筛选当前用户照片库中不存在的文件，并把已存在且未关联的照片挂到指定相册。
+  async check(params: SyncCheckBo, userId: string): Promise<SyncCheckVo[]> {
+    const albumId = params.albumId?.trim();
+    const files = params.files ?? [];
 
-    return params.filter((file) => !photoMap.has(`${file.name}\0${file.size}`));
+    if (!albumId) {
+      throw new BizError('album.selectRequired');
+    }
+
+    const photos = await photoService.listNameSize(userId);
+    const photoMap = new Map<string, string[]>();
+
+    for (const photo of photos) {
+      const key = `${photo.name}\0${photo.size}`;
+      const photoIds = photoMap.get(key);
+
+      if (photoIds) {
+        photoIds.push(photo.photoId);
+      } else {
+        photoMap.set(key, [photo.photoId]);
+      }
+    }
+
+    const missing: SyncCheckVo[] = [];
+    const existingPhotoIds: string[] = [];
+
+    for (const file of files) {
+      const photoIds = photoMap.get(`${file.name}\0${file.size}`);
+
+      if (photoIds) {
+        existingPhotoIds.push(...photoIds);
+      } else {
+        missing.push(file);
+      }
+    }
+
+    // 已入库的照片按批核对相册关联，缺的再补上。
+    if (existingPhotoIds.length) {
+      await albumService.addMissingPhoto({
+        albumId,
+        photoIds: existingPhotoIds,
+      }, userId);
+    }
+
+    return missing;
   },
 };
 

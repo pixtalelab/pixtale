@@ -86,6 +86,8 @@ const createTableSqlList = [
         photo_id TEXT NOT NULL,
         album_id TEXT NOT NULL
     )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_album_photo_album_id_photo_id
+        ON album_photo (album_id, photo_id)`,
 
   `CREATE TABLE IF NOT EXISTS storage (
         storage_id TEXT PRIMARY KEY,

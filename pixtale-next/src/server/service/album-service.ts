@@ -5,7 +5,7 @@ import { albumPhotoTab } from '@/server/entity/album-photo';
 import { photoTab } from '@/server/entity/photo';
 import { orm } from '@/server/infra/db';
 import BizError from '@/server/error/biz-error';
-import { type AlbumAddBo, type AlbumAddPhotoBo, type AlbumDeleteBo, type AlbumRecycleBo, type AlbumRemovePhotoBo, type AlbumSetNameBo, type AlbumSetPublicBo, type AlbumSetTopBo } from '@/server/entity/bo/album';
+import { type AlbumAddBo, type AlbumAddMissingPhotoBo, type AlbumAddPhotoBo, type AlbumDeleteBo, type AlbumRecycleBo, type AlbumRemovePhotoBo, type AlbumSetNameBo, type AlbumSetPublicBo, type AlbumSetTopBo } from '@/server/entity/bo/album';
 import { PhotoStatusEnum } from '@/server/enums/photo-enum';
 import { AlbumPublicEnum } from '@/server/enums/album-enum';
 import { type AlbumVo } from '@/server/entity/vo/album';
@@ -275,6 +275,61 @@ const albumService = {
 
     if (rows.length) {
       await orm.insert(albumPhotoTab).values(rows);
+    }
+  },
+
+  // 按每批 500 个照片 id 核对相册关联，未关联的才写入。
+  async addMissingPhoto(params: AlbumAddMissingPhotoBo, userId: string): Promise<void> {
+
+    const albumId = params.albumId?.trim();
+    const photoIds = Array.from(new Set((params.photoIds ?? []).filter(Boolean)));
+    const batchSize = 500;
+
+    if (!albumId) {
+      throw new BizError('album.selectRequired');
+    }
+
+    if (!photoIds.length) {
+      return;
+    }
+
+    const [album] = await orm
+      .select({
+        albumId: albumTab.albumId
+      })
+      .from(albumTab)
+      .where(and(
+        eq(albumTab.albumId, albumId),
+        eq(albumTab.userId, userId)
+      ))
+      .limit(1);
+
+    if (!album) {
+      throw new BizError('auth.forbidden', 403);
+    }
+
+    for (let index = 0; index < photoIds.length; index += batchSize) {
+
+      const batchPhotoIds = photoIds.slice(index, index + batchSize);
+      const linkedRows = await orm
+        .select({
+          photoId: albumPhotoTab.photoId
+        })
+        .from(albumPhotoTab)
+        .where(and(
+          eq(albumPhotoTab.albumId, albumId),
+          inArray(albumPhotoTab.photoId, batchPhotoIds)
+        ));
+
+      const linkedIds = new Set(linkedRows.map((row) => row.photoId));
+      const missingPhotoIds = batchPhotoIds.filter((photoId) => !linkedIds.has(photoId));
+
+      if (missingPhotoIds.length) {
+        await this.addPhoto({
+          albumIds: [albumId],
+          photoIds: missingPhotoIds,
+        }, userId);
+      }
     }
   },
 

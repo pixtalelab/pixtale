@@ -77,10 +77,11 @@ const photoService = {
     return Number(result.total ?? 0);
   },
 
-  // 查询当前用户全部照片的文件名和大小，供同步检查使用。
+  // 查询当前用户全部照片的 id、文件名和大小，供同步检查使用。
   async listNameSize(userId: string): Promise<PhotoNameSizeVo[]> {
     return orm
       .select({
+        photoId: photoTab.photoId,
         name: photoTab.name,
         size: photoTab.size,
       })

@@ -29,6 +29,7 @@ interface PhotoExistsVo {
 }
 
 interface PhotoNameSizeVo {
+  photoId: string;
   name: string;
   size: number;
 }

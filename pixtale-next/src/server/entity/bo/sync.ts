@@ -1,8 +1,13 @@
 // 这个模块定义照片同步业务入参对象。
 
-interface SyncCheckBo {
+interface SyncCheckFileBo {
   name: string;
   size: number;
+}
+
+interface SyncCheckBo {
+  albumId: string;
+  files: SyncCheckFileBo[];
 }
 
 interface SyncConfigBo {
@@ -10,4 +15,4 @@ interface SyncConfigBo {
   storageId?: string;
 }
 
-export type { SyncCheckBo, SyncConfigBo };
+export type { SyncCheckBo, SyncCheckFileBo, SyncConfigBo };

@@ -14,9 +14,9 @@ app.post('/sync/getConfig', async (c: Context) => {
   return c.json(result.ok(data));
 });
 
-// 检查并返回当前用户照片库中不存在的文件。
+// 检查并返回当前用户照片库中不存在的文件，已存在的照片补关联到指定相册。
 app.post('/sync/check', async (c: Context) => {
-  const body = await c.req.json<SyncCheckBo[]>();
+  const body = await c.req.json<SyncCheckBo>();
   const data = await syncService.check(body, getUserId());
   return c.json(result.ok(data));
 });

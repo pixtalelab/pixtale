@@ -9,6 +9,11 @@ interface AlbumAddPhotoBo {
   photoIds: string[];
 }
 
+interface AlbumAddMissingPhotoBo {
+  albumId: string;
+  photoIds: string[];
+}
+
 interface AlbumRemovePhotoBo {
   albumId: string;
   photoIds: string[];
@@ -36,4 +41,4 @@ interface AlbumSetPublicBo {
   public: number;
 }
 
-export type { AlbumAddBo, AlbumAddPhotoBo, AlbumDeleteBo, AlbumRecycleBo, AlbumRemovePhotoBo, AlbumSetNameBo, AlbumSetPublicBo, AlbumSetTopBo };
+export type { AlbumAddBo, AlbumAddMissingPhotoBo, AlbumAddPhotoBo, AlbumDeleteBo, AlbumRecycleBo, AlbumRemovePhotoBo, AlbumSetNameBo, AlbumSetPublicBo, AlbumSetTopBo };
