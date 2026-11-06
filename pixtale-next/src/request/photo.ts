@@ -25,8 +25,8 @@ export function photoAdd(params: FormData) {
 }
 
 // 上传前检查文件是否已经存在。
-export function photoExists(params: PhotoExistsBo) {
-  return http.post<PhotoExistsVo>('/photo/exists', params);
+export function photoExists(params: PhotoExistsBo, config?: RequestConfig) {
+  return http.post<PhotoExistsVo>('/photo/exists', params, config);
 }
 
 // 把照片移动到回收站。
