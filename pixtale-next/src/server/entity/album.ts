@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
-// 相册
+// 相册。同一用户的相册名不能重复。
 export const albumTab = sqliteTable('album', {
   albumId: text('album_id').primaryKey(), // 相册id
   name: text('name').notNull(), // 相册名
@@ -11,7 +11,9 @@ export const albumTab = sqliteTable('album', {
   createTime: text('create_time').default(sql`(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))`).notNull(), // 创建时间 ISO UTC
   updateTime: text('update_time').default(sql`(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))`).notNull(), // 更新时间 ISO UTC
   userId: text('user_id').notNull() // 创建用户id
-});
+}, (table) => [
+  uniqueIndex('idx_album_user_id_name').on(table.userId, table.name),
+]);
 
 export type Album = typeof albumTab.$inferSelect;
 export type AlbumInto = typeof albumTab.$inferInsert;

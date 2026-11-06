@@ -37,6 +37,8 @@ const createTableSqlList = [
         update_time TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
         user_id TEXT NOT NULL
     )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_album_user_id_name
+        ON album (user_id, name)`,
 
   `CREATE TABLE IF NOT EXISTS photo (
         photo_id TEXT PRIMARY KEY NOT NULL,
@@ -87,6 +89,8 @@ const createTableSqlList = [
     )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_album_photo_album_id_photo_id
         ON album_photo (album_id, photo_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_album_photo_photo_id
+        ON album_photo (photo_id)`,
 
   `CREATE TABLE IF NOT EXISTS storage (
         storage_id TEXT PRIMARY KEY,

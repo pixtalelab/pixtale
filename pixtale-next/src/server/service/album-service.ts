@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, max, notExists } from 'drizzle-orm';
+import { and, desc, eq, inArray, notExists, sql } from 'drizzle-orm';
 import { createId } from '@/server/lib/id';
 import { type Album, albumTab } from '@/server/entity/album';
 import { albumPhotoTab } from '@/server/entity/album-photo';
@@ -12,8 +12,8 @@ import { type AlbumVo } from '@/server/entity/vo/album';
 import { storageService } from '@/server/service/storage-service';
 import { formatHttpUrl, toMediaUrl } from '@/lib/url';
 import { fileService } from '@/server/service/file-service';
-import { FileTypeEnum } from '@/server/enums/file-enum';
 import { type File } from '@/server/entity/file';
+import { FileTypeEnum } from '@/server/enums/file-enum';
 
 // 这个模块处理相册数据写入相关业务。
 
@@ -53,55 +53,121 @@ const albumService = {
       return defaultAlbum ? [defaultAlbum] : [];
     }
 
-    const fileStorageList = await storageService.list();
-
-    const photoStatList = await orm
-      .select({
-        albumId: albumPhotoTab.albumId,
-        photoId: photoTab.photoId,
-        thumbHash: photoTab.thumbHash,
-        storageId: photoTab.storageId,
-        photoTotal: count(photoTab.photoId),
-        takenTime: max(photoTab.takenTime)
-      })
-      .from(albumPhotoTab)
-      .innerJoin(photoTab, eq(albumPhotoTab.photoId, photoTab.photoId))
-      .where(and(
-        eq(photoTab.status, PhotoStatusEnum.NORMAL),
-        eq(photoTab.userId, userId)
-      ))
-      .groupBy(albumPhotoTab.albumId)
-      .orderBy(desc(photoTab.takenTime), desc(photoTab.photoId));
-
-    const fileMap = await fileService.listByPhotoIds(
-      photoStatList.map((stat) => stat.photoId).filter(Boolean)
-    );
-
-    const list: AlbumVo[] = albumList.map((album) => {
-      const photoStat = photoStatList.find((stat) => stat.albumId === album.albumId);
-      const fileStorage = fileStorageList.list.find((item) => item.storageId === photoStat?.storageId);
-      const domain = formatHttpUrl(fileStorage?.domain);
-
-      let thumbnail: string | null = null;
-
-      if (photoStat?.photoId) {
-        const file = (fileMap.get(photoStat.photoId) ?? []).find((item) => item.type === FileTypeEnum.THUMBNAIL);
-        thumbnail = file?.key ?? null;
-      }
-
-      return {
-        ...album,
-        thumbnail: thumbnail ? toMediaUrl(thumbnail, domain) : null,
-        thumbHash: photoStat?.thumbHash ?? null,
-        photoTotal: Number(photoStat?.photoTotal ?? 0)
-      };
-    });
+    const list = await this.buildAlbumVoList(albumList, userId);
 
     const defaultAlbum = await this.getDefaultAlbum(userId);
     if (defaultAlbum) {
       list.push(defaultAlbum);
     }
     return list;
+  },
+
+  // 给相册补上封面、缩略图和正常照片数量。传入 userId 时只统计该用户的照片。
+  async buildAlbumVoList(albumList: Album[], userId?: string): Promise<AlbumVo[]> {
+    // 只统计正常照片。传入用户时再限定为该用户的照片。
+    const whereList = [eq(photoTab.status, PhotoStatusEnum.NORMAL)];
+
+    if (userId) {
+      whereList.push(eq(photoTab.userId, userId));
+    }
+
+    // 按相册统计照片数量，并按拍摄时间给照片编号，最新的一张编号为 1。
+    const ranked = orm
+      .select({
+        albumId: albumPhotoTab.albumId,
+        photoId: photoTab.photoId,
+        thumbHash: photoTab.thumbHash,
+        storageId: photoTab.storageId,
+        photoTotal: sql<number>`count(*) over (partition by ${albumPhotoTab.albumId})`.as('photo_total'),
+        rn: sql<number>`row_number() over (partition by ${albumPhotoTab.albumId} order by ${photoTab.takenTime} desc, ${photoTab.photoId} desc)`.as('rn'),
+      })
+      .from(photoTab)
+      .innerJoin(albumPhotoTab, eq(albumPhotoTab.photoId, photoTab.photoId))
+      .where(and(...whereList))
+      .as('ranked');
+    // 每个相册只保留最新的一张，作为封面。
+    const photoStatList = await orm
+      .select({
+        albumId: ranked.albumId,
+        photoId: ranked.photoId,
+        thumbHash: ranked.thumbHash,
+        storageId: ranked.storageId,
+        photoTotal: ranked.photoTotal,
+      })
+      .from(ranked)
+      .where(eq(ranked.rn, 1));
+
+    // 读取存储配置和封面缩略图，供后面拼接访问地址。
+    const storageList = await storageService.getStorageList();
+    const photoStatMap = new Map(photoStatList.map((stat) => [stat.albumId, stat]));
+    const fileMap = await fileService.listByPhotoIds(photoStatList.map((stat) => stat.photoId));
+
+    // 把封面、模糊色和照片数量写回每个相册。
+    return albumList.map((album) => {
+      const stat = photoStatMap.get(album.albumId);
+      const fileStorage = storageList.find((item) => item.storageId === stat?.storageId);
+      const domain = formatHttpUrl(fileStorage?.domain);
+      const file = stat?.photoId
+        ? (fileMap.get(stat.photoId) ?? []).find((item) => item.type === FileTypeEnum.THUMBNAIL)
+        : null;
+
+      return {
+        ...album,
+        thumbnail: file?.key ? toMediaUrl(file.key, domain) : null,
+        thumbHash: stat?.thumbHash ?? null,
+        photoTotal: Number(stat?.photoTotal ?? 0),
+      };
+    });
+  },
+
+  // 统计当前用户未关联相册的正常照片，并以拍摄时间最新的一张作为默认相册封面。
+  async getDefaultAlbum(userId: string): Promise<AlbumVo | null> {
+    // 统计未归入任何相册的正常照片，并取拍摄时间最新的一张作为封面。
+    const [coverPhoto] = await orm
+      .select({
+        photoId: photoTab.photoId,
+        storageId: photoTab.storageId,
+        thumbHash: photoTab.thumbHash,
+        photoTotal: sql<number>`count(*) over ()`.as('photo_total'),
+      })
+      .from(photoTab)
+      .where(and(
+        eq(photoTab.userId, userId),
+        eq(photoTab.status, PhotoStatusEnum.NORMAL),
+        notExists(orm.select({ id: albumPhotoTab.id }).from(albumPhotoTab)
+          .where(eq(albumPhotoTab.photoId, photoTab.photoId)))
+      ))
+      .orderBy(desc(photoTab.takenTime), desc(photoTab.photoId))
+      .limit(1);
+
+    // 没有未归类照片时不返回默认相册。
+    if (!coverPhoto) {
+      return null;
+    }
+
+    // 读取封面所在存储和缩略图，供拼接访问地址。
+    const storageList = await storageService.getStorageList();
+    const fileStorage = storageList.find((item) => item.storageId === coverPhoto.storageId);
+    const domain = formatHttpUrl(fileStorage?.domain);
+    const fileMap = await fileService.listByPhotoIds([coverPhoto.photoId]);
+    const thumbnail = (fileMap.get(coverPhoto.photoId) ?? [])
+      .find((file) => file.type === FileTypeEnum.THUMBNAIL)?.key ?? null;
+
+    // 组装默认相册，照片数量来自上面的统计。
+    return {
+      albumId: 'default',
+      name: 'albums.default',
+      nameKey: 'albums.default',
+      description: '',
+      sort: 0,
+      public: AlbumPublicEnum.DISABLE,
+      createTime: '',
+      updateTime: '',
+      userId,
+      thumbnail: thumbnail ? toMediaUrl(thumbnail, domain) : null,
+      thumbHash: coverPhoto.thumbHash,
+      photoTotal: Number(coverPhoto.photoTotal),
+    };
   },
 
   // 复用相册列表查询，排除默认相册后供选择列表使用。
@@ -122,41 +188,7 @@ const albumService = {
       return [];
     }
 
-    const fileStorageList = await storageService.list();
-    const photoStatList = await orm
-      .select({
-        albumId: albumPhotoTab.albumId,
-        photoId: photoTab.photoId,
-        thumbHash: photoTab.thumbHash,
-        storageId: photoTab.storageId,
-        photoTotal: count(photoTab.photoId),
-        takenTime: max(photoTab.takenTime),
-      })
-      .from(albumPhotoTab)
-      .innerJoin(photoTab, eq(albumPhotoTab.photoId, photoTab.photoId))
-      .where(eq(photoTab.status, PhotoStatusEnum.NORMAL))
-      .groupBy(albumPhotoTab.albumId)
-      .orderBy(desc(photoTab.takenTime), desc(photoTab.photoId));
-
-    const fileMap = await fileService.listByPhotoIds(
-      photoStatList.map((stat) => stat.photoId).filter(Boolean),
-    );
-
-    return albumList.map((album) => {
-      const photoStat = photoStatList.find((stat) => stat.albumId === album.albumId);
-      const fileStorage = fileStorageList.list.find((item) => item.storageId === photoStat?.storageId);
-      const domain = formatHttpUrl(fileStorage?.domain);
-      const file = photoStat?.photoId
-        ? (fileMap.get(photoStat.photoId) ?? []).find((item) => item.type === FileTypeEnum.THUMBNAIL)
-        : null;
-
-      return {
-        ...album,
-        thumbnail: file?.key ? toMediaUrl(file.key, domain) : null,
-        thumbHash: photoStat?.thumbHash ?? null,
-        photoTotal: Number(photoStat?.photoTotal ?? 0),
-      };
-    });
+    return this.buildAlbumVoList(albumList);
   },
 
   // 查询指定的公开相册。
@@ -537,58 +569,6 @@ const albumService = {
       thumbnail: thumbnail ? toMediaUrl(thumbnail, domain) : null,
       thumbHash: coverPhoto?.thumbHash ?? null,
       photoTotal: photoList.length
-    };
-  },
-
-  // 统计当前用户未关联相册的正常照片，并以列表第一张照片作为默认相册封面。
-  async getDefaultAlbum(userId: string): Promise<AlbumVo | null> {
-    const where = and(
-      eq(photoTab.userId, userId),
-      eq(photoTab.status, PhotoStatusEnum.NORMAL),
-      notExists(orm.select({ id: albumPhotoTab.id }).from(albumPhotoTab)
-        .where(eq(albumPhotoTab.photoId, photoTab.photoId)))
-    );
-    const [stat] = await orm
-      .select({ photoTotal: count(photoTab.photoId) })
-      .from(photoTab)
-      .where(where);
-
-    const photoTotal = Number(stat?.photoTotal ?? 0);
-    if (!photoTotal) {
-      return null;
-    }
-
-    const [coverPhoto] = await orm
-      .select({
-        photoId: photoTab.photoId,
-        storageId: photoTab.storageId,
-        thumbHash: photoTab.thumbHash,
-      })
-      .from(photoTab)
-      .where(where)
-      .orderBy(desc(photoTab.takenTime), desc(photoTab.photoId))
-      .limit(1);
-    const fileStorageList = await storageService.list();
-    const fileStorage = fileStorageList.list.find((item) => item.storageId === coverPhoto?.storageId);
-    const domain = formatHttpUrl(fileStorage?.domain);
-    const fileMap = await fileService.listByPhotoIds(coverPhoto ? [coverPhoto.photoId] : []);
-    const thumbnail = coverPhoto
-      ? (fileMap.get(coverPhoto.photoId) ?? []).find((file) => file.type === FileTypeEnum.THUMBNAIL)?.key ?? null
-      : null;
-
-    return {
-      albumId: 'default',
-      name: 'albums.default',
-      nameKey: 'albums.default',
-      description: '',
-      sort: 0,
-      public: AlbumPublicEnum.DISABLE,
-      createTime: '',
-      updateTime: '',
-      userId,
-      thumbnail: thumbnail ? toMediaUrl(thumbnail, domain) : null,
-      thumbHash: coverPhoto?.thumbHash ?? null,
-      photoTotal,
     };
   },
 }

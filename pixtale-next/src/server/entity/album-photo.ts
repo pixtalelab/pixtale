@@ -1,4 +1,4 @@
-import { sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { index, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 // 这个模块定义相册和照片的关联表结构。
 
@@ -9,6 +9,7 @@ export const albumPhotoTab = sqliteTable('album_photo', {
   albumId: text('album_id').notNull() // 相册id
 }, (table) => [
   uniqueIndex('idx_album_photo_album_id_photo_id').on(table.albumId, table.photoId),
+  index('idx_album_photo_photo_id').on(table.photoId),
 ]);
 
 export type AlbumPhoto = typeof albumPhotoTab.$inferSelect;
