@@ -50,6 +50,7 @@ const createTableSqlList = [
         size INTEGER NOT NULL,
         width INTEGER,
         height INTEGER,
+        duration INTEGER,
         taken_time TEXT,
         create_time TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
         recycle_time TEXT,
@@ -133,6 +134,11 @@ async function migrate(): Promise<void> {
     const userColumns = db.prepare('PRAGMA table_info(user)').all() as { name: string }[];
     if (!userColumns.some((column) => column.name === 'sort')) {
       db.exec('ALTER TABLE user ADD COLUMN sort INTEGER NOT NULL DEFAULT 0');
+    }
+    // 为已有照片表补上视频时长；新建表已经包含该字段。
+    const photoColumns = db.prepare('PRAGMA table_info(photo)').all() as { name: string }[];
+    if (!photoColumns.some((column) => column.name === 'duration')) {
+      db.exec('ALTER TABLE photo ADD COLUMN duration INTEGER');
     }
   });
   runBatch();

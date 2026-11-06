@@ -33,6 +33,9 @@ const readArgs = [
   "-GPSLongitude",
   "-GPSAltitude",
   "-GPSAltitudeRef",
+  "-Duration",
+  "-MediaDuration",
+  "-TrackDuration",
 ]
 
 // 把 exiftool 字段值转成可 JSON 序列化的值。
@@ -176,7 +179,42 @@ function buildExifJson(tags: Tags) {
   return Object.keys(data).length ? JSON.stringify(data) : null
 }
 
-// 从原图文件路径读取拍摄时间、经纬度与 exif JSON 字符串。
+// 把 exiftool 的时长转成整数秒。数字按秒理解，冒号文本按时分秒理解。
+function getDuration(tags: Tags) {
+  const candidates = [tags.Duration, tags.MediaDuration, tags.TrackDuration]
+
+  for (const value of candidates) {
+    if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+      return Math.round(value)
+    }
+
+    if (typeof value !== "string" || !value.trim()) {
+      continue
+    }
+
+    const parts = value.trim().split(":").map((part) => Number(part))
+
+    if (parts.some((part) => Number.isNaN(part))) {
+      continue
+    }
+
+    if (parts.length === 3) {
+      return Math.round(parts[0] * 3600 + parts[1] * 60 + parts[2])
+    }
+
+    if (parts.length === 2) {
+      return Math.round(parts[0] * 60 + parts[1])
+    }
+
+    if (parts.length === 1) {
+      return Math.round(parts[0])
+    }
+  }
+
+  return null
+}
+
+// 从原图文件路径读取拍摄时间、经纬度、视频时长与 exif JSON 字符串。
 export async function readPhotoExif(filePath: string) {
   try {
     const tags = await exiftool.read(filePath, { readArgs })
@@ -186,6 +224,7 @@ export async function readPhotoExif(filePath: string) {
       latitude: getCoordinate(tags.GPSLatitude),
       longitude: getCoordinate(tags.GPSLongitude),
       altitude: getAltitude(tags),
+      duration: getDuration(tags),
       exif: buildExifJson(tags),
     }
   } catch (error) {
@@ -195,6 +234,7 @@ export async function readPhotoExif(filePath: string) {
       latitude: null,
       longitude: null,
       altitude: null,
+      duration: null,
       exif: null,
     }
   }

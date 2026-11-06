@@ -4,7 +4,7 @@ import createNextIntlPlugin from "next-intl/plugin";
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 const nextConfig: NextConfig = {
   reactStrictMode: false,
-  serverExternalPackages: ['exiftool-vendored', 'better-sqlite3', 'ffmpeg-static'],
+  serverExternalPackages: ['exiftool-vendored', 'better-sqlite3'],
   // Vercel 不用 standalone；Docker 自建部署才需要。
   output: process.env.VERCEL ? undefined : 'standalone',
   // standalone 需要把平台对应的原生依赖资源一并打进产物。
@@ -14,9 +14,8 @@ const nextConfig: NextConfig = {
         ? [
             "./node_modules/@img/sharp-win32-x64/**/*",
             "./node_modules/exiftool-vendored.exe/**/*",
-            "./node_modules/ffmpeg-static/ffmpeg.exe",
           ]
-        : ["./node_modules/exiftool-vendored.pl/**/*", "./node_modules/ffmpeg-static/ffmpeg"],
+        : ["./node_modules/exiftool-vendored.pl/**/*"],
   },
   experimental: {
     turbopackFileSystemCacheForDev: false,

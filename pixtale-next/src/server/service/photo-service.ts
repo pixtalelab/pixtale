@@ -39,7 +39,7 @@ import { type File as PhotoFile, fileTab } from '@/server/entity/file';
 import { fileService } from '@/server/service/file-service';
 import { FileTypeEnum } from '@/server/enums/file-enum';
 import { type PhotoUpload } from '@/server/lib/photo-upload';
-import { readVideoFrame } from '@/server/lib/video-process';
+import { readVideoDuration, readVideoFrame } from '@/server/lib/video-process';
 
 // 这个模块处理照片数据查询相关业务。
 
@@ -405,6 +405,7 @@ const photoService = {
     const images = await processPhotoImages(coverPath);
     const meta = await readPhotoExif(path);
     const takenTime = meta.takenTime ?? new Date(lastModified > 0 ? lastModified : Date.now()).toISOString();
+    const duration = type.startsWith('video/') ? await readVideoDuration(path) : null;
     const key = await this.resolvePhotoKey(userId, name);
     const photoId = createId();
     const preview = buildPreviewKey(userId, photoId);
@@ -459,6 +460,7 @@ const photoService = {
       size,
       width: images.width,
       height: images.height,
+      duration,
       takenTime,
       createTime: now,
       userId,

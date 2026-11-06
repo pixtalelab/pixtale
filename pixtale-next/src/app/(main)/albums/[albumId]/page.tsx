@@ -194,6 +194,9 @@ export default function Page() {
     })
   }
 
+  // albumName 是顶栏显示的相册名，过长时截断并保留完整名称提示。
+  const albumName = albumId === "default" ? t("default") : currentAlbumName || t("title")
+
   return (
     <>
       <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
@@ -202,12 +205,12 @@ export default function Page() {
           <header
             data-gallery-page-header
             className="sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between gap-2 bg-background transition-[width,height] ease-linear">
-            <div className="flex min-w-0 items-center gap-2 px-4">
+            <div className="flex min-w-0 flex-1 items-center gap-2 px-4">
               <Button
                 type="button"
                 variant="ghost"
                 size="icon-sm"
-                className="-ml-1"
+                className="-ml-1 shrink-0"
                 onClick={() => router.back()}
               >
                 <ArrowLeftIcon />
@@ -215,17 +218,19 @@ export default function Page() {
               </Button>
               <Separator
                 orientation="vertical"
-                className="mr-2 data-vertical:h-4 data-vertical:self-auto"
+                className="mr-2 shrink-0 data-vertical:h-4 data-vertical:self-auto"
               />
-              <Breadcrumb>
-                <BreadcrumbList>
-                  <BreadcrumbItem>
-                    <BreadcrumbPage>{albumId === "default" ? t("default") : currentAlbumName || t("title")}</BreadcrumbPage>
+              <Breadcrumb className="min-w-0">
+                <BreadcrumbList className="min-w-0 flex-nowrap">
+                  <BreadcrumbItem className="min-w-0">
+                    <BreadcrumbPage className="block truncate" title={albumName}>
+                      {albumName}
+                    </BreadcrumbPage>
                   </BreadcrumbItem>
                 </BreadcrumbList>
               </Breadcrumb>
             </div>
-            <div className="fixed right-0 top-0 flex h-12 items-center gap-1 px-3">
+            <div className="flex shrink-0 items-center gap-1 px-3">
               <PhotoSearch onSearch={searchPhotos} />
               <PhotoDateDrawer albumId={albumId} onRangeChange={changePhotoTime} />
               <Button

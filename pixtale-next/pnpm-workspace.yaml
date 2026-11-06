@@ -5,7 +5,6 @@ allowBuilds:
   '@parcel/watcher': true
   '@swc/core': true
   better-sqlite3: true
-  ffmpeg-static: true
   sharp: true
 
 patchedDependencies:

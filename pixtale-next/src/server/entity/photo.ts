@@ -13,6 +13,7 @@ export const photoTab = sqliteTable('photo', {
   size: integer('size').notNull(), // 文件大小
   width: integer('width'), // 宽度
   height: integer('height'), // 高度
+  duration: integer('duration'), // 视频时长，单位秒
   takenTime: text('taken_time'), // 拍摄时间，优先 Exif，无 Exif 时用前端传入的 lastModified
   createTime: text('create_time').default(sql`(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))`).notNull(), // 创建时间 ISO UTC
   recycleTime: text('recycle_time'), // 回收时间

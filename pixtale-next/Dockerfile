@@ -23,7 +23,7 @@ FROM node:22-alpine AS runner
 
 WORKDIR /app
 
-# EXIF 读取依赖 Perl，视频封面使用系统 FFmpeg。
+# EXIF 读取依赖 Perl，视频封面和时长使用系统 FFmpeg。
 RUN apk add --no-cache perl ffmpeg
 
 ENV NODE_ENV=production
