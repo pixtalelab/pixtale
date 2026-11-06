@@ -3,10 +3,20 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# better-sqlite3、sharp 原生模块编译依赖
-RUN apk add --no-cache python3 make g++
+# 构建机有 ALPINE_MIRROR、NPM_REGISTRY 就用它们，没有则用官方源。
+# docker build --build-arg ALPINE_MIRROR --build-arg NPM_REGISTRY .
+ARG ALPINE_MIRROR
+ARG NPM_REGISTRY
 
-RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
+# better-sqlite3、sharp 原生模块编译依赖
+RUN alpine_mirror="${ALPINE_MIRROR:-https://dl-cdn.alpinelinux.org/alpine}" \
+ && sed -i "s#https://dl-cdn.alpinelinux.org/alpine#${alpine_mirror}#g" /etc/apk/repositories \
+ && apk add --no-cache python3 make g++
+
+RUN npm_registry="${NPM_REGISTRY:-https://registry.npmjs.org}" \
+ && corepack enable \
+ && COREPACK_NPM_REGISTRY="$npm_registry" npm_config_registry="$npm_registry" corepack prepare pnpm@11.6.0 --activate \
+ && pnpm config set registry "$npm_registry"
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY patches ./patches
@@ -23,8 +33,13 @@ FROM node:22-alpine AS runner
 
 WORKDIR /app
 
+# 运行阶段只换 Alpine 源。未传入时沿用官方源。
+ARG ALPINE_MIRROR
+
 # EXIF 读取依赖 Perl，视频封面和时长使用系统 FFmpeg。
-RUN apk add --no-cache perl ffmpeg
+RUN alpine_mirror="${ALPINE_MIRROR:-https://dl-cdn.alpinelinux.org/alpine}" \
+ && sed -i "s#https://dl-cdn.alpinelinux.org/alpine#${alpine_mirror}#g" /etc/apk/repositories \
+ && apk add --no-cache perl ffmpeg
 
 ENV NODE_ENV=production
 ENV PORT=8082
