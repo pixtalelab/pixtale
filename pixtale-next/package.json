@@ -7,8 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "bundle:win": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bundle-win.ps1"
+    "lint": "eslint"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.984.0",

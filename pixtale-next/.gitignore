@@ -50,3 +50,4 @@ gen-demo.js
 /standalone
 package-lock.json
 standalone.zip
+ffmpeg.exe

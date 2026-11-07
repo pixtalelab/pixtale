@@ -1,6 +1,3 @@
-nodeLinker: hoisted
-shamefullyHoist: true
-
 allowBuilds:
   '@parcel/watcher': true
   '@swc/core': true
