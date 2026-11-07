@@ -18,19 +18,10 @@ const colorSpaceLabels: Record<number, string> = {
   2: "Adobe RGB",
 }
 
-// 把 Exif 色彩空间字段格式化成可读文本。
+// 仅使用 Exif ColorSpace 显示色彩空间，翻译未校准状态并清理末尾括号说明。
 function formatColorSpace(exif: Record<string, unknown> | null | undefined, uncalibrated: string) {
-  if (!exif) {
-    return null
-  }
-
-  const profile = exif.ProfileDescription
-  if (profile !== undefined && profile !== null && profile !== "") {
-    return String(profile)
-  }
-
-  const colorSpace = exif.ColorSpace
-  if (colorSpace === undefined || colorSpace === null || colorSpace === "") {
+  const colorSpace = exif?.ColorSpace
+  if (!colorSpace) {
     return null
   }
 
@@ -38,7 +29,12 @@ function formatColorSpace(exif: Record<string, unknown> | null | undefined, unca
     return colorSpace === 65535 ? uncalibrated : colorSpaceLabels[colorSpace] ?? String(colorSpace)
   }
 
-  return String(colorSpace)
+  const text = String(colorSpace).replace(/\s*\([^)]*\)$/, "").trim()
+  if (text.toLowerCase() === "uncalibrated") {
+    return uncalibrated
+  }
+
+  return text.toLowerCase() === "srgb" ? "sRGB" : text || null
 }
 
 // 从照片 exif JSON 字符串读取色彩空间。
@@ -47,7 +43,7 @@ export function getPhotoColorSpace(exif: string | null | undefined, uncalibrated
 }
 
 type ViewerField = {
-  key: "camera" | "lens" | "shutter" | "aperture" | "focalLength" | "iso"
+  key: "camera" | "lens" | "shutter" | "aperture" | "maxAperture" | "focalLength" | "focalLength35mm" | "iso"
   value: string
   wrap?: boolean
 }
@@ -104,23 +100,15 @@ function formatFNumber(value: unknown) {
   return `f/${Number.isInteger(num) ? num : num.toFixed(1)}`
 }
 
-// 格式化 Exif 焦距。
+// 格式化实际焦距和 35mm 等效焦距，保留小数并隐藏无效或未知的零值。
 function formatFocalLength(value: unknown) {
   const text = exifText(value)
   if (!text) {
     return null
   }
 
-  if (text.endsWith("mm")) {
-    return text
-  }
-
-  const num = Number(text)
-  if (Number.isNaN(num)) {
-    return text
-  }
-
-  return `${Number.isInteger(num) ? num : num.toFixed(1)}mm`
+  const num = Number(text.replace(/\s*mm$/i, ""))
+  return Number.isFinite(num) && num > 0 ? `${num}mm` : null
 }
 
 // 从照片 exif JSON 字符串读取设备信息列表。
@@ -137,15 +125,31 @@ export function getPhotoDeviceParams(exif: string | null | undefined): ViewerFie
     items.push({ key: "camera", value: camera, wrap: true })
   }
 
-  const lens = [data.LensMake, data.LensModel].filter(Boolean).map(String).join(" ").trim()
+  const lens = exifText(data.LensModel)
   if (lens) {
     items.push({ key: "lens", value: lens, wrap: true })
+  }
+
+  const focalLength = formatFocalLength(data.FocalLength)
+  if (focalLength) {
+    items.push({ key: "focalLength", value: focalLength })
+  }
+
+  const focalLength35mm = formatFocalLength(data.FocalLengthIn35mmFormat)
+  if (focalLength35mm) {
+    items.push({ key: "focalLength35mm", value: focalLength35mm })
+  }
+
+  // ExifTool 默认已将 MaxApertureValue 的 APEX 编码转换为光圈值。
+  const maxAperture = formatFNumber(data.MaxApertureValue)
+  if (maxAperture) {
+    items.push({ key: "maxAperture", value: maxAperture })
   }
 
   return items
 }
 
-// 从照片 exif JSON 字符串读取拍摄参数列表。
+// 从照片 exif JSON 字符串读取拍摄参数列表，焦距使用 35mm 等效值。
 export function getPhotoShootingParams(exif: string | null | undefined): ViewerField[] {
   const data = parsePhotoExifJson(exif)
   if (!data) {
@@ -154,9 +158,10 @@ export function getPhotoShootingParams(exif: string | null | undefined): ViewerF
 
   const items: ViewerField[] = []
 
-  const exposureTime = formatExposureTime(data.ExposureTime)
-  if (exposureTime) {
-    items.push({ key: "shutter", value: exposureTime })
+  // 拍摄参数按焦距、光圈、快门、ISO 的顺序展示。
+  const focalLength35mm = formatFocalLength(data.FocalLengthIn35mmFormat)
+  if (focalLength35mm) {
+    items.push({ key: "focalLength", value: focalLength35mm })
   }
 
   const fNumber = formatFNumber(data.FNumber)
@@ -164,9 +169,9 @@ export function getPhotoShootingParams(exif: string | null | undefined): ViewerF
     items.push({ key: "aperture", value: fNumber })
   }
 
-  const focalLength = formatFocalLength(data.FocalLength)
-  if (focalLength) {
-    items.push({ key: "focalLength", value: focalLength })
+  const exposureTime = formatExposureTime(data.ExposureTime)
+  if (exposureTime) {
+    items.push({ key: "shutter", value: exposureTime })
   }
 
   const iso = exifText(data.ISO)

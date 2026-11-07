@@ -21,7 +21,7 @@ export function PhotoMasonrySkeleton({
   }
 
   return (
-    <div className="w-full overflow-x-hidden columns-2 gap-1 md:columns-[240px]">
+    <div className="w-full overflow-x-hidden columns-2 gap-1 md:columns-[240px_8]">
       {photos.map((photo) => (
         <Skeleton
           key={photo.photoId}

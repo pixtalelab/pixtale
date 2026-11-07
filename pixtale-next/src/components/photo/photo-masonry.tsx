@@ -116,6 +116,8 @@ const PhotoMasonry = memo(function PhotoMasonry({
     {
       width,
       columnWidth,
+      // 按容器宽度自适应列数，宽屏最多展示 8 列。
+      maxColumnCount: 8,
       columnGutter: 4,
       rowGutter: 4,
     },

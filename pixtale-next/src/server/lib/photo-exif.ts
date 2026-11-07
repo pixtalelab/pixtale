@@ -1,6 +1,6 @@
-// 这个模块从原图 Exif 读取拍摄元数据。
-
 import { ExifDateTime, ExifTool, type Tags } from "exiftool-vendored"
+
+// 这个模块从原图 Exif 读取拍摄元数据。
 
 // 启用时区推断的 exiftool 实例。
 const exiftool = new ExifTool({
@@ -21,10 +21,11 @@ const exifPickKeys = [
   "Software",
   "ExposureTime",
   "FNumber",
+  "MaxApertureValue",
   "FocalLength",
+  "FocalLengthIn35mmFormat",
   "ISO",
   "ColorSpace",
-  "ProfileDescription",
 ] as const
 
 const readArgs = [
@@ -156,13 +157,6 @@ function buildExifJson(tags: Tags) {
     const value = record[key]
     if (value !== undefined && value !== null && value !== "") {
       data[key] = tagValueToJson(value)
-    }
-  }
-
-  if (!data.ProfileDescription) {
-    const profile = record.ProfileDescription ?? record["ICC_Profile:ProfileDescription"]
-    if (profile !== undefined && profile !== null && profile !== "") {
-      data.ProfileDescription = tagValueToJson(profile)
     }
   }
 
