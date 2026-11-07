@@ -57,10 +57,13 @@ void main() {
             ],
           });
         case '/api/sync/check':
-          expect(body, [
-            {'name': 'old.jpg', 'size': 10},
-            {'name': 'new.jpg', 'size': 20},
-          ]);
+          expect(body, {
+            'albumId': 'album',
+            'files': [
+              {'name': 'old.jpg', 'size': 10},
+              {'name': 'new.jpg', 'size': 20},
+            ],
+          });
           return response([
             {'name': 'new.jpg', 'size': 20},
           ]);
@@ -71,7 +74,7 @@ void main() {
     addTearDown(client.close);
     final api = SyncApi(user, client);
     expect(await api.getAlbum('旅行', 'disk'), 'album');
-    final missing = await api.check(const [
+    final missing = await api.check('album', const [
       SyncFile(name: 'old.jpg', size: 10),
       SyncFile(name: 'new.jpg', size: 20),
     ]);

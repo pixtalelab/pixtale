@@ -114,7 +114,7 @@ void main() {
     expect(records.first.isInvalid, isTrue);
     expect(records.first.completedCount, 12);
     expect(records.last.isInvalid, isFalse);
-    expect(api.albumNames, isEmpty);
+    expect(api.albumNames, ['相册 b']);
     final failures = await logs.list(failuresOnly: true);
     expect(failures.single.event, '读取相册');
     expect(failures.single.albumName, '旅行');
@@ -338,7 +338,8 @@ void main() {
     await service.start(progress.add, onAlbumChanged: activeAlbums.add);
 
     expect(activeAlbums, ['a', 'b', null]);
-    expect(api.albumNames, ['相册 a']);
+    expect(api.albumNames, ['相册 a', '相册 b']);
+    expect(api.checkAlbumIds, ['remote-相册 a', 'remote-相册 b']);
     expect(api.attempts, {'new.jpg': 1});
     expect(photos.opened, ['new.jpg']);
     final records = await tasks.list();
@@ -777,7 +778,13 @@ void main() {
     await users.remove('user');
     await expectLater(
       service.start((_) {}),
-      throwsA(isA<ApiException>().having((e) => e.message, 'message', 'Sign in first')),
+      throwsA(
+        isA<ApiException>().having(
+          (e) => e.message,
+          'message',
+          'Sign in first',
+        ),
+      ),
     );
     expect(photos.checkedPermission, isFalse);
   });
@@ -801,7 +808,7 @@ void main() {
 
     expect(scheduledSettings.rounds, 2);
     expect(api.storageReads, 2);
-    expect(api.albumNames, isEmpty);
+    expect(api.albumNames, ['相册 a', '相册 a']);
     final entries = await logs.list();
     expect(entries.map((entry) => entry.event), ['开始同步', '开始同步']);
     expect(entries.every((entry) => entry.albumName == '全部相册'), isTrue);
@@ -840,7 +847,7 @@ void main() {
 
       expect(scheduledSettings.rounds, 2);
       expect(api.storageReads, 2);
-      expect(api.albumNames.where((name) => name == '相册 b'), hasLength(1));
+      expect(api.albumNames.where((name) => name == '相册 b'), hasLength(2));
       expect(api.attempts, {'good.jpg': 1});
       expect((await tasks.list()).map((task) => task.completedCount), [12, 1]);
       final failures = await logs.list(failuresOnly: true);
@@ -1089,6 +1096,7 @@ class FakeApi extends SyncApi {
   List<RemotePhoto> inventory = [];
   final Map<String, int> attempts = {};
   final List<String> albumNames = [];
+  final List<String> checkAlbumIds = [];
   final List<String> locks = [];
   final List<String> uploadStorages = [];
   List<Storage> storages = [
@@ -1121,10 +1129,14 @@ class FakeApi extends SyncApi {
 
   /// 返回远端还不存在的文件，供上传队列使用。
   @override
-  Future<List<SyncFile>> check(List<SyncFile> files) async {
+  Future<List<SyncFile>> check(String albumId, List<SyncFile> files) async {
+    checkAlbumIds.add(albumId);
     if (inventoryError != null) throw inventoryError!;
     final keys = {for (final photo in inventory) photo.key};
-    return [for (final file in files) if (!keys.contains(file.key)) file];
+    return [
+      for (final file in files)
+        if (!keys.contains(file.key)) file,
+    ];
   }
 
   /// 模拟成功、暂时性失败和业务失败。

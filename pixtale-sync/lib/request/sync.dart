@@ -39,11 +39,11 @@ class SyncApi {
   }
 
   /// 提交本页扫描到的文件名和体积，返回远端还不存在、可以上传的文件。
-  Future<List<SyncFile>> check(List<SyncFile> files) async {
-    final data = await _post<List<dynamic>>(
-      '/api/sync/check',
-      files.map((file) => file.toJson()).toList(),
-    );
+  Future<List<SyncFile>> check(String albumId, List<SyncFile> files) async {
+    final data = await _post<List<dynamic>>('/api/sync/check', {
+      'albumId': albumId,
+      'files': files.map((file) => file.toJson()).toList(),
+    });
     return data
         .map((item) => SyncFile.fromJson(item as Map<String, dynamic>))
         .toList();

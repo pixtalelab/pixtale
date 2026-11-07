@@ -223,8 +223,14 @@ class SyncService {
             account: api.user,
           );
           final name = album.name.trim();
-          if (name.isEmpty) throw const ApiException('Local album name is empty');
+          if (name.isEmpty)
+            throw const ApiException('Local album name is empty');
           albumName = name;
+          event = _LogEvent.getRemoteAlbum;
+          final remoteAlbumId = await _retry(
+            () => api.getAlbum(name, storage.id),
+          );
+          _checkStopped();
           event = _LogEvent.remoteCheck;
           final locals = <SyncPhoto>[];
           await for (final page in _photos.scanAlbum(
@@ -238,7 +244,9 @@ class SyncService {
           _checkStopped();
           final missingFiles = <SyncFile>[];
           if (locals.isEmpty) {
-            missingFiles.addAll(await _retry(() => api.check(const [])));
+            missingFiles.addAll(
+              await _retry(() => api.check(remoteAlbumId, const [])),
+            );
           } else {
             for (
               var start = 0;
@@ -248,10 +256,9 @@ class SyncService {
               _checkStopped();
               missingFiles.addAll(
                 await _retry(
-                  () => api.check([
-                    for (final photo in locals
-                        .skip(start)
-                        .take(SyncApi.checkPageSize))
+                  () => api.check(remoteAlbumId, [
+                    for (final photo
+                        in locals.skip(start).take(SyncApi.checkPageSize))
                       SyncFile(name: photo.name, size: photo.size),
                   ]),
                 ),
@@ -300,9 +307,6 @@ class SyncService {
           );
           publishProgress();
           if (missing.isEmpty) continue;
-          event = _LogEvent.getRemoteAlbum;
-          final albumId = await _retry(() => api.getAlbum(name, storage.id));
-          _checkStopped();
           var next = 0;
 
           /// 从待上传列表领取下一张照片，直到全部完成或同步停止。
@@ -316,7 +320,7 @@ class SyncService {
                 final accepted = await _upload(
                   api,
                   photo,
-                  albumId,
+                  remoteAlbumId,
                   storage,
                 );
                 if (!accepted) continue;
@@ -356,7 +360,9 @@ class SyncService {
           if (error is ApiException && error.statusCode == 401) rethrow;
         } finally {
           // 直接切到下一个相册。只有本轮最后一个任务结束才清空，避免间隔里显示空闲。
-          final next = index + 1 < tasks.length ? tasks[index + 1].albumId : null;
+          final next = index + 1 < tasks.length
+              ? tasks[index + 1].albumId
+              : null;
           setCurrentAlbum(next);
         }
       }
