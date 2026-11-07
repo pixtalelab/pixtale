@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { BrushCleaningIcon, GlobeIcon, LockIcon, MoreHorizontalIcon, PencilIcon, PinIcon, Trash2Icon } from "lucide-react"
+import { ArrowUpToLine, BrushCleaningIcon, GlobeIcon, LockIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import { Button } from "@/components/ui/button"
@@ -61,7 +61,7 @@ export function AlbumActionMenu({ albumId, shadow = true, onRename, onTop, onPub
               {t("actions.rename")}
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={onTop}>
-              <PinIcon />
+              <ArrowUpToLine />
               {t("actions.pin")}
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={onPublic}>

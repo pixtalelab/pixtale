@@ -1,7 +1,7 @@
 "use client"
 
 import { useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react"
-import { HeartIcon, Play } from "lucide-react"
+import { CirclePlay, HeartIcon } from "lucide-react"
 import { type RenderComponentProps } from "masonic"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -28,15 +28,6 @@ type PhotoCardProps = RenderComponentProps<PhotoVo> & {
   onFavoriteChange?: (index: number, setFavorite: (favorite: boolean) => void) => void
   onSelectedChange?: (photoId: string, selected: boolean) => void
   touchHoverCloseRef?: TouchHoverCloseRef
-}
-
-// 把视频秒数格式化成分:秒，分钟不补零，秒始终两位。
-function formatVideoDuration(duration: number) {
-  const total = Math.max(0, Math.floor(duration))
-  const minutes = Math.floor(total / 60)
-  const seconds = total % 60
-
-  return `${minutes}:${String(seconds).padStart(2, "0")}`
 }
 
 // 格式化照片展示名称，去掉文件后缀名。
@@ -206,12 +197,13 @@ export function PhotoCard({
         />
       ) : null}
       {data.type.startsWith("video/") && data.status !== PhotoStatusEnum.DELETE && (
-        <div className="pointer-events-none absolute top-2 left-2 z-10 flex items-center gap-1.5 rounded-full bg-black/50 pl-1.5 pr-2 py-1.25 text-xs leading-none text-white">
-          <Play className="size-3 fill-current" aria-hidden />
-          {data.duration != null && (
-            <span className="tabular-nums">{formatVideoDuration(data.duration)}</span>
-          )}
-        </div>
+        <CirclePlay
+          className="pointer-events-none absolute top-[7px] left-[7px] z-10 size-5 text-white"
+          style={{
+            filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.4)) drop-shadow(0 0 1px rgba(0,0,0,0.3))",
+          }}
+          aria-hidden
+        />
       )}
       {selected && (
         <div className="pointer-events-none absolute inset-0 bg-black/60" />
