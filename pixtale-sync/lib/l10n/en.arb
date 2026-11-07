@@ -52,6 +52,13 @@
   "notSignedIn": "Not signed in",
   "tapToSignIn": "Tap to sign in",
   "uploadConcurrency": "Upload concurrency",
+  "fileLimit": "File limit",
+  "fileLimitValue": "{size}MB",
+  "@fileLimitValue": {
+    "placeholders": {
+      "size": {"type": "int"}
+    }
+  },
   "syncInterval": "Sync interval",
   "off": "Off",
   "minutes": "{count} min",

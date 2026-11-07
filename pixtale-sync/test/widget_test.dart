@@ -299,6 +299,29 @@ void main() {
       2,
     );
     expect(find.widgetWithText(AppBar, '设置'), findsOneWidget);
+    expect(find.text('300MB'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('文件限制')).dy,
+      greaterThan(tester.getTopLeft(find.text('并发上传')).dy),
+    );
+    expect(
+      tester.getTopLeft(find.text('文件限制')).dy,
+      lessThan(tester.getTopLeft(find.text('定时同步')).dy),
+    );
+    await tester.tap(find.text('文件限制'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(AlertDialog, '文件限制'), findsOneWidget);
+    expect(
+      tester.widget<TextFormField>(find.byType(TextFormField)).controller!.text,
+      '300',
+    );
+    await tester.enterText(find.byType(TextFormField), '9');
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+    expect(find.text('请输入不小于 10 的数值'), findsOneWidget);
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+    expect(find.text('300MB'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.assignment_turned_in_outlined));
     await tester.pumpAndSettle();

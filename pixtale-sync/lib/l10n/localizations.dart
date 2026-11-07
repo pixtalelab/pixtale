@@ -344,6 +344,18 @@ abstract class AppLocalizations {
   /// **'并发上传'**
   String get uploadConcurrency;
 
+  /// No description provided for @fileLimit.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件限制'**
+  String get fileLimit;
+
+  /// No description provided for @fileLimitValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'{size}MB'**
+  String fileLimitValue(int size);
+
   /// No description provided for @syncInterval.
   ///
   /// In zh, this message translates to:

@@ -82,6 +82,8 @@ void main() {
       );
       expect((await db.query('settings')).single['log_max_count'], 500);
       expect((await db.query('settings')).single['locale'], '');
+      expect((await db.query('settings')).single['file_limit_mb'], 300);
+      await db.update('settings', {'file_limit_mb': 400}, where: 'id = 1');
       await db.insert('task', {
         'user_id': 'user',
         'album_id': 'saved',
@@ -98,6 +100,7 @@ void main() {
       expect(task['completed_count'], 0);
       expect(task['is_invalid'], 0);
       expect(await reopened.query('settings'), hasLength(1));
+      expect((await reopened.query('settings')).single['file_limit_mb'], 400);
       expect(
         (await reopened.query('settings')).single['schema_version'],
         databaseVersion,
@@ -163,6 +166,7 @@ CREATE TABLE task (
       final settings = (await db.query('settings')).single;
       expect(settings['schema_version'], databaseVersion);
       expect(settings['log_max_count'], 200);
+      expect(settings['file_limit_mb'], 300);
       expect(settings['album_sort'], 'original');
       final tables = await db.rawQuery(
         "SELECT name FROM sqlite_master WHERE type = 'table'",

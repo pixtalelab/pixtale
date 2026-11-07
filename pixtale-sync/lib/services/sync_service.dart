@@ -307,6 +307,10 @@ class SyncService {
           );
           publishProgress();
           if (missing.isEmpty) continue;
+          event = _LogEvent.readSyncSettings;
+          final settings = await _settings.get();
+          final concurrency = settings.uploadConcurrency.clamp(1, 20);
+          final fileLimitBytes = settings.fileLimitMb * 1024 * 1024;
           var next = 0;
 
           /// 从待上传列表领取下一张照片，直到全部完成或同步停止。
@@ -314,6 +318,7 @@ class SyncService {
             while (!_stopped && next < missing.length) {
               _checkStopped();
               final photo = missing[next++];
+              if (photo.size > fileLimitBytes) continue;
               if (!isAllowedMediaName(photo.name)) continue;
               try {
                 await _checkAccount(api.user);
@@ -343,11 +348,6 @@ class SyncService {
             }
           }
 
-          event = _LogEvent.readSyncSettings;
-          final concurrency = (await _settings.get()).uploadConcurrency.clamp(
-            1,
-            20,
-          );
           await Future.wait(
             List.generate(
               missing.length.clamp(0, concurrency),

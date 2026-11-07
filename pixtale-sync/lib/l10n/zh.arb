@@ -52,6 +52,13 @@
   "notSignedIn": "未登录",
   "tapToSignIn": "点击登录",
   "uploadConcurrency": "并发上传",
+  "fileLimit": "文件限制",
+  "fileLimitValue": "{size}MB",
+  "@fileLimitValue": {
+    "placeholders": {
+      "size": {"type": "int"}
+    }
+  },
   "syncInterval": "定时同步",
   "off": "关闭",
   "minutes": "{count}分钟",

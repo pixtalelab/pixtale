@@ -2,7 +2,7 @@
 // 已有表由 IF NOT EXISTS 跳过；之后给旧表补的列追加在建表语句后面。
 
 /// 当前数据库结构版本。
-const databaseVersion = 5;
+const databaseVersion = 20;
 
 /// 应用当前使用的全部表。
 const databaseSchema = <String>[
@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS settings (
   log_max_count INTEGER NOT NULL DEFAULT 500,
   task_status INTEGER NOT NULL DEFAULT 2,
   upload_concurrency INTEGER NOT NULL DEFAULT 1,
+  file_limit_mb INTEGER NOT NULL DEFAULT 300,
   last_sync_at TEXT,
   schema_version INTEGER NOT NULL DEFAULT 0,
   locale TEXT NOT NULL DEFAULT ''
@@ -67,5 +68,6 @@ CREATE TABLE IF NOT EXISTS settings (
   // 旧库的 settings 在这条列加入之前就已建好，CREATE 不会补列。
   'ALTER TABLE settings ADD COLUMN schema_version INTEGER NOT NULL DEFAULT 0;',
   "ALTER TABLE settings ADD COLUMN locale TEXT NOT NULL DEFAULT '';",
+  'ALTER TABLE settings ADD COLUMN file_limit_mb INTEGER NOT NULL DEFAULT 300;',
   'DROP TABLE IF EXISTS window_state;',
 ];

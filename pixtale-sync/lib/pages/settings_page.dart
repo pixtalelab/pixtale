@@ -23,7 +23,7 @@ class SettingsPage extends StatefulWidget {
   /// 创建设置页面。
   const SettingsPage({super.key, this.sync});
 
-  /// 与任务页共用的同步状态。修改并发时用来停止并重新启动。
+  /// 与任务页共用的同步状态。修改并发或文件限制时停止并重新启动。
   final SyncProvider? sync;
 
   /// 创建设置页面状态。
@@ -161,16 +161,20 @@ class _SettingsPageState extends State<SettingsPage> {
         next.uploadConcurrency,
       );
     }
+    if (next.fileLimitMb != current.fileLimitMb) {
+      await SettingsService.instance.updateFileLimitMb(next.fileLimitMb);
+    }
     if (next.locale != current.locale) {
       await AppLocale.instance.setCode(next.locale);
     }
     if (mounted) setState(() => _settings = next);
-    if (next.uploadConcurrency != current.uploadConcurrency) {
+    if (next.uploadConcurrency != current.uploadConcurrency ||
+        next.fileLimitMb != current.fileLimitMb) {
       await _restartSync();
     }
   }
 
-  /// 同步正在进行时先停止，再按新的并发数重新启动。
+  /// 同步正在进行时先停止，再按新的上传设置重新启动。
   Future<void> _restartSync() async {
     final sync = widget.sync;
     if (sync == null || !sync.active || sync.stopping) return;
@@ -330,6 +334,24 @@ class _SettingsCard extends StatelessWidget {
               );
               if (value != null) {
                 onChanged(settings.copyWith(uploadConcurrency: value));
+              }
+            },
+          ),
+          const Divider(height: 1),
+          _SettingRow(
+            icon: Icons.insert_drive_file_outlined,
+            label: l10n.fileLimit,
+            value: l10n.fileLimitValue(settings.fileLimitMb),
+            onTap: () async {
+              final value = await _showIntegerEditor(
+                context,
+                title: l10n.fileLimit,
+                initialValue: settings.fileLimitMb,
+                min: 10,
+                suffixText: 'MB',
+              );
+              if (value != null) {
+                onChanged(settings.copyWith(fileLimitMb: value));
               }
             },
           ),
@@ -535,6 +557,7 @@ Future<int?> _showIntegerEditor(
   required int initialValue,
   required int min,
   int? max,
+  String? suffixText,
 }) async {
   return showDialog<int>(
     context: context,
@@ -544,6 +567,7 @@ Future<int?> _showIntegerEditor(
       initialValue: initialValue,
       min: min,
       max: max,
+      suffixText: suffixText,
     ),
   );
 }
@@ -555,12 +579,14 @@ class _IntegerEditorDialog extends StatefulWidget {
     required this.initialValue,
     required this.min,
     this.max,
+    this.suffixText,
   });
 
   final String title;
   final int initialValue;
   final int min;
   final int? max;
+  final String? suffixText;
 
   @override
   State<_IntegerEditorDialog> createState() => _IntegerEditorDialogState();
@@ -600,6 +626,7 @@ class _IntegerEditorDialogState extends State<_IntegerEditorDialog> {
           keyboardType: TextInputType.number,
           decoration: InputDecoration(
             labelText: AppLocalizations.of(context).value,
+            suffixText: widget.suffixText,
           ),
           onFieldSubmitted: (_) => _submit(),
           validator: (value) {

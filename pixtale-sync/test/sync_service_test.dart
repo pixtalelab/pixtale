@@ -514,6 +514,57 @@ void main() {
     expect((await tasks.list()).single.completedCount, 6);
   });
 
+  test('默认超过 300MB 的文件静默跳过，继续上传其他文件', () async {
+    expect((await settings.get()).fileLimitMb, 300);
+    photos.albums = {
+      'a': [
+        localPhoto('large.mp4', size: 300 * 1024 * 1024 + 1),
+        localPhoto('keep.jpg'),
+      ],
+    };
+    await tasks.add(['a']);
+
+    await service.start((_) {});
+
+    expect(photos.opened, ['keep.jpg']);
+    expect(api.attempts, {'keep.jpg': 1});
+    expect((await tasks.list()).single.completedCount, 1);
+    expect((await logs.list()).map((entry) => entry.event), ['开始同步']);
+    expect((await settings.get()).lastSyncAt, isNotNull);
+  });
+
+  test('自定义 10MB 上限允许边界大小，调高后可重新上传被跳过的文件', () async {
+    for (final value in [-1, 0, 9]) {
+      await expectLater(settings.updateFileLimitMb(value), throwsRangeError);
+    }
+    expect((await settings.get()).fileLimitMb, 300);
+    await settings.updateFileLimitMb(10);
+    expect((await settings.get()).fileLimitMb, 10);
+    final limit = 10 * 1024 * 1024;
+    photos.albums = {
+      'a': [
+        localPhoto('large.jpg', size: limit + 1),
+        localPhoto('boundary.jpg', size: limit),
+        localPhoto('below.jpg', size: limit - 1),
+      ],
+    };
+    await tasks.add(['a']);
+
+    await service.start((_) {});
+
+    expect(photos.opened, ['boundary.jpg', 'below.jpg']);
+    expect(api.attempts, {'boundary.jpg': 1, 'below.jpg': 1});
+    expect((await tasks.list()).single.completedCount, 2);
+    expect((await logs.list()).map((entry) => entry.event), ['开始同步']);
+
+    await settings.updateFileLimitMb(11);
+    await service.start((_) {});
+
+    expect(api.attempts.keys, contains('large.jpg'));
+    expect((await tasks.list()).single.completedCount, 3);
+    expect(await logs.list(failuresOnly: true), isEmpty);
+  });
+
   test('上传时后缀和文件头都要在白名单内', () async {
     photos.headers['mismatch.jpg'] = const [
       0x89,

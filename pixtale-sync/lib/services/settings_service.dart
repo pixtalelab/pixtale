@@ -24,6 +24,7 @@ class SettingsService {
       logMaxCount: row['log_max_count'] as int,
       taskStatus: row['task_status'] as int,
       uploadConcurrency: row['upload_concurrency'] as int,
+      fileLimitMb: row['file_limit_mb'] as int,
       lastSyncAt: row['last_sync_at'] as String?,
       locale: row['locale'] as String? ?? '',
     );
@@ -41,6 +42,12 @@ class SettingsService {
   /// 保存每页允许同时上传的照片数。
   Future<void> updateUploadConcurrency(int value) =>
       _update('upload_concurrency', value);
+
+  /// 保存单文件大小上限（MB），最小 10 MB。
+  Future<void> updateFileLimitMb(int value) async {
+    if (value < 10) throw RangeError.range(value, 10, null, 'fileLimitMb');
+    await _update('file_limit_mb', value);
+  }
 
   /// 保存同步开启或关闭状态。
   Future<void> updateTaskStatus(int value) => _update('task_status', value);

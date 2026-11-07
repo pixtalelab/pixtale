@@ -137,6 +137,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get uploadConcurrency => '并发上传';
 
   @override
+  String get fileLimit => '文件限制';
+
+  @override
+  String fileLimitValue(int size) {
+    return '${size}MB';
+  }
+
+  @override
   String get syncInterval => '定时同步';
 
   @override

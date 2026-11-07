@@ -5,6 +5,7 @@ class Settings {
     required this.logMaxCount,
     required this.taskStatus,
     required this.uploadConcurrency,
+    this.fileLimitMb = 300,
     this.lastSyncAt,
     this.locale = '',
   });
@@ -13,6 +14,9 @@ class Settings {
   final int logMaxCount;
   final int taskStatus;
   final int uploadConcurrency;
+
+  /// 单文件上传大小上限，单位 MB。
+  final int fileLimitMb;
   final String? lastSyncAt;
 
   /// 界面语言。空字符串表示跟随系统。
@@ -23,6 +27,7 @@ class Settings {
     int? logMaxCount,
     int? taskStatus,
     int? uploadConcurrency,
+    int? fileLimitMb,
     String? lastSyncAt,
     String? locale,
   }) {
@@ -31,6 +36,7 @@ class Settings {
       logMaxCount: logMaxCount ?? this.logMaxCount,
       taskStatus: taskStatus ?? this.taskStatus,
       uploadConcurrency: uploadConcurrency ?? this.uploadConcurrency,
+      fileLimitMb: fileLimitMb ?? this.fileLimitMb,
       lastSyncAt: lastSyncAt ?? this.lastSyncAt,
       locale: locale ?? this.locale,
     );

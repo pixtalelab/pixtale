@@ -137,6 +137,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get uploadConcurrency => 'Upload concurrency';
 
   @override
+  String get fileLimit => 'File limit';
+
+  @override
+  String fileLimitValue(int size) {
+    return '${size}MB';
+  }
+
+  @override
   String get syncInterval => 'Sync interval';
 
   @override
