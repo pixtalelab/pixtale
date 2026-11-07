@@ -111,7 +111,7 @@ Future<T> post<T>(
   }
 }
 
-/// 以文件流发送 multipart 表单，交由调用方管理请求取消。
+/// 以文件流发送 multipart 表单，连续两分钟没有收发进展时取消当前请求。
 Future<dynamic> upload(
   String path, {
   required String baseUrl,
@@ -122,26 +122,54 @@ Future<dynamic> upload(
 }) async {
   final endpoint = '${baseUrl.replaceFirst(RegExp(r'/+$'), '')}$path';
   final abort = Completer<void>();
+  final timeout = Completer<http.Response>();
+  Timer? idleTimer;
+  var finished = false;
+
+  void onProgress() {
+    if (finished || timeout.isCompleted) return;
+    idleTimer?.cancel();
+    idleTimer = Timer(const Duration(minutes: 2), () {
+      timeout.completeError(const ApiException('Upload timed out'));
+      abort.complete();
+    });
+  }
+
   final request =
-      http.AbortableMultipartRequest(
+      _UploadRequest(
           'POST',
           Uri.parse(endpoint),
           abortTrigger: abort.future,
+          onProgress: onProgress,
         )
         ..headers[HttpHeaders.authorizationHeader] = token
         ..fields.addAll(fields)
         ..files.add(file);
   try {
-    final response = await client
-        .send(request)
-        .then(http.Response.fromStream)
-        .timeout(
-          const Duration(minutes: 3),
-          onTimeout: () {
-            abort.complete();
-            throw const ApiException('Upload timed out');
-          },
+    onProgress();
+    final response = await Future.any([
+      (() async {
+        final response = await client.send(request);
+        // 请求体发完后仍限制等待响应的时间；响应持续返回时同样续期。
+        onProgress();
+        final bytes = await http.ByteStream(
+          response.stream.map((chunk) {
+            if (chunk.isNotEmpty) onProgress();
+            return chunk;
+          }),
+        ).toBytes();
+        return http.Response.bytes(
+          bytes,
+          response.statusCode,
+          headers: response.headers,
+          request: response.request,
+          isRedirect: response.isRedirect,
+          persistentConnection: response.persistentConnection,
+          reasonPhrase: response.reasonPhrase,
         );
+      })(),
+      timeout.future,
+    ]);
     return _responseData(response);
   } on http.ClientException {
     throw const ApiException('Network error');
@@ -151,7 +179,33 @@ Future<dynamic> upload(
     throw const ApiException('Upload timed out');
   } on FormatException {
     throw const ApiException('Invalid response');
+  } finally {
+    finished = true;
+    idleTimer?.cancel();
   }
+}
+
+/// 监听 HTTP 客户端消费请求体的进展，保留流的背压和逐请求取消能力。
+/// 这是客户端传输进展，不代表远端已确认收到相应字节。
+class _UploadRequest extends http.MultipartRequest with http.Abortable {
+  _UploadRequest(
+    super.method,
+    super.url, {
+    required this.abortTrigger,
+    required this.onProgress,
+  });
+
+  @override
+  final Future<void> abortTrigger;
+  final void Function() onProgress;
+
+  @override
+  http.ByteStream finalize() => http.ByteStream(
+    super.finalize().map((chunk) {
+      if (chunk.isNotEmpty) onProgress();
+      return chunk;
+    }),
+  );
 }
 
 /// 统一二进制 GET 请求。
