@@ -15,6 +15,7 @@ interface PhotoState {
   uploadOpen: boolean
   uploadAlbumId: string | null
   infoOpen: boolean
+  videoMuted: boolean
   pageLoading: boolean
   uploadedPhotos: UploadedPhoto[]
   photoCache: Map<string, string>
@@ -23,6 +24,7 @@ interface PhotoState {
   openUpload: (albumId: string | null) => void
   closeUpload: () => void
   setInfoOpen: (open: boolean) => void
+  setVideoMuted: (muted: boolean) => void
   toggleInfoOpen: () => void
   setPageLoading: (loading: boolean) => void
   addUploadedPhoto: (photo: PhotoVo, albumId: string | null) => void
@@ -31,11 +33,12 @@ interface PhotoState {
   setPhotoCache: (photoId: string, src: string) => void
 }
 
-// 读取和更新照片上传相关全局状态，infoOpen 通过 persist 写入本地存储。
+// 读取和更新照片与视频状态，侧栏开关和视频静音偏好通过 persist 保存。
 const usePhotoStore = create<PhotoState>()(persist((set, get) => ({
   uploadOpen: false,
   uploadAlbumId: null,
   infoOpen: true,
+  videoMuted: false,
   pageLoading: false,
   uploadedPhotos: [],
   photoCache: new Map(),
@@ -52,6 +55,9 @@ const usePhotoStore = create<PhotoState>()(persist((set, get) => ({
 
   // 设置信息侧栏展开状态。
   setInfoOpen: (open) => set({ infoOpen: open }),
+
+  // 保存视频播放器的静音状态。
+  setVideoMuted: (videoMuted) => set((state) => state.videoMuted === videoMuted ? state : { videoMuted }),
 
   // 切换信息侧栏展开状态。
   toggleInfoOpen: () => set({ infoOpen: !get().infoOpen }),
@@ -87,8 +93,8 @@ const usePhotoStore = create<PhotoState>()(persist((set, get) => ({
   }),
 }), {
   name: "photo-store",
-  // 只持久化信息侧栏开关，上传队列和缓存不写入本地。
-  partialize: (state) => ({ infoOpen: state.infoOpen }),
+  // 只持久化界面偏好，上传队列和缓存不写入本地。
+  partialize: (state) => ({ infoOpen: state.infoOpen, videoMuted: state.videoMuted }),
 }))
 
 export { usePhotoStore }

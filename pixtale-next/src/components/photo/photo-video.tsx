@@ -9,6 +9,7 @@ import "@videojs/react/i18n/locales/zh/register"
 import { Video, VideoPlayer, VideoSkin } from "@videojs/react/video"
 import { useController, useLightboxState, type ContainerRect, type GenericSlide } from "yet-another-react-lightbox"
 import { getThumbHashUrl } from "@/lib/thumb-hash"
+import { usePhotoStore } from "@/store/photo-store"
 
 export type VideoSlide = GenericSlide & {
   type: "video"
@@ -40,6 +41,8 @@ export default function PhotoVideo({ slide, rect, active, previewCover }: {
   previewCover?: string
 }) {
   const locale = useLocale()
+  // videoMuted 从照片 store 读取，所有视频共享并持久化该开关状态。
+  const videoMuted = usePhotoStore((state) => state.videoMuted)
   // 读取图库动画状态和实际轮播容器，用于判断画面是否已经停止移动。
   const { animation } = useLightboxState()
   const { containerRef } = useController()
@@ -102,6 +105,12 @@ export default function PhotoVideo({ slide, rect, active, previewCover }: {
     }
 
     const play = video.play.bind(video)
+    // 静音按钮触发原生 volumechange，由照片 store 持久化偏好。
+    const syncMutedPreference = () => {
+      usePhotoStore.getState().setVideoMuted(video.muted)
+    }
+    video.addEventListener("volumechange", syncMutedPreference)
+
     // 拖动松手会被播放器当成点击，切页过程中不允许开始播放。
     video.play = () => {
       if (!activeRef.current || changingRef.current) {
@@ -115,6 +124,7 @@ export default function PhotoVideo({ slide, rect, active, previewCover }: {
     }
 
     return () => {
+      video.removeEventListener("volumechange", syncMutedPreference)
       video.play = play
       video.pause()
       // 提交结束后仅清理已移除的节点，兼容开发模式重复挂载 effect。
@@ -126,6 +136,13 @@ export default function PhotoVideo({ slide, rect, active, previewCover }: {
       })
     }
   }, [prepared, slide.src, active, changing])
+
+  // Zustand 偏好变化时同步到当前原生视频，让播放器控件保持一致。
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = videoMuted
+    }
+  }, [prepared, videoMuted])
 
   // 画面允许图库拖动；控件和播放器全屏时的操作交给 Video.js。
   function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
@@ -203,6 +220,7 @@ export default function PhotoVideo({ slide, rect, active, previewCover }: {
                 src={slide.src}
                 poster={poster}
                 preload="metadata"
+                loop
                 playsInline
                 aria-label={slide.alt}
               />
