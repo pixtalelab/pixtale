@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, notExists, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, notExists, sql } from 'drizzle-orm';
 import { createId } from '@/server/lib/id';
 import { type Album, albumTab } from '@/server/entity/album';
 import { albumPhotoTab } from '@/server/entity/album-photo';
@@ -46,7 +46,7 @@ const albumService = {
       .select()
       .from(albumTab)
       .where(eq(albumTab.userId, userId))
-      .orderBy(desc(albumTab.sort));
+      .orderBy(desc(albumTab.sort), asc(albumTab.createTime));
 
     if (!albumList.length) {
       const defaultAlbum = await this.getDefaultAlbum(userId);
@@ -182,7 +182,7 @@ const albumService = {
       .select()
       .from(albumTab)
       .where(eq(albumTab.public, AlbumPublicEnum.ENABLE))
-      .orderBy(desc(albumTab.sort));
+      .orderBy(desc(albumTab.sort), asc(albumTab.createTime));
 
     if (!albumList.length) {
       return [];
