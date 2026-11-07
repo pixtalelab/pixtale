@@ -1,1 +1,4 @@
 .idea
+
+# Local Android release signing credentials
+/android-signing/

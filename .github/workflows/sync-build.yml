@@ -1,0 +1,164 @@
+name: Build Pixtale Sync
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: '3.47.8'
+
+defaults:
+  run:
+    working-directory: pixtale-sync
+
+jobs:
+  windows:
+    name: Windows x64 installer
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Windows release
+        run: flutter build windows --release
+
+      - name: Set up Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup --version=6.5.4 --yes --no-progress --allow-downgrade
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $innoDir = "${env:ProgramFiles(x86)}\Inno Setup 6"
+          Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/jrsoftware/issrc/is-6_5_4/Files/Languages/Unofficial/ChineseSimplified.isl' -OutFile "$innoDir\Languages\ChineseSimplified.isl"
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $versionLine = Get-Content pubspec.yaml | Where-Object { $_ -match '^version:\s*' }
+          $version = (($versionLine -replace '^version:\s*', '').Trim() -split '\+')[0]
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=$version" installer.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: pixtale-sync-windows-x64
+          path: pixtale-sync/dist/pixtale-setup.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  android:
+    name: Android ARM64 APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Prepare Android signing key
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          for secret_name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [[ -z "${!secret_name}" ]]; then
+              echo "::error::Missing GitHub Secret: $secret_name"
+              exit 1
+            fi
+          done
+          umask 077
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/pixtale-release.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/pixtale-release.jks" >> "$GITHUB_ENV"
+
+      - name: Build ARM64 release APK
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: flutter build apk --release --target-platform android-arm64 --split-per-abi
+
+      - name: Remove Android signing key
+        if: always()
+        shell: bash
+        run: rm -f -- "$RUNNER_TEMP/pixtale-release.jks"
+
+      - name: Upload Android ARM64 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: pixtale-sync-android-arm64
+          path: pixtale-sync/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish GitHub Release
+    needs: [windows, android]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - name: Download installers
+        uses: actions/download-artifact@v4
+        with:
+          pattern: pixtale-sync-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish installers
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          apk="release-assets/pixtale-sync-${RELEASE_TAG}-android-arm64.apk"
+          exe="release-assets/pixtale-sync-${RELEASE_TAG}-windows-x64.exe"
+          mv release-assets/app-arm64-v8a-release.apk "$apk"
+          mv release-assets/pixtale-setup.exe "$exe"
+
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --verify-tag \
+              --title "$RELEASE_TAG" \
+              --generate-notes
+          fi
+          gh release upload "$RELEASE_TAG" "$apk" "$exe" \
+            --repo "$GITHUB_REPOSITORY" --clobber
