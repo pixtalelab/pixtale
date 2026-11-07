@@ -24,6 +24,10 @@ class SyncProvider extends ChangeNotifier {
   /// 当前正在核对或上传的相册，定时等待时为空。
   String? currentAlbumId;
 
+  /// 检测阶段也能展示相册名，并与保留的上轮进度区分。
+  String? currentAlbumName;
+  bool checking = false;
+
   /// 是否已开启同步，包括定时等待阶段。
   bool active = false;
 
@@ -71,6 +75,8 @@ class SyncProvider extends ChangeNotifier {
       active = false;
       stopping = false;
       currentAlbumId = null;
+      currentAlbumName = null;
+      checking = false;
       nextSyncAt = null;
       _notify();
     }
@@ -93,12 +99,18 @@ class SyncProvider extends ChangeNotifier {
   /// 保存最新相册进度并刷新页面。
   void _updateProgress(SyncProgress value) {
     progress[value.albumId] = value;
+    if (value.albumId == currentAlbumId) {
+      checking = false;
+      if (value.albumName.isNotEmpty) currentAlbumName = value.albumName;
+    }
     _notify();
   }
 
   /// 切换当前处理的相册，不改变缓存进度。
   void _updateCurrentAlbum(String? albumId) {
     currentAlbumId = albumId;
+    currentAlbumName = albumId == null ? null : progress[albumId]?.albumName;
+    checking = albumId != null;
     _notify();
   }
 
@@ -106,6 +118,10 @@ class SyncProvider extends ChangeNotifier {
   void _updateActivity(SyncActivity value) {
     nextSyncAt = value.nextSyncAt;
     stopping = value.stopping;
+    if (value.albumId != null && value.albumId == currentAlbumId) {
+      currentAlbumName = value.albumName;
+      checking = value.checking;
+    }
     _notify();
   }
 

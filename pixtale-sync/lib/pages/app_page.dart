@@ -55,6 +55,7 @@ class _AppPageState extends State<AppPage> {
   void initState() {
     super.initState();
     onUnauthorized = _expiredSession;
+    if (WindowService.showsTitleBar) WindowService.instance.bindSync(_sync);
   }
 
   /// 登录失效后删除本地用户。任务页会随账户变化停止同步。
@@ -73,6 +74,7 @@ class _AppPageState extends State<AppPage> {
   @override
   void dispose() {
     if (identical(onUnauthorized, _expiredSession)) onUnauthorized = null;
+    WindowService.instance.unbindSync(_sync);
     _sync.dispose();
     super.dispose();
   }

@@ -188,6 +188,7 @@ void main() {
     await service.start(progress.add);
     expect(pages, [0, 1, 2]);
     expect(progress.map((item) => item.completed), [205]);
+    expect(progress.single.albumName, '相册 a');
     expect(api.attempts, isEmpty);
     expect((await tasks.list()).single.completedCount, 205);
     final entries = await logs.list();
@@ -299,6 +300,8 @@ void main() {
     photos.onPage = (_) async {
       checked = true;
       expect(provider.progress['a']?.completed, 1);
+      expect(provider.checking, isTrue);
+      expect(provider.currentAlbumName, '相册 a');
     };
     await provider.start();
     expect(checked, isTrue);

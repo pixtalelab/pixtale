@@ -200,12 +200,14 @@ class SyncProgress {
     required this.completed,
     required this.total,
     required this.storageName,
+    this.albumName = '',
   });
 
   final String albumId;
   final int completed;
   final int total;
   final String storageName;
+  final String albumName;
 
   /// 从后台服务消息恢复进度。
   factory SyncProgress.fromJson(Map<String, dynamic> json) => SyncProgress(
@@ -213,6 +215,7 @@ class SyncProgress {
     completed: json['completed'] as int,
     total: json['total'] as int,
     storageName: json['storageName'] as String,
+    albumName: json['albumName'] as String? ?? '',
   );
 
   /// 转换为可跨隔离区传递的进度数据。
@@ -221,26 +224,42 @@ class SyncProgress {
     'completed': completed,
     'total': total,
     'storageName': storageName,
+    'albumName': albumName,
   };
 }
 
-/// 同步的定时等待或停止状态，不改变卡片已缓存的进度。
+/// 同步的当前相册、检测阶段、定时等待和停止状态，不改变缓存进度。
 class SyncActivity {
   /// 创建同步活动状态。
-  const SyncActivity({this.nextSyncAt, this.stopping = false});
+  const SyncActivity({
+    this.nextSyncAt,
+    this.stopping = false,
+    this.albumId,
+    this.albumName,
+    this.checking = false,
+  });
 
   final DateTime? nextSyncAt;
   final bool stopping;
+  final String? albumId;
+  final String? albumName;
+  final bool checking;
 
   /// 从后台消息恢复活动状态。
   factory SyncActivity.fromJson(Map<String, dynamic> json) => SyncActivity(
     nextSyncAt: DateTime.tryParse(json['nextSyncAt'] as String? ?? ''),
     stopping: json['stopping'] == true,
+    albumId: json['albumId'] as String?,
+    albumName: json['albumName'] as String?,
+    checking: json['checking'] == true,
   );
 
   /// 转换为后台消息使用的数据。
   Map<String, dynamic> toJson() => {
     'nextSyncAt': nextSyncAt?.toIso8601String(),
     'stopping': stopping,
+    'albumId': albumId,
+    'albumName': albumName,
+    'checking': checking,
   };
 }

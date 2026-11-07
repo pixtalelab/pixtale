@@ -186,6 +186,15 @@ class SyncService {
       if (currentAlbumId == albumId) return;
       currentAlbumId = albumId;
       onAlbumChanged?.call(albumId);
+      publishActivity(
+        SyncActivity(
+          albumId: albumId,
+          albumName: albumId == null
+              ? null
+              : tasks.firstWhere((task) => task.albumId == albumId).albumName,
+          checking: albumId != null,
+        ),
+      );
     }
 
     setCurrentAlbum(tasks.first.albumId);
@@ -226,6 +235,9 @@ class SyncService {
           if (name.isEmpty)
             throw const ApiException('Local album name is empty');
           albumName = name;
+          publishActivity(
+            SyncActivity(albumId: task.albumId, albumName: name, checking: true),
+          );
           event = _LogEvent.getRemoteAlbum;
           final remoteAlbumId = await _retry(
             () => api.getAlbum(name, storage.id),
@@ -295,6 +307,7 @@ class SyncService {
                 completed: completed,
                 total: total,
                 storageName: storageName,
+                albumName: albumName,
               ),
             );
           }
@@ -306,6 +319,9 @@ class SyncService {
             account: api.user,
           );
           publishProgress();
+          publishActivity(
+            SyncActivity(albumId: task.albumId, albumName: albumName),
+          );
           if (missing.isEmpty) continue;
           event = _LogEvent.readSyncSettings;
           final settings = await _settings.get();

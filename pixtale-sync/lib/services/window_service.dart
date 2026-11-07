@@ -8,6 +8,8 @@ import 'dart:ui';
 
 import 'package:path/path.dart' as path;
 import 'package:pixtale_sync/db/database_path.dart';
+import 'package:pixtale_sync/providers/sync_provider.dart';
+import 'package:pixtale_sync/services/tray_sync_service.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'package:tray_manager/legacy.dart';
 import 'package:window_manager/window_manager.dart';
@@ -35,6 +37,19 @@ class WindowService with WindowListener, TrayListener {
   }
 
   bool _exiting = false;
+  TraySyncService? _traySync;
+
+  /// 托盘和页面使用同一份同步状态。
+  void bindSync(SyncProvider sync) {
+    _traySync?.dispose();
+    _traySync = TraySyncService(sync: sync, setToolTip: trayManager.setToolTip);
+  }
+
+  void unbindSync(SyncProvider sync) {
+    if (_traySync?.sync != sync) return;
+    _traySync?.dispose();
+    _traySync = null;
+  }
 
   /// 在主屏幕内以默认尺寸居中显示窗口。
   Future<void> initialize() async {
@@ -125,6 +140,8 @@ class WindowService with WindowListener, TrayListener {
   Future<void> _exit() async {
     if (_exiting) return;
     _exiting = true;
+    _traySync?.dispose();
+    _traySync = null;
     windowManager.removeListener(this);
     trayManager.removeListener(this);
     await trayManager.destroy();

@@ -186,6 +186,26 @@ void main() {
     expect(provider.nextSyncAt, next);
     expect(provider.currentAlbumId, isNull);
 
+    _send('snapshot', {
+      'albumId': 'a',
+      'activity': const SyncActivity(
+        albumId: 'a',
+        albumName: '旅行',
+        checking: true,
+      ).toJson(),
+      'progress': [_progress.toJson()],
+    });
+    await _flush();
+    expect(provider.currentAlbumName, '旅行');
+    expect(provider.checking, isTrue);
+    expect(provider.progress['a']?.completed, 35);
+
+    _send('activity', {
+      'value': const SyncActivity(albumId: 'a', albumName: '旅行').toJson(),
+    });
+    await _flush();
+    expect(provider.checking, isFalse);
+
     provider.dispose();
     await _flush();
     expect(running, true);
