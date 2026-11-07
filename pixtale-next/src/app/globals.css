@@ -163,6 +163,10 @@ html {
     filter: brightness(1);
 }
 
+.yarl__thumbnails_container {
+    background-color: transparent !important;
+}
+
 * {
     scrollbar-width: thin;
     scrollbar-color: var(--scrollbar-color) transparent;

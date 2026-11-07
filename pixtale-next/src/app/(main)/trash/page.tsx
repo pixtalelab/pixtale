@@ -14,8 +14,11 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import dynamic from "next/dynamic"
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useTrashContext } from "./provider"
 import { useApp } from "@/app/(main)/provider"
+import { useTrashStore } from "@/store/trash-store"
 import { useTranslations } from "next-intl"
 
 const AlbumMasonry = dynamic(
@@ -23,16 +26,28 @@ const AlbumMasonry = dynamic(
   { ssr: false },
 )
 
+// 展示回收站入口，并在照片变更后返回时刷新数量和封面。
 export default function Page() {
   const t = useTranslations()
+  const router = useRouter()
   const { initialAlbum } = useTrashContext()
   const { sidebarOpen, setSidebarOpen } = useApp()
+  // refreshKey 大于零表示照片变更后需要重新读取回收站数量和封面。
+  const refreshKey = useTrashStore((state) => state.refreshKey)
   // album 保存带页面跳转地址的回收站入口相册。
   const album = {
     ...initialAlbum,
     albumId: "../trash/photos",
     name: t(initialAlbum.name),
   }
+
+  // 返回入口时消费照片变更标记，并重新读取服务端统计和封面。
+  useEffect(() => {
+    if (refreshKey > 0) {
+      useTrashStore.getState().resetRefreshKey()
+      router.refresh()
+    }
+  }, [refreshKey, router])
 
   return (
     <>

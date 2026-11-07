@@ -23,16 +23,20 @@ import { toast } from "sonner"
 import { PHOTO_LIST_PAGE_SIZE } from "@/server/const/global"
 import { PhotoStatusEnum } from "@/server/enums/photo-enum"
 import { useTrashPhotoContext } from "./provider"
+import { useTrashStore } from "@/store/trash-store"
 import { useApp } from "@/app/(main)/provider"
 import { Button } from "@/components/ui/button"
 import { ArrowLeftIcon, BrushCleaning } from "lucide-react"
 import { PhotoMasonrySkeleton } from "@/components/photo/photo-masonry-skeleton"
 import { useTranslations } from "next-intl"
 
+// 展示和管理回收站照片，并在操作成功后标记入口需要刷新。
 export default function Page() {
   const t = useTranslations("trash")
   const router = useRouter()
   const { initialPhotos } = useTrashPhotoContext()
+  // increaseRefreshKey 在照片操作成功后标记回收站入口需要刷新。
+  const increaseRefreshKey = useTrashStore((state) => state.increaseRefreshKey)
   const { sidebarOpen, setSidebarOpen, listStyle } = useApp()
   // isBrowser 标记当前是否在浏览器环境，SSR 阶段显示骨架屏。
   const [isBrowser, setIsBrowser] = useState(false)
@@ -92,6 +96,7 @@ export default function Page() {
     }, 300)
 
     photoDelete({ photoIds }).then(() => {
+      increaseRefreshKey()
       removePhotos(photoIds)
     })
   }
@@ -102,6 +107,7 @@ export default function Page() {
 
     toast.promise(
       photoClear({ showErrorToast: false }).then(() => {
+        increaseRefreshKey()
         setPhotos([])
         refreshMasonry()
       }),
@@ -116,9 +122,10 @@ export default function Page() {
   // 恢复回收站选中的照片，并从当前回收站列表移除。
   const restorePhotos = useCallback((photoIds: string[]) => {
     photoRestore({ photoIds }).then(() => {
+      increaseRefreshKey()
       removePhotos(photoIds)
     })
-  }, [removePhotos])
+  }, [increaseRefreshKey, removePhotos])
 
   // 处理彻底删除确认弹框打开状态。
   function handleDeleteOpenChange(open: boolean) {
