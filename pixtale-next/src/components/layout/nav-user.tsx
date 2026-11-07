@@ -175,7 +175,7 @@ export function NavUser({
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <a
-                    href="https://docs.022335.xyz/"
+                    href="https://pixtale.aslost.com/"
                     target="_blank"
                     rel="noopener noreferrer"
                   >

@@ -906,7 +906,7 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
         buttonNext: () => <NextButton key="next" showActions={actionsVisible} />,
         controls: () => (
           <>
-            {infoOpen && !fullscreenOpen && (
+            {!fullscreenOpen && (
               <PhotoViewerBlurBackground thumbHash={photos[viewIndex]?.thumbHash} />
             )}
             {infoOpen && !fullscreenOpen && (
