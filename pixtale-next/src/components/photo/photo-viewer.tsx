@@ -829,8 +829,10 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
     onBack()
   }
 
-  // 侧栏展开时收窄 lightbox 宽度，为右侧信息面板留出空间。
-  const lightboxClassName = infoOpen && !fullscreenOpen ? "w-0 md:w-[calc(100%-(0.25rem*80))]" : "w-full"
+  // 移动端通过透明度切换画面，避免宽度突变；桌面端为侧栏留出空间。
+  const lightboxClassName = infoOpen && !fullscreenOpen
+    ? "photo-viewer photo-viewer-info-open w-full md:w-[calc(100%-(0.25rem*80))]"
+    : "photo-viewer w-full"
 
   // 渲染 yet-another-react-lightbox 最简预览。
   return (
@@ -872,8 +874,8 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
         },
       }}
       thumbnails={{
-        width: innerWidth < 768 ? 50 : 75,
-        height: innerWidth < 768 ? 50 : 75,
+        width: innerWidth < 768 ? 60 : 75,
+        height: innerWidth < 768 ? 60 : 75,
         gap: 0,
         padding: 0,
         border: 0,
@@ -909,8 +911,8 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
             {!fullscreenOpen && (
               <PhotoViewerBlurBackground thumbHash={photos[viewIndex]?.thumbHash} />
             )}
-            {infoOpen && !fullscreenOpen && (
-              <PhotoInfoSidebar photo={photos[viewIndex] ?? null} onClose={() => setInfoOpen(false)} />
+            {!fullscreenOpen && (
+              <PhotoInfoSidebar photo={photos[viewIndex] ?? null} open={infoOpen} onClose={() => setInfoOpen(false)} />
             )}
             <CloseButton showActions={actionsVisible} />
             <InfoButton

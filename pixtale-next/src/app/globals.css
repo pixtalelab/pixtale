@@ -221,6 +221,29 @@ body.yarl__no_scroll > .os-theme-page {
 .yarl__slide {
     padding: 0 !important;
 }
+
+/* 移动端用透明度切换照片与信息，保留原来的深色模糊背景。 */
+@media (width < 48rem) {
+    .photo-viewer {
+        background-color: #000;
+    }
+
+    .photo-viewer .yarl__container {
+        background-color: transparent;
+    }
+
+    .photo-viewer .yarl__carousel,
+    .photo-viewer .yarl__thumbnails_container {
+        transition: opacity 200ms var(--default-transition-timing-function);
+    }
+
+    .photo-viewer-info-open .yarl__carousel,
+    .photo-viewer-info-open .yarl__thumbnails_container {
+        opacity: 0;
+        pointer-events: none;
+    }
+}
+
 /* 默认皮肤沿用图库的直角边缘和按比例完整显示。 */
 .photo-video {
     --media-border-radius: 0;

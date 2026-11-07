@@ -1,7 +1,7 @@
 "use client"
 
 import { useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react"
-import { CirclePlay, HeartIcon } from "lucide-react"
+import { Video, HeartIcon } from "lucide-react"
 import { type RenderComponentProps } from "masonic"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -197,8 +197,8 @@ export function PhotoCard({
         />
       ) : null}
       {data.type.startsWith("video/") && data.status !== PhotoStatusEnum.DELETE && (
-        <CirclePlay
-          className="pointer-events-none absolute top-[7px] left-[7px] z-10 size-5 text-white"
+        <Video
+          className="pointer-events-none absolute top-[7px] left-[7px] z-10 size-4.5 text-white"
           style={{
             filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.4)) drop-shadow(0 0 1px rgba(0,0,0,0.3))",
           }}

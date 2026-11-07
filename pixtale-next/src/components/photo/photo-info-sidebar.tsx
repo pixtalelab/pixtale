@@ -13,6 +13,8 @@ import { useLocale, useTranslations } from "next-intl"
 type PhotoInfoSidebarProps = {
   // 当前查看的照片。
   photo: PhotoVo | null
+  // 侧栏是否打开。
+  open: boolean
   // 关闭侧栏。
   onClose?: () => void
 }
@@ -20,17 +22,6 @@ type PhotoInfoSidebarProps = {
 type PhotoViewerBlurBackgroundProps = {
   // 当前照片的 thumbHash。
   thumbHash?: string | null
-}
-
-// 格式化存储位置：存储名(翻译后的类型)。
-function formatStorageLocation(photo: PhotoVo, t: (key: string) => string) {
-  if (!photo.storageName && !photo.storageTypeDesc) {
-    return null
-  }
-
-  const type = photo.storageTypeDesc ? t(photo.storageTypeDesc) : "-"
-
-  return `${photo.storageName ?? "-"} (${type})`
 }
 
 // 格式化照片名称，去掉文件后缀。
@@ -130,16 +121,15 @@ function SidebarCloseButton({ onClose }: { onClose: () => void }) {
   )
 }
 
-// 渲染照片信息侧栏，固定在 Lightbox 右侧。
-export function PhotoInfoSidebar({ photo, onClose }: PhotoInfoSidebarProps) {
+// 渲染照片信息侧栏，保持挂载以播放移动端的 CSS 淡入淡出。
+export function PhotoInfoSidebar({ photo, open, onClose }: PhotoInfoSidebarProps) {
   const t = useTranslations("photos.info")
-  const storageT = useTranslations("storage")
   const locale = useLocale()
   const deviceParams = photo ? getPhotoDeviceParams(photo.exif) : []
   const shootingParams = photo ? getPhotoShootingParams(photo.exif) : []
 
   return (
-    <aside className="fixed top-0 right-0 z-[41] flex h-full w-full flex-col overflow-y-auto bg-transparent backdrop-blur-xl text-white shadow-photo-sidebar md:w-80 md:shrink-0" onPointerDown={(event) => event.stopPropagation()}>
+    <aside className={`fixed top-0 right-0 z-[41] flex h-full w-full flex-col overflow-y-auto bg-transparent backdrop-blur-xl text-white shadow-photo-sidebar transition-opacity duration-200 md:transition-none md:w-80 md:shrink-0 ${open ? "opacity-100" : "pointer-events-none opacity-0 md:hidden"}`} aria-hidden={!open} inert={!open} onPointerDown={(event) => event.stopPropagation()}>
       {onClose && <SidebarCloseButton onClose={onClose} />}
       {photo && (
         <div className="text-left">
@@ -155,7 +145,7 @@ export function PhotoInfoSidebar({ photo, onClose }: PhotoInfoSidebarProps) {
             <PhotoInfoRow label={t("timeZone")} value={getPhotoTimezone(photo.exif)} />
             <PhotoInfoRow label={t("location")} value={formatPhotoLocation(photo.latitude, photo.longitude, photo.altitude)} wrap/>
             <PhotoInfoRow label={t("software")} value={getPhotoSoftware(photo.exif)} wrap />
-            <PhotoInfoRow label={t("storage")} value={formatStorageLocation(photo, storageT)} />
+            <PhotoInfoRow label={t("storage")} value={photo.storageName} />
           </div>
           {shootingParams.length > 0 && (
             <>
