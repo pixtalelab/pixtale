@@ -42,7 +42,7 @@ class WindowService with WindowListener, TrayListener {
     windowManager.addListener(this);
     trayManager.addListener(this);
     await windowManager.setPreventClose(true);
-    await trayManager.setIcon('assets/logo.png');
+    await trayManager.setIcon('assets/tray_icon.png');
     await trayManager.setToolTip('Pixtale Sync');
     await trayManager.setContextMenu(
       Menu(
