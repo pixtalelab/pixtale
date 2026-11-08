@@ -47,6 +47,10 @@ docker run -d \
 
 更多详细部署及使用教程见 [部署文档](https://pixtale.aslost.com)
 
+## 🚀 一键部署
+
+[![Deploy on RepoCloud](https://d16t0pc4846x52.cloudfront.net/deploylobe.svg)](https://repocloud.io/details/Pixtale/)
+
 ## ✨ 功能
 
 - **🖼️ 瀑布流列表**：瀑布流无限滚动，采用游标分页+虚拟滚动优化性能
