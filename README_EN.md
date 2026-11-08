@@ -15,7 +15,7 @@
 
 ## 💡 Introduction
 
-**Pixtale** is a self-hosted cloud photo gallery with support for **local storage, S3, Telegram**, and other storage backends. Use the companion sync app to automatically sync photos from your phone and PC to your gallery.
+**Pixtale** is a self-hosted photo gallery that supports local and object storage. Use Pixtale Sync to automatically sync photos from your phone and computer to your gallery.
 
 ## 💻 Screenshots
 
@@ -59,7 +59,7 @@ For detailed deployment and usage instructions, see the [Deployment Guide](https
 
 - **💻 Responsive Design:** Adapts to desktop and mobile screens.
 
-- **☁️ Multiple Storage Backends:** Brings photos from local storage, Telegram, and S3 together in one gallery.
+- **☁️ Multiple Storage Backends:** Combine local and object storage in a single gallery.
 
 - **👥 Multi-user Support:** Create and manage multiple user accounts.
 
