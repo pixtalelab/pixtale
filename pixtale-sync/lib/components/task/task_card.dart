@@ -10,6 +10,7 @@ class TaskCard extends StatelessWidget {
   const TaskCard({
     super.key,
     required this.preview,
+    required this.coverReady,
     required this.completed,
     required this.total,
     required this.ruleName,
@@ -22,6 +23,9 @@ class TaskCard extends StatelessWidget {
 
   /// 相册及其封面信息。
   final TaskPreview preview;
+
+  /// 封面读取结束后，无图片时才展示占位图标。
+  final bool coverReady;
 
   /// 已同步张数、本地总张数和规则名称。
   final int completed;
@@ -90,13 +94,12 @@ class TaskCard extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   preview.cover == null
-                      ? ColoredBox(
-                          color: colors.surfaceContainerHighest,
-                          child: Icon(
-                            Icons.photo_outlined,
-                            color: colors.outline,
-                          ),
-                        )
+                      ? !coverReady
+                            ? const ColoredBox(color: Colors.white)
+                            : const ColoredBox(
+                                color: Color(0xFFE9ECEF),
+                                child: Icon(Icons.photo_outlined),
+                              )
                       : Image.memory(
                           preview.cover!,
                           fit: BoxFit.cover,

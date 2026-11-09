@@ -156,7 +156,7 @@ class _LogPageState extends State<LogPage> {
         '${time.second.toString().padLeft(2, '0')}';
   }
 
-  /// 构建日志工具栏与三行日志列表。
+  /// 构建日志工具栏与三行日志卡片列表。
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -192,19 +192,15 @@ class _LogPageState extends State<LogPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(_error!),
-                  IconButton(
-                    onPressed: _load,
-                    icon: const Icon(Icons.refresh),
-                  ),
+                  IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
                 ],
               ),
             )
           : ListView.separated(
               controller: _scroll,
-              padding: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(16),
               itemCount: _logs.length + (_error == null ? 0 : 1),
-              separatorBuilder: (_, _) =>
-                  const Divider(height: 1, indent: 0, endIndent: 0),
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 if (index == _logs.length) {
                   return TextButton.icon(
@@ -214,7 +210,7 @@ class _LogPageState extends State<LogPage> {
                   );
                 }
                 final log = _logs[index];
-                return _LogRow(
+                return _LogCard(
                   key: ValueKey(log.id),
                   log: log,
                   time: _formatTime(log.createdAt),
@@ -245,9 +241,9 @@ enum _LogFilter {
 }
 
 /// 展示相册与时间、事件、状态标签与结果。
-class _LogRow extends StatelessWidget {
-  /// 创建只读日志行。
-  const _LogRow({super.key, required this.log, required this.time});
+class _LogCard extends StatelessWidget {
+  /// 创建只读日志卡片。
+  const _LogCard({super.key, required this.log, required this.time});
 
   final Log log;
   final String time;
@@ -260,77 +256,81 @@ class _LogRow extends StatelessWidget {
     final statusColor = succeeded
         ? theme.colorScheme.primary
         : theme.colorScheme.error;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  log.albumName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                time,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            log.event,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: statusColor,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
+    return Material(
+      color: theme.colorScheme.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
                   child: Text(
-                    log.status == LogStatus.success
-                        ? AppLocalizations.of(context).logStatusSuccess
-                        : AppLocalizations.of(context).logStatusFailure,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: succeeded
-                          ? theme.colorScheme.onPrimary
-                          : theme.colorScheme.onError,
+                    log.albumName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  log.message,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium,
+                const SizedBox(width: 12),
+                Text(
+                  time,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              log.event,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    child: Text(
+                      log.status == LogStatus.success
+                          ? AppLocalizations.of(context).logStatusSuccess
+                          : AppLocalizations.of(context).logStatusFailure,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: succeeded
+                            ? theme.colorScheme.onPrimary
+                            : theme.colorScheme.onError,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    log.message,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

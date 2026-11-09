@@ -48,7 +48,7 @@ void main() {
     expect(colors.secondary, original.secondary);
     expect(
       DefaultTextStyle.of(tester.element(find.text('日志'))).style.color,
-      original.onSurface,
+      colors.primary,
     );
     expect(
       Theme.of(tester.element(find.text('日志'))).textButtonTheme.style,

@@ -60,6 +60,9 @@ class _TaskPageState extends State<TaskPage> {
   /// 任务卡片及来源相册预览。
   final List<TaskPreview> _tasks = [];
 
+  /// 已完成封面读取的任务，无缓存且未完成时显示白色空白。
+  final Set<String> _loadedCoverIds = {};
+
   /// 当前是否正从系统图库读取数据。
   bool _loading = false;
 
@@ -174,6 +177,7 @@ class _TaskPageState extends State<TaskPage> {
     setState(() {
       _account = null;
       _tasks.clear();
+      _loadedCoverIds.clear();
       _sync.progress.clear();
       _loading = true;
     });
@@ -440,6 +444,7 @@ class _TaskPageState extends State<TaskPage> {
     if (mounted && version == _taskVersion) {
       setState(() {
         _account = account;
+        _loadedCoverIds.retainAll(records.map((task) => task.albumId));
         _tasks
           ..clear()
           ..addAll(records.map(_previewFromTask));
@@ -460,6 +465,11 @@ class _TaskPageState extends State<TaskPage> {
     try {
       await _photos.checkPermission();
     } catch (_) {
+      if (mounted && version == _taskVersion) {
+        setState(() {
+          _loadedCoverIds.addAll(records.map((task) => task.albumId));
+        });
+      }
       return;
     }
 
@@ -508,6 +518,10 @@ class _TaskPageState extends State<TaskPage> {
           error: error,
           stackTrace: stackTrace,
         );
+      } finally {
+        if (mounted && version == _taskVersion) {
+          setState(() => _loadedCoverIds.add(record.albumId));
+        }
       }
     }
   }
@@ -613,6 +627,7 @@ class _TaskPageState extends State<TaskPage> {
                 final preview = _tasks[index];
                 final progress = _sync.progress[preview.albumId];
                 return TaskCard(
+                  coverReady: _loadedCoverIds.contains(preview.albumId),
                   key: ValueKey(preview.albumId),
                   preview: preview,
                   completed: progress?.completed ?? preview.completedCount,

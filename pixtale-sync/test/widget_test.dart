@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pixtale_sync/components/common/app_notice.dart';
+import 'package:pixtale_sync/components/task/task_card.dart';
 
 import 'localized_app.dart';
 
@@ -37,6 +38,79 @@ void main() {
     );
     addTearDown(database.close);
   });
+
+  for (final fails in [false, true]) {
+    testWidgets('任务封面加载时留白，${fails ? '读取失败' : '没有封面'}后显示占位图标', (tester) async {
+      final tasks = DialogTaskService(database);
+      await tasks.add(['a']);
+      final pending = Completer<Map<String, dynamic>>();
+      const channel = MethodChannel('com.fluttercandies/photo_manager');
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        channel,
+        (call) async => switch (call.method) {
+          'requestPermissionExtend' || 'getPermissionState' => 3,
+          'fetchPathProperties' => {
+            'data': [
+              {'id': 'a', 'name': '旅行', 'assetCount': 0, 'isAll': false},
+            ],
+          },
+          'getAssetCountFromPath' => 0,
+          'getAssetListRange' => pending.future,
+          _ => null,
+        },
+      );
+      addTearDown(() {
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          channel,
+          null,
+        );
+      });
+      await tester.pumpWidget(
+        localizedApp(
+          home: TaskPage(
+            taskService: tasks,
+            syncService: WaitingSyncService(tasks),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(TaskCard), findsOneWidget);
+      expect(
+        tester.widget<TaskCard>(find.byType(TaskCard)).coverReady,
+        isFalse,
+      );
+      expect(find.byIcon(Icons.photo_outlined), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(TaskCard),
+          matching: find.byWidgetPredicate(
+            (widget) => widget is ColoredBox && widget.color == Colors.white,
+          ),
+        ),
+        findsOneWidget,
+      );
+
+      if (fails) {
+        pending.completeError(PlatformException(code: 'unavailable'));
+      } else {
+        pending.complete({'data': []});
+      }
+      await tester.pumpAndSettle();
+      expect(tester.widget<TaskCard>(find.byType(TaskCard)).coverReady, isTrue);
+      expect(find.byIcon(Icons.photo_outlined), findsOneWidget);
+      final placeholder = tester.widget<ColoredBox>(
+        find
+            .ancestor(
+              of: find.byIcon(Icons.photo_outlined),
+              matching: find.byType(ColoredBox),
+            )
+            .first,
+      );
+      expect(placeholder.color, const Color(0xFFE9ECEF));
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
 
   testWidgets('添加任务时读取本地规则，选择相册并保存所选规则', (tester) async {
     final tasks = DialogTaskService(database);
