@@ -1,0 +1,47 @@
+name: Build and deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'pixtale-next/**'
+      - '.gitea/workflows/docker-deploy.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    # Register a Linux host runner with the label pixtale-docker:host.
+    runs-on: pixtale-docker
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and deploy
+        shell: bash
+        env:
+          ADMIN: ${{ secrets.ADMIN }}
+          PASSWORD: ${{ secrets.PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          PORT: ${{ vars.PORT }}
+          DATA_PATH: ${{ vars.DATA_PATH }}
+          ALPINE_MIRROR: ${{ vars.ALPINE_MIRROR }}
+          NPM_REGISTRY: ${{ vars.NPM_REGISTRY }}
+        run: |
+          docker build -t pixtale \
+            --file pixtale-next/Dockerfile \
+            --build-arg ALPINE_MIRROR \
+            --build-arg NPM_REGISTRY \
+            pixtale-next
+
+          docker rm -f pixtale || true
+
+          docker run --detach \
+            --name pixtale \
+            --restart unless-stopped \
+            --publish "${PORT:-8082}:8082" \
+            --volume "${DATA_PATH:-/home/pixtale/data}:/app/data" \
+            --env HOSTNAME=0.0.0.0 \
+            --env ADMIN --env PASSWORD --env JWT_SECRET \
+            pixtale
