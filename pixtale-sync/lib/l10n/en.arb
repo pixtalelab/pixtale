@@ -8,6 +8,8 @@
   "chooseRule": "Choose a sync rule",
   "tasks": "Tasks",
   "templates": "Rules",
+  "ruleInfoTitle": "How it works",
+  "ruleInfoDescription": "Rules are matched from top to bottom. After a match, the file is uploaded to the corresponding storage, and all subsequent rules are skipped.",
   "addTemplate": "Add rule",
   "editTemplate": "Edit rule",
   "templateActions": "Rule actions",

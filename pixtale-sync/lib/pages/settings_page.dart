@@ -488,11 +488,7 @@ class _SettingRow extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       minLeadingWidth: 24,
       horizontalTitleGap: 20,
-      leading: Icon(
-        icon,
-        size: 24,
-        color: Theme.of(context).colorScheme.onSurfaceVariant,
-      ),
+      leading: Icon(icon, size: 24, color: const Color(0xFF111111)),
       title: Text(
         label,
         style: Theme.of(context).textTheme.bodyLarge

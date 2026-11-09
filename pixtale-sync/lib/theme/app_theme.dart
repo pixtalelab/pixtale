@@ -17,7 +17,11 @@ ThemeData buildAppTheme() {
     seedColor: const Color(0xFF247A78),
     surface: const Color(0xFFF8FAF9),
   );
-  final colorScheme = original.copyWith(primary: ink, surface: background);
+  final colorScheme = original.copyWith(
+    primary: ink,
+    surface: background,
+    surfaceContainerLow: const Color(0xFFF5F3F3),
+  );
   return ThemeData(
     // Windows 先用系统界面字体。Win11 有 Segoe UI Variable，没有时退回 Segoe UI。
     // 缺字再按简体、繁体、日文、韩文补，最后才是普通微软雅黑。
@@ -39,10 +43,16 @@ ThemeData buildAppTheme() {
     appBarTheme: const AppBarTheme(
       centerTitle: false,
       backgroundColor: background,
+      foregroundColor: ink,
     ),
     navigationBarTheme: const NavigationBarThemeData(
       backgroundColor: background,
       indicatorColor: Color(0xFFE4E4E7),
+      iconTheme: WidgetStatePropertyAll(IconThemeData(color: ink)),
+    ),
+    navigationRailTheme: const NavigationRailThemeData(
+      selectedIconTheme: IconThemeData(color: ink),
+      unselectedIconTheme: IconThemeData(color: ink),
     ),
     dialogTheme: const DialogThemeData(backgroundColor: background),
     useMaterial3: true,

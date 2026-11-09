@@ -64,7 +64,7 @@ void main() {
   testWidgets('窄屏创建规则，卡片展示两行规则，追加规则排在末尾', (tester) async {
     await show(tester);
     expect(find.widgetWithText(AppBar, '规则'), findsOneWidget);
-    await tester.tap(find.byTooltip('添加规则'));
+    await tester.tap(find.byIcon(Icons.add));
     await tester.pumpAndSettle();
     await tester.enterText(field('规则名称'), '旅行');
     await range(tester, '20', '30');
@@ -108,7 +108,7 @@ void main() {
 
   testWidgets('校验名称和范围，取消不新增，保存失败可重试', (tester) async {
     await show(tester);
-    await tester.tap(find.byTooltip('添加规则'));
+    await tester.tap(find.byIcon(Icons.add));
     await tester.pumpAndSettle();
     await tester.tap(find.text('保存'));
     await tester.pumpAndSettle();
@@ -128,7 +128,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(templates.records, isEmpty);
 
-    await tester.tap(find.byTooltip('添加规则'));
+    await tester.tap(find.byIcon(Icons.add));
     await tester.pumpAndSettle();
     await tester.enterText(field('规则名称'), '测试');
     await range(tester, '0', '1');
@@ -163,7 +163,7 @@ void main() {
     await show(tester);
 
     Future<void> edit() async {
-      await tester.tap(find.byTooltip('规则设置').first);
+      await tester.tap(find.byIcon(Icons.settings_outlined).first);
       await tester.pumpAndSettle();
       expect(find.widgetWithText(MenuItemButton, '编辑'), findsOneWidget);
       expect(find.widgetWithText(MenuItemButton, '删除'), findsOneWidget);
@@ -205,18 +205,18 @@ void main() {
     expect(templates.records.single.items.first.id, first.id);
     expect(templates.records.single.items.first.createdAt, first.createdAt);
     expect(templates.records.single.items.first.storageId, 'photos');
-    await tester.tap(find.byTooltip('规则设置').first);
+    await tester.tap(find.byIcon(Icons.settings_outlined).first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('删除'));
     await tester.pumpAndSettle();
     expect(find.text('25 - 35 MB 照片'), findsNothing);
     expect(find.text('0 - 1 MB 不限'), findsOneWidget);
-    await tester.tap(find.byTooltip('规则设置'));
+    await tester.tap(find.byIcon(Icons.settings_outlined));
     await tester.pumpAndSettle();
     await tester.tap(find.text('删除'));
     await tester.pumpAndSettle();
     expect(find.text('旅行'), findsOneWidget);
-    expect(find.byTooltip('规则设置'), findsNothing);
+    expect(find.byIcon(Icons.settings_outlined), findsNothing);
     expect(find.widgetWithText(TextButton, '添加规则'), findsOneWidget);
     expect(templates.records.single.items, isEmpty);
     expect(tester.takeException(), isNull);
@@ -242,7 +242,7 @@ void main() {
     expect(find.widgetWithText(TextButton, '添加规则'), findsNWidgets(2));
 
     Future<void> edit() async {
-      await tester.tap(find.byTooltip('规则操作').first);
+      await tester.tap(find.byIcon(Icons.more_vert).first);
       await tester.pumpAndSettle();
       expect(find.widgetWithText(MenuItemButton, '编辑'), findsOneWidget);
       expect(find.widgetWithText(MenuItemButton, '删除'), findsOneWidget);
@@ -281,7 +281,7 @@ void main() {
     expect(templates.records.first.sortTime, before.sortTime);
     expect(templates.records.first.items, before.items);
     expect(find.text('20 - 30 MB 视频'), findsOneWidget);
-    await tester.tap(find.byTooltip('规则操作').first);
+    await tester.tap(find.byIcon(Icons.more_vert).first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('删除'));
     await tester.pumpAndSettle();
@@ -308,7 +308,7 @@ void main() {
       storageId: 'video',
     );
     await show(tester);
-    await tester.tap(find.byTooltip('规则操作').last);
+    await tester.tap(find.byIcon(Icons.more_vert).last);
     await tester.pumpAndSettle();
     expect(
       tester
@@ -326,7 +326,7 @@ void main() {
       '规则二',
     );
     expect(find.text('20 - 30 MB 视频'), findsOneWidget);
-    await tester.tap(find.byTooltip('规则设置').first);
+    await tester.tap(find.byIcon(Icons.settings_outlined).first);
     await tester.pumpAndSettle();
     expect(find.text('置顶'), findsNothing);
     expect(tester.takeException(), isNull);
@@ -336,7 +336,7 @@ void main() {
     await show(tester);
     final pending = Completer<List<Storage>>();
     storages.pending = pending;
-    await tester.tap(find.byTooltip('添加规则'));
+    await tester.tap(find.byIcon(Icons.add));
     await tester.pumpAndSettle();
     expect(find.byType(LinearProgressIndicator), findsNothing);
     expect(find.byType(CircularProgressIndicator), findsNothing);
@@ -437,7 +437,7 @@ void main() {
       storageId: 'video',
     );
     await show(tester);
-    await tester.tap(find.byTooltip('规则操作'));
+    await tester.tap(find.byIcon(Icons.more_vert));
     await tester.pumpAndSettle();
     await tester.tap(find.text('编辑'));
     await tester.pumpAndSettle();
@@ -467,7 +467,7 @@ void main() {
     expect(find.byType(ListView), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(find.byType(LinearProgressIndicator), findsNothing);
-    expect(find.byTooltip('添加规则'), findsOneWidget);
+    expect(find.byIcon(Icons.add), findsOneWidget);
     pending.complete([]);
     await tester.pumpAndSettle();
   });

@@ -34,6 +34,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get templates => '规则';
 
   @override
+  String get ruleInfoTitle => '功能说明';
+
+  @override
+  String get ruleInfoDescription => '从上到下匹配规则，匹配成功后按对应存储上传，后续规则全部跳过';
+
+  @override
   String get addTemplate => '添加规则';
 
   @override

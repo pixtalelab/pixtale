@@ -8,6 +8,8 @@
   "chooseRule": "请选择同步规则",
   "tasks": "任务",
   "templates": "规则",
+  "ruleInfoTitle": "功能说明",
+  "ruleInfoDescription": "从上到下匹配规则，匹配成功后按对应存储上传，后续规则全部跳过",
   "addTemplate": "添加规则",
   "editTemplate": "编辑规则",
   "templateActions": "规则操作",

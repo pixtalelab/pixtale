@@ -34,6 +34,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get templates => 'Rules';
 
   @override
+  String get ruleInfoTitle => 'How it works';
+
+  @override
+  String get ruleInfoDescription =>
+      'Rules are matched from top to bottom. After a match, the file is uploaded to the corresponding storage, and all subsequent rules are skipped.';
+
+  @override
   String get addTemplate => 'Add rule';
 
   @override

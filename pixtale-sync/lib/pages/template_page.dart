@@ -153,6 +153,32 @@ class _TemplatePageState extends State<TemplatePage> {
     }
   }
 
+  /// 展示规则按顺序匹配和上传的功能说明。
+  Future<void> _showInfo() async {
+    if (_dialogOpen || _editing) return;
+    setState(() => _dialogOpen = true);
+    final l10n = AppLocalizations.of(context);
+    await showDialog<void>(
+      context: context,
+      requestFocus: false,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.ruleInfoTitle),
+        content: Text(l10n.ruleInfoDescription),
+        scrollable: true,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF0A0A0A),
+            ),
+            child: Text(MaterialLocalizations.of(context).okButtonLabel),
+          ),
+        ],
+      ),
+    );
+    if (mounted) setState(() => _dialogOpen = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -161,8 +187,11 @@ class _TemplatePageState extends State<TemplatePage> {
         title: Text(l10n.templates),
         actions: [
           IconButton(
+            onPressed: _dialogOpen || _editing ? null : _showInfo,
+            icon: const Icon(Icons.info_outline),
+          ),
+          IconButton(
             onPressed: _dialogOpen || _editing ? null : () => _add(),
-            tooltip: l10n.addTemplate,
             icon: const Icon(Icons.add),
           ),
           const SizedBox(width: 8),

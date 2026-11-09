@@ -50,7 +50,6 @@ class TemplateCard extends StatelessWidget {
                 _menu(
                   context,
                   icon: Icons.more_vert,
-                  tooltip: l10n.templateActions,
                   onEdit: () => onSelected(TemplateAction.edit),
                   onPin: () => onSelected(TemplateAction.pin),
                   onDelete: () => onSelected(TemplateAction.remove),
@@ -137,7 +136,6 @@ class TemplateCard extends StatelessWidget {
         _menu(
           context,
           icon: Icons.settings_outlined,
-          tooltip: l10n.templateItemSettings,
           onEdit: () => onItemSelected(item, TemplateItemAction.edit),
           onDelete: () => onItemSelected(item, TemplateItemAction.remove),
         ),
@@ -148,7 +146,6 @@ class TemplateCard extends StatelessWidget {
   Widget _menu(
     BuildContext context, {
     required IconData icon,
-    required String tooltip,
     required VoidCallback onEdit,
     required VoidCallback onDelete,
     VoidCallback? onPin,
@@ -206,7 +203,6 @@ class TemplateCard extends StatelessWidget {
                 controller.isOpen ? controller.close() : controller.open();
               }
             : null,
-        tooltip: tooltip,
         visualDensity: VisualDensity.compact,
         icon: Icon(icon, color: colors.onSurfaceVariant),
       ),

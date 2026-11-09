@@ -146,6 +146,18 @@ abstract class AppLocalizations {
   /// **'规则'**
   String get templates;
 
+  /// No description provided for @ruleInfoTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'功能说明'**
+  String get ruleInfoTitle;
+
+  /// No description provided for @ruleInfoDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'从上到下匹配规则，匹配成功后按对应存储上传，后续规则全部跳过'**
+  String get ruleInfoDescription;
+
   /// No description provided for @addTemplate.
   ///
   /// In zh, this message translates to:
