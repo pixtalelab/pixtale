@@ -1,13 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:pixtale_sync/l10n/localizations.dart';
 import 'package:pixtale_sync/components/common/window_title_bar.dart';
 import 'package:pixtale_sync/pages/log_page.dart';
+import 'package:pixtale_sync/pages/login_page.dart';
 import 'package:pixtale_sync/pages/settings_page.dart';
 import 'package:pixtale_sync/pages/task_page.dart';
 import 'package:pixtale_sync/pages/template_page.dart';
 import 'package:pixtale_sync/providers/sync_provider.dart';
 import 'package:pixtale_sync/request/request.dart';
 import 'package:pixtale_sync/services/foreground_sync_service.dart';
+import 'package:pixtale_sync/services/auth_service.dart';
+import 'package:pixtale_sync/models/user.dart';
 import 'package:pixtale_sync/services/task_service.dart';
 import 'package:pixtale_sync/services/rule_service.dart';
 import 'package:pixtale_sync/services/storage_service.dart';
@@ -25,6 +30,8 @@ class AppPage extends StatefulWidget {
     this.taskService,
     this.storageService,
     this.ruleService,
+    this.userService,
+    this.authService,
   });
 
   /// 任务和规则页面使用的本地规则服务。
@@ -35,6 +42,12 @@ class AppPage extends StatefulWidget {
 
   /// 规则页面使用的存储列表服务。
   final StorageService? storageService;
+
+  /// 统一读取和清除当前登录会话。
+  final UserService? userService;
+
+  /// 登录页面使用的账户初始化服务。
+  final AuthService? authService;
 
   /// 创建导航状态。
   @override
@@ -51,6 +64,12 @@ class _AppPageState extends State<AppPage> {
   /// 当前选中的导航项。
   int _index = 0;
 
+  /// 启动时先读取会话，避免显示未登录账户的功能页面。
+  User? _user;
+  bool _accountLoaded = false;
+  int _accountVersion = 0;
+  late final _users = widget.userService ?? UserService.instance;
+
   /// 任务页和设置页共用，改并发时可以停掉正在跑的同步再启动。
   late final SyncProvider _sync = SyncProvider(
     service: ForegroundSyncService.create(
@@ -61,18 +80,49 @@ class _AppPageState extends State<AppPage> {
   /// 保持同一次回调，页面释放时只清掉自己注册的处理。
   late final Future<void> Function() _expiredSession = _logoutExpiredSession;
 
+  /// 注册会话监听，并在启动时读取本地用户。
   @override
   void initState() {
     super.initState();
     onUnauthorized = _expiredSession;
+    UserService.changes.addListener(_onUserChanged);
+    _loadUser();
     if (WindowService.showsTitleBar) WindowService.instance.bindSync(_sync);
   }
 
-  /// 登录失效后删除本地用户。任务页会随账户变化停止同步。
+  /// 登录失效后清除会话并停止同步，由账户监听切换到登录页。
   Future<void> _logoutExpiredSession() async {
-    final user = await UserService.instance.get();
-    if (user != null) await UserService.instance.remove(user.userId);
+    await _users.logout();
     await _sync.stop();
+  }
+
+  /// 登录、退出或后台失效时重新读取当前账户。
+  void _onUserChanged() => unawaited(_loadUser());
+
+  /// 无法读取用户时显示登录页，退出时关闭仍打开的弹窗及相册页面。
+  Future<void> _loadUser() async {
+    final version = ++_accountVersion;
+    User? user;
+    try {
+      user = await _users.get();
+    } catch (_) {
+      // 本地没有可用会话时交由登录页重新登录。
+    }
+    if (!mounted || version != _accountVersion) return;
+    final changed =
+        user?.userId != _user?.userId ||
+        user?.token != _user?.token ||
+        user?.endpoint != _user?.endpoint;
+    if (changed || user == null) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      if (_accountLoaded || user == null) unawaited(_sync.stop());
+      _sync.progress.clear();
+    }
+    setState(() {
+      if (changed || user == null) _index = 0;
+      _user = user;
+      _accountLoaded = true;
+    });
   }
 
   // 事件处理
@@ -84,6 +134,7 @@ class _AppPageState extends State<AppPage> {
   @override
   void dispose() {
     if (identical(onUnauthorized, _expiredSession)) onUnauthorized = null;
+    UserService.changes.removeListener(_onUserChanged);
     WindowService.instance.unbindSync(_sync);
     _sync.dispose();
     super.dispose();
@@ -106,7 +157,7 @@ class _AppPageState extends State<AppPage> {
           storageService: widget.storageService,
         ),
         LogPage(active: _index == 2),
-        SettingsPage(sync: _sync),
+        SettingsPage(sync: _sync, userService: _users),
       ],
     );
   }
@@ -115,14 +166,21 @@ class _AppPageState extends State<AppPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final page = OrientationBuilder(
-      builder: (context, orientation) {
-        final width = MediaQuery.sizeOf(context).width;
-        final side =
-            orientation == Orientation.landscape || width >= _sideMenuMinWidth;
-        return side ? _sideMenu(context, l10n) : _bottomMenu(context, l10n);
-      },
-    );
+    final page = !_accountLoaded
+        ? const Scaffold()
+        : _user == null
+        ? LoginPage(authService: widget.authService)
+        : OrientationBuilder(
+            builder: (context, orientation) {
+              final width = MediaQuery.sizeOf(context).width;
+              final side =
+                  orientation == Orientation.landscape ||
+                  width >= _sideMenuMinWidth;
+              return side
+                  ? _sideMenu(context, l10n)
+                  : _bottomMenu(context, l10n);
+            },
+          );
     if (!WindowService.showsTitleBar) return page;
     return ColoredBox(
       color: appSideMenuColor,

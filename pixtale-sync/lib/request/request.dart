@@ -5,14 +5,14 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 // 统一处理 JSON 请求、文件上传和服务端错误。
-// 服务端鉴权失败同时返回 HTTP 401 和业务 code 401；403 只表示无权限。
+// HTTP 或业务状态 401、403 均按登录失效处理。
 
 /// 当前隔离区在登录失效时停止同步并删除本地用户。
 Future<void> Function()? onUnauthorized;
 
 bool _unauthorizedPending = false;
 
-/// 同一批并发 401 只处理一次，处理结束后允许下一次失效再退出。
+/// 同一批并发鉴权失败只处理一次，处理结束后允许下一次失效再退出。
 void notifyUnauthorized() {
   final handler = onUnauthorized;
   if (handler == null || _unauthorizedPending) return;
@@ -40,6 +40,9 @@ class ApiException implements Exception {
   /// 稳定错误码。界面捕获权限失败时优先看这个，而不是中文句子。
   final String? code;
 
+  /// 需要清除登录状态的 HTTP 或业务鉴权错误。
+  bool get isUnauthorized => statusCode == 401 || statusCode == 403;
+
   /// 是否为照片权限失败。旧调用只抛中文时仍能识别。
   bool get isPhotoPermission =>
       code == photoPermission ||
@@ -49,8 +52,7 @@ class ApiException implements Exception {
   /// 从任意捕获对象判断是否为照片权限失败。
   static bool isPhotoPermissionError(Object error) {
     if (error is ApiException) return error.isPhotoPermission;
-    return '$error'.contains('Photo access') ||
-        '$error'.contains('照片访问权限');
+    return '$error'.contains('Photo access') || '$error'.contains('照片访问权限');
   }
 
   /// 返回可直接显示的错误信息。
@@ -224,7 +226,9 @@ Future<List<int>> getBytes(
     }
     final response = await request.close().timeout(const Duration(seconds: 15));
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      if (response.statusCode == 401) notifyUnauthorized();
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        notifyUnauthorized();
+      }
       throw ApiException('Request failed', statusCode: response.statusCode);
     }
     return await response.fold<List<int>>(
@@ -271,7 +275,7 @@ dynamic _decodeJson(String text) {
 
 /// 登录失效时先安排退出，再把错误抛给当前请求。
 Never _throwResponse(dynamic decoded, int? statusCode) {
-  if (statusCode == 401) notifyUnauthorized();
+  if (statusCode == 401 || statusCode == 403) notifyUnauthorized();
   throw ApiException(_message(decoded), statusCode: statusCode);
 }
 

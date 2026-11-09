@@ -11,20 +11,22 @@ import 'package:path/path.dart' as path;
 import 'package:pixtale_sync/models/user.dart';
 import 'package:pixtale_sync/providers/sync_provider.dart';
 import 'package:pixtale_sync/l10n/locale.dart';
-import 'package:pixtale_sync/services/auth_service.dart';
 import 'package:pixtale_sync/services/settings_service.dart';
 import 'package:pixtale_sync/services/user_service.dart';
 
-// 设置页面：用户登录、账户展示和应用设置。
+// 设置页面：账户展示、退出登录和应用设置。
 
 /// 设置页面。
 /// 展示用户账户和应用功能设置。
 class SettingsPage extends StatefulWidget {
   /// 创建设置页面。
-  const SettingsPage({super.key, this.sync});
+  const SettingsPage({super.key, this.sync, this.userService});
 
   /// 与任务页共用的同步状态。修改并发时停止并重新启动。
   final SyncProvider? sync;
+
+  /// 当前登录会话及头像服务。
+  final UserService? userService;
 
   /// 创建设置页面状态。
   @override
@@ -33,6 +35,7 @@ class SettingsPage extends StatefulWidget {
 
 /// 加载并保存用户信息及应用设置。
 class _SettingsPageState extends State<SettingsPage> {
+  late final _users = widget.userService ?? UserService.instance;
   User? _user;
 
   /// 当前头像图片，先展示数据库缓存，再静默刷新。
@@ -68,7 +71,7 @@ class _SettingsPageState extends State<SettingsPage> {
       uploadConcurrency: 1,
     );
     try {
-      user = await UserService.instance.get();
+      user = await _users.get();
       settings = await SettingsService.instance.get();
     } on StateError {
       // 测试或数据库尚未初始化时仍展示可用的默认设置。
@@ -86,7 +89,7 @@ class _SettingsPageState extends State<SettingsPage> {
   /// 更新头像时保留旧图片，页面退出或用户变化后丢弃结果。
   Future<void> _refreshAvatar(User user) async {
     try {
-      final bytes = await UserService.instance.refreshAvatar(user);
+      final bytes = await _users.refreshAvatar(user);
       if (!mounted || !identical(_user, user) || identical(_avatar, bytes)) {
         return;
       }
@@ -96,24 +99,10 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  /// 打开账户弹窗，并在登录或退出后更新用户与头像。
+  /// 展示当前账户，并在确认后停止同步、清除登录会话。
   Future<void> _openUserCard() async {
-    if (_user == null) {
-      final user = await showDialog<User>(
-        context: context,
-        builder: (_) => const _LoginDialog(),
-      );
-      if (user != null) {
-        final saved = await UserService.instance.get();
-        if (!mounted) return;
-        setState(() {
-          _user = saved;
-          _avatar = saved?.avatarBytes;
-        });
-        if (saved != null) _refreshAvatar(saved);
-      }
-      return;
-    }
+    final user = _user;
+    if (user == null) return;
 
     final shouldLogout = await showDialog<bool>(
       context: context,
@@ -121,7 +110,7 @@ class _SettingsPageState extends State<SettingsPage> {
         final l10n = AppLocalizations.of(context);
         return AlertDialog(
           title: Text(l10n.account),
-          content: Text(l10n.signedInAs(_user!.username)),
+          content: Text(l10n.signedInAs(user.username)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -136,7 +125,8 @@ class _SettingsPageState extends State<SettingsPage> {
       },
     );
     if (shouldLogout == true) {
-      await UserService.instance.remove(_user!.userId);
+      await widget.sync?.stop();
+      await _users.logout();
       if (mounted) {
         setState(() {
           _user = null;
@@ -194,14 +184,13 @@ class _SettingsPageState extends State<SettingsPage> {
           : ListView(
               padding: const EdgeInsets.only(top: 16, bottom: 24),
               children: [
-                _UserCard(
-                  user: _user,
-                  avatar: _avatar,
-                  endpointLabel: _user == null
-                      ? ''
-                      : _endpointLabel(_user!.endpoint),
-                  onTap: _openUserCard,
-                ),
+                if (_user != null)
+                  _UserCard(
+                    user: _user!,
+                    avatar: _avatar,
+                    endpointLabel: _endpointLabel(_user!.endpoint),
+                    onTap: _openUserCard,
+                  ),
                 const SizedBox(height: 32),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -232,17 +221,14 @@ class _UserCard extends StatelessWidget {
     required this.onTap,
   });
 
-  final User? user;
+  final User user;
   final Uint8List? avatar;
   final String endpointLabel;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final name = user?.username ?? AppLocalizations.of(context).notSignedIn;
-    final placeholder = Icon(
-      user == null ? Icons.person_outline : Icons.person,
-    );
+    final placeholder = const Icon(Icons.person);
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -274,16 +260,14 @@ class _UserCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      name,
+                      user.username,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyLarge,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      user == null
-                          ? AppLocalizations.of(context).tapToSignIn
-                          : endpointLabel,
+                      endpointLabel,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -629,139 +613,6 @@ class _IntegerEditorDialogState extends State<_IntegerEditorDialog> {
         FilledButton(
           onPressed: _submit,
           child: Text(AppLocalizations.of(context).save),
-        ),
-      ],
-    );
-  }
-}
-
-/// 收集端点、用户名和密码的登录弹窗。
-class _LoginDialog extends StatefulWidget {
-  /// 创建登录弹窗。
-  const _LoginDialog();
-
-  /// 创建登录弹窗状态。
-  @override
-  State<_LoginDialog> createState() => _LoginDialogState();
-}
-
-/// 管理登录表单校验、提交和错误提示。
-class _LoginDialogState extends State<_LoginDialog> {
-  final _formKey = GlobalKey<FormState>();
-  final _endpoint = TextEditingController();
-  final _username = TextEditingController();
-  final _password = TextEditingController();
-  bool _loggingIn = false;
-  String? _error;
-
-  @override
-  void dispose() {
-    _endpoint.dispose();
-    _username.dispose();
-    _password.dispose();
-    super.dispose();
-  }
-
-  Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
-    final endpoint = _endpoint.text.trim().replaceFirst(RegExp(r'/+$'), '');
-    final uri = Uri.tryParse(endpoint);
-    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
-      setState(() => _error = AppLocalizations.of(context).invalidEndpoint);
-      return;
-    }
-    setState(() {
-      _loggingIn = true;
-      _error = null;
-    });
-    try {
-      final user = await AuthService().login(
-        endpoint: endpoint,
-        username: _username.text.trim(),
-        password: _password.text,
-      );
-      if (mounted) Navigator.pop(context, user);
-    } catch (error) {
-      if (mounted) setState(() => _error = '$error');
-    } finally {
-      if (mounted) setState(() => _loggingIn = false);
-    }
-  }
-
-  /// 移动端登录框左右各留 20 像素，桌面宽度设为 440 像素。
-  @override
-  Widget build(BuildContext context) {
-    final platform = Theme.of(context).platform;
-    final mobile =
-        platform == TargetPlatform.android || platform == TargetPlatform.iOS;
-    return AlertDialog(
-      insetPadding: mobile
-          ? const EdgeInsets.symmetric(horizontal: 20, vertical: 24)
-          : null,
-      constraints: mobile
-          ? BoxConstraints(minWidth: MediaQuery.sizeOf(context).width - 40)
-          : const BoxConstraints(minWidth: 440, maxWidth: 440),
-      title: Text(AppLocalizations.of(context).signIn),
-      content: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: _endpoint,
-                decoration: InputDecoration(
-                  labelText: AppLocalizations.of(context).endpoint,
-                  hintText: 'https://example.com',
-                ),
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? AppLocalizations.of(context).enterEndpoint
-                    : null,
-              ),
-              TextFormField(
-                controller: _username,
-                decoration: InputDecoration(
-                  labelText: AppLocalizations.of(context).username,
-                ),
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? AppLocalizations.of(context).enterUsername
-                    : null,
-              ),
-              TextFormField(
-                controller: _password,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: AppLocalizations.of(context).password,
-                ),
-                validator: (value) => value == null || value.isEmpty
-                    ? AppLocalizations.of(context).enterPassword
-                    : null,
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  _error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: _loggingIn ? null : () => Navigator.pop(context),
-          child: Text(AppLocalizations.of(context).cancel),
-        ),
-        FilledButton(
-          onPressed: _loggingIn ? null : _login,
-          child: _loggingIn
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(AppLocalizations.of(context).signIn),
         ),
       ],
     );

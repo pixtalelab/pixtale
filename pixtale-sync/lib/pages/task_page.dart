@@ -276,15 +276,12 @@ class _TaskPageState extends State<TaskPage> {
 
   /// 先选择目标规则，再打开由页面自行加载数据的相册选择页。
   Future<void> _openAddTask() async {
+    if (_loading || _editing) return;
     if (_sync.active || _sync.restoring) {
       _showSyncNotice();
       return;
     }
-    final account = _account;
-    if (account == null) {
-      _showMessage(AppLocalizations.of(context).signInFirst);
-      return;
-    }
+    final account = _account!;
     _rules.select(null);
     await _rules.load();
     if (!mounted || !_isCurrentAccount(account)) return;
@@ -600,7 +597,7 @@ class _TaskPageState extends State<TaskPage> {
         title: Text(AppLocalizations.of(context).tasks),
         actions: [
           IconButton(
-            onPressed: _editing ? null : _openAddTask,
+            onPressed: _loading || _editing ? null : _openAddTask,
             icon: const Icon(Icons.add),
           ),
           const SizedBox(width: 8),

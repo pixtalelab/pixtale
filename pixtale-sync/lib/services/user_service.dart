@@ -96,6 +96,12 @@ class UserService {
       user_request.getUserAvatar(user.avatar, user.endpoint, user.token);
 
   /// 退出登录时删除用户信息及其头像缓存。
+  Future<void> logout() async {
+    await (await _database.database).delete('user');
+    changes.value++;
+  }
+
+  /// 删除指定用户信息及其头像缓存。
   Future<void> remove(String userId) async {
     await (await _database.database).delete(
       'user',

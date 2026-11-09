@@ -38,7 +38,8 @@ class SyncTaskHandler extends TaskHandler {
     TaskService? tasks,
     LogService? logs,
     AppLocalizations? text,
-  }) : _sync = sync ?? SyncService(photos: MobilePhotoService(background: true)),
+  }) : _sync =
+           sync ?? SyncService(photos: MobilePhotoService(background: true)),
        _tasks = tasks ?? TaskService.instance,
        _logService = logs ?? LogService.instance,
        _text = text;
@@ -84,8 +85,7 @@ class SyncTaskHandler extends TaskHandler {
 
   /// 后台请求登录失效时删除用户，并通知页面刷新账户。
   Future<void> _logoutExpiredSession() async {
-    final user = await UserService.instance.get();
-    if (user != null) await UserService.instance.remove(user.userId);
+    await UserService.instance.logout();
     _send('account');
     await _stop();
   }

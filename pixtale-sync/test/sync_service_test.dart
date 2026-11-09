@@ -917,39 +917,41 @@ void main() {
     });
   }
 
-  test('读取存储时登录失效仍终止同步', () async {
-    photos.albums = {'a': []};
-    await tasks.add(['a']);
-    await settings.updateTaskInterval(10);
-    service = SyncService(
-      tasks: tasks,
-      users: users,
-      settings: settings,
-      storages: storages,
-      rules: rules,
-      logs: logs,
-      photos: photos,
-      apiFactory: (user, client) {
-        api = FakeApi(user, client)
-          ..onReadStorages = () async {
-            throw const ApiException('Sign in again', statusCode: 401);
-          };
-        return api;
-      },
-    );
+  for (final status in [401, 403]) {
+    test('读取存储时 $status 登录失效仍终止同步', () async {
+      photos.albums = {'a': []};
+      await tasks.add(['a']);
+      await settings.updateTaskInterval(10);
+      service = SyncService(
+        tasks: tasks,
+        users: users,
+        settings: settings,
+        storages: storages,
+        rules: rules,
+        logs: logs,
+        photos: photos,
+        apiFactory: (user, client) {
+          api = FakeApi(user, client)
+            ..onReadStorages = () async {
+              throw ApiException('Sign in again', statusCode: status);
+            };
+          return api;
+        },
+      );
 
-    await expectLater(
-      service.start((_) {}),
-      throwsA(
-        isA<ApiException>().having((e) => e.statusCode, 'statusCode', 401),
-      ),
-    );
+      await expectLater(
+        service.start((_) {}),
+        throwsA(
+          isA<ApiException>().having((e) => e.statusCode, 'statusCode', status),
+        ),
+      );
 
-    expect(api.storageReads, 1);
-    expect((await settings.get()).taskStatus, 2);
-    expect((await settings.get()).lastSyncAt, isNull);
-    expect(await logs.list(failuresOnly: true), hasLength(1));
-  });
+      expect(api.storageReads, 1);
+      expect((await settings.get()).taskStatus, 2);
+      expect((await settings.get()).lastSyncAt, isNull);
+      expect(await logs.list(failuresOnly: true), hasLength(1));
+    });
+  }
 
   test('读取存储期间账户退出仍终止同步', () async {
     photos.albums = {'a': []};

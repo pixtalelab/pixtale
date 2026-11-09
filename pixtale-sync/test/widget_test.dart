@@ -237,7 +237,7 @@ void main() {
 
   testWidgets('底部导航可切换规则、日志和设置并保留任务状态', (WidgetTester tester) async {
     await tester.runAsync(() async {
-      await database.database;
+      await UserService(database: database).add(_user);
     });
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(400, 800);
@@ -248,6 +248,7 @@ void main() {
     await tester.pumpWidget(
       localizedApp(
         home: AppPage(
+          userService: UserService(database: database),
           taskService: TaskService(database: database),
           ruleService: RuleService(database: database),
         ),
@@ -255,6 +256,10 @@ void main() {
     );
     await tester.runAsync(() async {
       await (await database.database).rawQuery('SELECT 1');
+    });
+    await tester.pump();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
     });
     await tester.pumpAndSettle();
 
@@ -311,7 +316,7 @@ void main() {
 
   testWidgets('宽屏竖向和横屏使用左侧导航，窄屏竖向仍在底部', (tester) async {
     await tester.runAsync(() async {
-      await database.database;
+      await UserService(database: database).add(_user);
     });
     tester.view.devicePixelRatio = 1;
     addTearDown(() {
@@ -324,11 +329,19 @@ void main() {
       await tester.pumpWidget(
         localizedApp(
           home: AppPage(
+            userService: UserService(database: database),
             taskService: TaskService(database: database),
             ruleService: RuleService(database: database),
           ),
         ),
       );
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      });
+      await tester.pump();
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      });
       await tester.pumpAndSettle();
     }
 

@@ -126,7 +126,7 @@ void main() {
     expect(calls, 2);
   });
 
-  test('401 通知登录失效且并发只处理一次，403 不退出', () async {
+  test('401、403 均通知登录失效，并发鉴权错误只处理一次', () async {
     final gate = Completer<void>();
     var calls = 0;
     onUnauthorized = () {
@@ -151,7 +151,7 @@ void main() {
     }
 
     final denied = send(401);
-    final again = send(401);
+    final again = send(403);
     await expectLater(
       denied,
       throwsA(
@@ -161,7 +161,7 @@ void main() {
     await expectLater(
       again,
       throwsA(
-        isA<ApiException>().having((error) => error.statusCode, 'status', 401),
+        isA<ApiException>().having((error) => error.statusCode, 'status', 403),
       ),
     );
     await Future<void>.delayed(Duration.zero);
@@ -174,6 +174,60 @@ void main() {
       throwsA(
         isA<ApiException>().having((error) => error.statusCode, 'status', 403),
       ),
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(calls, 2);
+  });
+
+  test('HTTP 200 的业务 403 和上传 403 也通知登录失效', () async {
+    var calls = 0;
+    onUnauthorized = () async {
+      calls++;
+    };
+    addTearDown(() => onUnauthorized = null);
+    final client = MockClient(
+      (request) async => http.Response(
+        jsonEncode({'code': 403, 'message': 'Session expired'}),
+        request.url.path == '/upload' ? 403 : 200,
+      ),
+    );
+    addTearDown(client.close);
+    await expectLater(
+      post<dynamic>('/check', baseUrl: user.endpoint, client: client),
+      throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 403)),
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(calls, 1);
+    await expectLater(
+      upload(
+        '/upload',
+        baseUrl: user.endpoint,
+        token: user.token,
+        client: client,
+        fields: {},
+        file: http.MultipartFile.fromBytes('file', [1, 2, 3]),
+      ),
+      throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 403)),
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(calls, 2);
+  });
+
+  test('头像等二进制请求遇到 403 也通知退出登录', () async {
+    var calls = 0;
+    onUnauthorized = () async {
+      calls++;
+    };
+    addTearDown(() => onUnauthorized = null);
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => server.close(force: true));
+    server.listen((request) {
+      request.response.statusCode = 403;
+      unawaited(request.response.close());
+    });
+    await expectLater(
+      getBytes('/avatar', baseUrl: 'http://127.0.0.1:${server.port}'),
+      throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 403)),
     );
     await Future<void>.delayed(Duration.zero);
     expect(calls, 1);

@@ -308,7 +308,7 @@ class SyncService {
             } catch (error) {
               _checkStopped();
               await _recordFailure(error, event: event, albumName: albumName);
-              if (error is ApiException && error.statusCode == 401) rethrow;
+              if (error is ApiException && error.isUnauthorized) rethrow;
             }
           }
           // 全部目标均查重失败时保留上轮进度。
@@ -384,7 +384,7 @@ class SyncService {
                   albumName: albumName,
                   deduplicate: false,
                 );
-                if (error is ApiException && error.statusCode == 401) rethrow;
+                if (error is ApiException && error.isUnauthorized) rethrow;
               }
             }
           }
@@ -398,7 +398,7 @@ class SyncService {
         } catch (error) {
           _checkStopped();
           await _recordFailure(error, event: event, albumName: albumName);
-          if (error is ApiException && error.statusCode == 401) rethrow;
+          if (error is ApiException && error.isUnauthorized) rethrow;
         } finally {
           // 直接切到下一个相册。只有本轮最后一个任务结束才清空，避免间隔里显示空闲。
           final next = index + 1 < tasks.length
@@ -410,7 +410,7 @@ class SyncService {
     } catch (error) {
       _checkStopped();
       await _recordFailure(error, event: _LogEvent.readStorage);
-      if (error is ApiException && error.statusCode == 401) rethrow;
+      if (error is ApiException && error.isUnauthorized) rethrow;
       await _checkAccount(api.user);
       // 本轮失败也正常返回，由主循环更新时间并等待下一轮。
     } finally {
