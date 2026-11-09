@@ -10,7 +10,88 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get syncRule => 'Sync rule';
+
+  @override
+  String get logEventReadRule => 'Read rule';
+
+  @override
+  String get noRuleAvailable => 'No rules available';
+
+  @override
+  String get ruleUnavailable => 'Rule unavailable';
+
+  @override
+  String get chooseRule => 'Choose a sync rule';
+
+  @override
   String get tasks => 'Tasks';
+
+  @override
+  String get templates => 'Rules';
+
+  @override
+  String get addTemplate => 'Add rule';
+
+  @override
+  String get editTemplate => 'Edit rule';
+
+  @override
+  String get templateActions => 'Rule actions';
+
+  @override
+  String get addTemplateItem => 'Add rule';
+
+  @override
+  String get editTemplateItem => 'Edit rule';
+
+  @override
+  String get templateItemSettings => 'Rule settings';
+
+  @override
+  String get add => 'Add';
+
+  @override
+  String get templateName => 'Rule name';
+
+  @override
+  String get templateNameRequired => 'Enter a rule name';
+
+  @override
+  String get fileSizeRange => 'File size range (MB)';
+
+  @override
+  String get fileMinSize => 'Minimum';
+
+  @override
+  String get fileMaxSize => 'Maximum';
+
+  @override
+  String get invalidFileSize => 'Enter a valid number';
+
+  @override
+  String get invalidFileRange => 'Maximum must be at least the minimum';
+
+  @override
+  String get fileType => 'File type';
+
+  @override
+  String get fileTypePhoto => 'Photos';
+
+  @override
+  String get fileTypeVideo => 'Videos';
+
+  @override
+  String get fileTypeAny => 'Any';
+
+  @override
+  String get loadTemplatesFailed => 'Could not load rules. Try again.';
+
+  @override
+  String get loadStoragesFailed => 'Could not refresh storage. Try again.';
+
+  @override
+  String get retry => 'Retry';
 
   @override
   String get logs => 'Logs';
@@ -135,14 +216,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get uploadConcurrency => 'Upload concurrency';
-
-  @override
-  String get fileLimit => 'File limit';
-
-  @override
-  String fileLimitValue(int size) {
-    return '${size}MB';
-  }
 
   @override
   String get syncInterval => 'Sync interval';

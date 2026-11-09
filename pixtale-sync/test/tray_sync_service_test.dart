@@ -191,7 +191,7 @@ SyncProgress _progress(
   albumId: albumId,
   completed: completed,
   total: 123,
-  storageName: '本地照片',
+  ruleName: '本地照片',
   albumName: albumName,
 );
 

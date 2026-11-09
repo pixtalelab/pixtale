@@ -23,7 +23,7 @@ class SettingsPage extends StatefulWidget {
   /// 创建设置页面。
   const SettingsPage({super.key, this.sync});
 
-  /// 与任务页共用的同步状态。修改并发或文件限制时停止并重新启动。
+  /// 与任务页共用的同步状态。修改并发时停止并重新启动。
   final SyncProvider? sync;
 
   /// 创建设置页面状态。
@@ -104,7 +104,6 @@ class _SettingsPageState extends State<SettingsPage> {
         builder: (_) => const _LoginDialog(),
       );
       if (user != null) {
-        await UserService.instance.add(user);
         final saved = await UserService.instance.get();
         if (!mounted) return;
         setState(() {
@@ -161,15 +160,11 @@ class _SettingsPageState extends State<SettingsPage> {
         next.uploadConcurrency,
       );
     }
-    if (next.fileLimitMb != current.fileLimitMb) {
-      await SettingsService.instance.updateFileLimitMb(next.fileLimitMb);
-    }
     if (next.locale != current.locale) {
       await AppLocale.instance.setCode(next.locale);
     }
     if (mounted) setState(() => _settings = next);
-    if (next.uploadConcurrency != current.uploadConcurrency ||
-        next.fileLimitMb != current.fileLimitMb) {
+    if (next.uploadConcurrency != current.uploadConcurrency) {
       await _restartSync();
     }
   }
@@ -339,24 +334,6 @@ class _SettingsCard extends StatelessWidget {
           ),
           const Divider(height: 1),
           _SettingRow(
-            icon: Icons.insert_drive_file_outlined,
-            label: l10n.fileLimit,
-            value: l10n.fileLimitValue(settings.fileLimitMb),
-            onTap: () async {
-              final value = await _showIntegerEditor(
-                context,
-                title: l10n.fileLimit,
-                initialValue: settings.fileLimitMb,
-                min: 10,
-                suffixText: 'MB',
-              );
-              if (value != null) {
-                onChanged(settings.copyWith(fileLimitMb: value));
-              }
-            },
-          ),
-          const Divider(height: 1),
-          _SettingRow(
             icon: Icons.schedule_outlined,
             label: l10n.syncInterval,
             value: settings.taskInterval == 0
@@ -497,7 +474,10 @@ Future<void> _openDataDirectory(BuildContext context) async {
     }
   } catch (_) {
     if (context.mounted) {
-      AppNotice.show(context, AppLocalizations.of(context).cannotOpenDataFolder);
+      AppNotice.show(
+        context,
+        AppLocalizations.of(context).cannotOpenDataFolder,
+      );
     }
   }
 }
@@ -695,7 +675,7 @@ class _LoginDialogState extends State<_LoginDialog> {
       _error = null;
     });
     try {
-      final user = await const AuthService().login(
+      final user = await AuthService().login(
         endpoint: endpoint,
         username: _username.text.trim(),
         password: _password.text,

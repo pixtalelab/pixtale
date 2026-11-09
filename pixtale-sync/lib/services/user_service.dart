@@ -40,32 +40,39 @@ class UserService {
     );
   }
 
-  /// 保存登录信息，同一用户头像标识不变时保留图片缓存。
-  Future<void> add(User user) async {
-    await (await _database.database).transaction((txn) async {
-      final rows = await txn.query(
-        'user',
-        columns: ['avatar', 'avatar_bytes'],
-        where: 'user_id = ?',
-        whereArgs: [user.userId],
-      );
-      final cached = rows.firstOrNull;
-      await txn.insert('user', {
-        'user_id': user.userId,
-        'username': user.username,
-        'avatar': user.avatar,
-        'type': user.type,
-        'token': user.token,
-        'endpoint': user.endpoint,
-        'avatar_bytes': user.avatar.isEmpty
-            ? null
-            : user.avatarBytes ??
-                  (cached != null && cached['avatar'] == user.avatar
-                      ? cached['avatar_bytes']
-                      : null),
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
-    });
+  /// 保存登录信息并保留未变化的头像；传入事务时由调用方在提交后通知页面。
+  Future<void> add(User user, {Transaction? transaction}) async {
+    if (transaction != null) {
+      await _save(transaction, user);
+      return;
+    }
+    await (await _database.database).transaction((txn) => _save(txn, user));
     changes.value++;
+  }
+
+  /// 在指定事务内保存用户并复用同一头像缓存。
+  Future<void> _save(DatabaseExecutor txn, User user) async {
+    final rows = await txn.query(
+      'user',
+      columns: ['avatar', 'avatar_bytes'],
+      where: 'user_id = ?',
+      whereArgs: [user.userId],
+    );
+    final cached = rows.firstOrNull;
+    await txn.insert('user', {
+      'user_id': user.userId,
+      'username': user.username,
+      'avatar': user.avatar,
+      'type': user.type,
+      'token': user.token,
+      'endpoint': user.endpoint,
+      'avatar_bytes': user.avatar.isEmpty
+          ? null
+          : user.avatarBytes ??
+                (cached != null && cached['avatar'] == user.avatar
+                    ? cached['avatar_bytes']
+                    : null),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   /// 异步刷新头像，内容未变时复用图片，失效会话的请求不写入缓存。

@@ -52,6 +52,8 @@ dependencies:
   mime: ^2.1.0
   media_store:
     path: packages/media_store
+  uuid: ^4.6.0
+  timeline_tile: ^2.0.0
 
 dev_dependencies:
   flutter_test:

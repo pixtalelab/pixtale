@@ -85,7 +85,10 @@ void main() {
     handler.onRepeatEvent(DateTime.now());
     await _flush();
     expect(_notification(calls)['notificationContentTitle'], 'Syncing · 相机');
-    expect(_notification(calls)['notificationContentText'], 'Checking remotely');
+    expect(
+      _notification(calls)['notificationContentText'],
+      'Checking remotely',
+    );
 
     sync.report(_progress);
     handler.onRepeatEvent(DateTime.now());
@@ -96,7 +99,10 @@ void main() {
     sync.selectAlbum('b');
     await _flush();
     expect(_notification(calls)['notificationContentTitle'], 'Syncing · 旅行');
-    expect(_notification(calls)['notificationContentText'], 'Checking remotely');
+    expect(
+      _notification(calls)['notificationContentText'],
+      'Checking remotely',
+    );
 
     sync.selectAlbum(null);
     await _flush();
@@ -105,7 +111,10 @@ void main() {
     final next = DateTime.now().copyWith(hour: 14, minute: 30);
     sync.publishActivity(SyncActivity(nextSyncAt: next));
     await _flush();
-    expect(_notification(calls)['notificationContentTitle'], 'Waiting for next sync');
+    expect(
+      _notification(calls)['notificationContentTitle'],
+      'Waiting for next sync',
+    );
     expect(_notification(calls)['notificationContentText'], 'Next sync: 14:30');
     expect(_notification(calls)['allowWakeLock'], false);
     expect(running, true);
@@ -328,7 +337,7 @@ const _progress = SyncProgress(
   albumId: 'a',
   completed: 35,
   total: 123,
-  storageName: '本地存储',
+  ruleName: '本地存储',
 );
 
 /// 等待隔离区消息、服务回调和模拟通道完成。

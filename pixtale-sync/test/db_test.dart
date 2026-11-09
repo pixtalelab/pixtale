@@ -62,19 +62,29 @@ void main() {
   test('新库使用当前结构，再次打开保留任务且不重复设置', () async {
     final directory = await Directory.systemTemp.createTemp('db_schema_');
     final file = File('${directory.path}/test.sqlite');
-    var database = Db(
-      factory: databaseFactoryFfi,
-      databasePath: file.path,
-    );
+    var database = Db(factory: databaseFactoryFfi, databasePath: file.path);
     try {
       final db = await database.database;
       final tables = await db.rawQuery(
         "SELECT name FROM sqlite_master WHERE type = 'table'",
       );
       final names = tables.map((table) => table['name']).toSet();
-      expect(names, containsAll(['user', 'storage', 'task', 'log', 'settings']));
+      expect(
+        names,
+        containsAll([
+          'user',
+          'storage',
+          'task',
+          'log',
+          'settings',
+          'rule',
+          'rule_item',
+        ]),
+      );
       expect(names, isNot(contains('album')));
       expect(names, isNot(contains('window_state')));
+      expect(names, isNot(contains('template')));
+      expect(names, isNot(contains('template_item')));
       expect(await db.getVersion(), 0);
       expect(
         (await db.query('settings')).single['schema_version'],
@@ -82,8 +92,10 @@ void main() {
       );
       expect((await db.query('settings')).single['log_max_count'], 500);
       expect((await db.query('settings')).single['locale'], '');
-      expect((await db.query('settings')).single['file_limit_mb'], 300);
-      await db.update('settings', {'file_limit_mb': 400}, where: 'id = 1');
+      expect(
+        (await db.query('settings')).single.containsKey('file_limit_mb'),
+        isFalse,
+      );
       await db.insert('task', {
         'user_id': 'user',
         'album_id': 'saved',
@@ -99,8 +111,9 @@ void main() {
       expect(task['sort_time'], 123);
       expect(task['completed_count'], 0);
       expect(task['is_invalid'], 0);
+      expect(task.containsKey('rule_id'), isTrue);
+      expect(task.containsKey('storage_id'), isFalse);
       expect(await reopened.query('settings'), hasLength(1));
-      expect((await reopened.query('settings')).single['file_limit_mb'], 400);
       expect(
         (await reopened.query('settings')).single['schema_version'],
         databaseVersion,
@@ -152,10 +165,7 @@ CREATE TABLE task (
     });
     await raw.close();
 
-    final database = Db(
-      factory: databaseFactoryFfi,
-      databasePath: file.path,
-    );
+    final database = Db(factory: databaseFactoryFfi, databasePath: file.path);
     try {
       final db = await database.database;
       expect(await db.getVersion(), 18);
@@ -163,16 +173,54 @@ CREATE TABLE task (
       expect(task['album_id'], 'saved');
       expect(task['completed_count'], 5);
       expect(task['album_name'], '旅行');
+      expect(task['rule_id'], isNull);
+      expect(task.containsKey('storage_id'), isTrue);
       final settings = (await db.query('settings')).single;
       expect(settings['schema_version'], databaseVersion);
       expect(settings['log_max_count'], 200);
-      expect(settings['file_limit_mb'], 300);
       expect(settings['album_sort'], 'original');
       final tables = await db.rawQuery(
         "SELECT name FROM sqlite_master WHERE type = 'table'",
       );
       final names = tables.map((table) => table['name']).toSet();
       expect(names, containsAll(['user', 'storage', 'log']));
+    } finally {
+      await database.close();
+      await directory.delete(recursive: true);
+    }
+  });
+
+  test('版本 21 升级新增规则关联，旧存储和文件限制列保持原值', () async {
+    final directory = await Directory.systemTemp.createTemp('db_rule_upgrade_');
+    final file = File('${directory.path}/test.sqlite');
+    final raw = await databaseFactoryFfi.openDatabase(file.path);
+    for (final statement in databaseSchema) {
+      if (statement.startsWith('ALTER TABLE')) continue;
+      await raw.execute(statement);
+    }
+    await raw.execute('ALTER TABLE task DROP COLUMN rule_id');
+    await raw.execute('ALTER TABLE task ADD COLUMN storage_id TEXT');
+    await raw.execute(
+      'ALTER TABLE settings ADD COLUMN file_limit_mb INTEGER NOT NULL DEFAULT 300',
+    );
+    await raw.update('settings', {'schema_version': 21, 'file_limit_mb': 123});
+    await raw.insert('task', {
+      'user_id': 'user',
+      'album_id': 'old',
+      'sort_time': 1,
+      'storage_id': 'old-storage',
+    });
+    await raw.close();
+    final database = Db(factory: databaseFactoryFfi, databasePath: file.path);
+    try {
+      final db = await database.database;
+      final task = (await db.query('task')).single;
+      expect(task.containsKey('rule_id'), isTrue);
+      expect(task['rule_id'], isNull);
+      expect(task['storage_id'], 'old-storage');
+      final settings = (await db.query('settings')).single;
+      expect(settings['schema_version'], databaseVersion);
+      expect(settings['file_limit_mb'], 123);
     } finally {
       await database.close();
       await directory.delete(recursive: true);

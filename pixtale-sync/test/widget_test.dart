@@ -1,18 +1,22 @@
 import 'dart:async';
 
+import 'rule_fixture.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pixtale_sync/components/common/app_notice.dart';
+
 import 'localized_app.dart';
+
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:pixtale_sync/pages/app_page.dart';
 import 'package:pixtale_sync/pages/task_page.dart';
 import 'package:pixtale_sync/services/task_service.dart';
-import 'package:pixtale_sync/services/storage_service.dart';
+import 'package:pixtale_sync/services/rule_service.dart';
 import 'package:pixtale_sync/services/sync_service.dart';
 import 'package:pixtale_sync/db/db.dart';
-import 'package:pixtale_sync/models/storage.dart';
+import 'package:pixtale_sync/models/rule.dart';
 import 'package:pixtale_sync/models/task.dart';
 import 'package:pixtale_sync/models/sync.dart';
 import 'package:pixtale_sync/models/user.dart';
@@ -34,9 +38,9 @@ void main() {
     addTearDown(database.close);
   });
 
-  testWidgets('添加弹窗先用旧存储，刷新后选择相册并保存所选存储', (tester) async {
+  testWidgets('添加任务时读取本地规则，选择相册并保存所选规则', (tester) async {
     final tasks = DialogTaskService(database);
-    final storages = DialogStorageService(database);
+    final storages = DialogRuleService(database);
     final sync = WaitingSyncService(tasks);
     const channel = MethodChannel('com.fluttercandies/photo_manager');
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -70,7 +74,7 @@ void main() {
       localizedApp(
         home: TaskPage(
           taskService: tasks,
-          storageService: storages,
+          ruleService: storages,
           syncService: sync,
         ),
       ),
@@ -79,14 +83,13 @@ void main() {
       await (await database.database).rawQuery('SELECT 1');
     });
     await tester.pumpAndSettle();
-    expect(storages.refreshes, 1);
+    expect(storages.reads, 0);
     expect(find.byIcon(Icons.add), findsOneWidget);
 
-    storages.pending = Completer<List<Storage>>();
     await tester.tap(find.byIcon(Icons.add));
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.widgetWithText(AlertDialog, '添加任务'), findsOneWidget);
-    expect(storages.refreshes, 2);
+    expect(storages.reads, 1);
     expect(
       tester
           .widget<TextButton>(find.widgetWithText(TextButton, '选择相册'))
@@ -100,7 +103,7 @@ void main() {
     expect(dropdown.value, 'old');
     await tester.tap(find.byType(DropdownButton<String>));
     await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.text('旧存储').last);
+    await tester.tap(find.text('旧规则').last);
     await tester.pump(const Duration(milliseconds: 300));
     expect(
       tester
@@ -109,20 +112,6 @@ void main() {
       isNotNull,
     );
 
-    // 远端移除旧存储后，自动选择新列表第一项。
-    storages.pending!.complete([
-      const Storage(id: 'cloud', name: '云端照片', type: 3),
-    ]);
-    await tester.pumpAndSettle();
-    dropdown = tester.widget<DropdownButton<String>>(
-      find.byType(DropdownButton<String>),
-    );
-    expect(dropdown.value, 'cloud');
-    expect(dropdown.items!.map((item) => item.value), ['cloud']);
-    await tester.tap(find.byType(DropdownButton<String>));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('云端照片').last);
-    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     await tester.tap(find.widgetWithText(TextButton, '选择相册'));
     await tester.pumpAndSettle();
@@ -135,9 +124,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pumpAndSettle();
     final records = await tester.runAsync(tasks.list);
-    expect(records!.single.storageId, 'cloud');
-    expect(records.single.storageName, '云端照片');
-    expect(find.text('云端照片'), findsOneWidget);
+    expect(records!.single.ruleId, 'old');
+    expect(records.single.ruleName, '旧规则');
+    expect(find.text('旧规则'), findsOneWidget);
     expect(find.text('0 / 123 张照片'), findsOneWidget);
     expect(
       tester
@@ -178,7 +167,7 @@ void main() {
 
     // 添加按钮保留原色，两个入口重复点击共用一条提示。
     expect(tester.widget<Icon>(find.byIcon(Icons.add)).color, isNull);
-    final refreshes = storages.refreshes;
+    final refreshes = storages.reads;
     for (var index = 0; index < 3; index++) {
       await tester.tap(find.byIcon(Icons.add));
       await tester.tap(find.byIcon(Icons.more_vert));
@@ -186,7 +175,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('请先停止同步'), findsOneWidget);
     expect(find.byType(AlertDialog), findsNothing);
-    expect(storages.refreshes, refreshes);
+    expect(storages.reads, refreshes);
     expect(tasks.records.length, 1);
 
     // 移除当前提示后没有排队提示，下一次点击仍能正常提示。
@@ -225,23 +214,15 @@ void main() {
     await tester.pumpAndSettle();
     expect(tasks.pinnedId, 'a');
 
-    // 再次打开沿用更新后的缓存，并发起新一轮刷新。
-    storages.pending = Completer<List<Storage>>();
+    // 再次打开只重读本地规则，不发送规则请求。
     await tester.tap(find.byIcon(Icons.add));
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(storages.refreshes, 3);
-    dropdown = tester.widget<DropdownButton<String>>(
-      find.byType(DropdownButton<String>),
-    );
-    expect(dropdown.items!.single.value, 'cloud');
-    storages.pending!.completeError(Exception('连接失败'));
     await tester.pumpAndSettle();
-    expect(find.text('Exception: 连接失败'), findsOneWidget);
+    expect(storages.reads, 2);
     dropdown = tester.widget<DropdownButton<String>>(
       find.byType(DropdownButton<String>),
     );
-    expect(dropdown.items!.single.value, 'cloud');
-    expect(tester.takeException(), isNull);
+    expect(dropdown.items!.single.value, 'old');
+    expect(find.text('同步规则'), findsOneWidget);
     Navigator.of(tester.element(find.byType(AlertDialog))).pop();
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.more_vert));
@@ -254,7 +235,7 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('任务页空白，底部导航可切换日志和设置并保留任务状态', (WidgetTester tester) async {
+  testWidgets('底部导航可切换规则、日志和设置并保留任务状态', (WidgetTester tester) async {
     await tester.runAsync(() async {
       await database.database;
     });
@@ -268,7 +249,7 @@ void main() {
       localizedApp(
         home: AppPage(
           taskService: TaskService(database: database),
-          storageService: StorageService(database: database),
+          ruleService: RuleService(database: database),
         ),
       ),
     );
@@ -280,14 +261,29 @@ void main() {
     expect(find.byIcon(Icons.add), findsOneWidget);
     expect(find.text('还没有相册'), findsNothing);
     expect(find.text('点击右上角添加相册'), findsNothing);
-    expect(find.byType(NavigationDestination), findsNWidgets(3));
+    expect(find.byType(NavigationDestination), findsNWidgets(4));
     final taskState = tester.state(find.byType(TaskPage));
+
+    await tester.tap(find.byIcon(Icons.signpost_outlined));
+    await tester.pump();
+    await tester.runAsync(() async {
+      await (await database.database).rawQuery('SELECT 1');
+      await RuleService(database: database).list();
+      await RuleService(database: database).list();
+    });
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+      1,
+    );
+    expect(find.widgetWithText(AppBar, '规则'), findsOneWidget);
+    expect(find.byTooltip('添加规则'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.receipt_long_outlined));
     await tester.pumpAndSettle();
     expect(
       tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
-      1,
+      2,
     );
     expect(find.widgetWithText(AppBar, '日志'), findsOneWidget);
     expect(find.byIcon(Icons.add), findsNothing);
@@ -296,32 +292,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
-      2,
+      3,
     );
     expect(find.widgetWithText(AppBar, '设置'), findsOneWidget);
-    expect(find.text('300MB'), findsOneWidget);
-    expect(
-      tester.getTopLeft(find.text('文件限制')).dy,
-      greaterThan(tester.getTopLeft(find.text('并发上传')).dy),
-    );
-    expect(
-      tester.getTopLeft(find.text('文件限制')).dy,
-      lessThan(tester.getTopLeft(find.text('定时同步')).dy),
-    );
-    await tester.tap(find.text('文件限制'));
-    await tester.pumpAndSettle();
-    expect(find.widgetWithText(AlertDialog, '文件限制'), findsOneWidget);
-    expect(
-      tester.widget<TextFormField>(find.byType(TextFormField)).controller!.text,
-      '300',
-    );
-    await tester.enterText(find.byType(TextFormField), '9');
-    await tester.tap(find.text('保存'));
-    await tester.pumpAndSettle();
-    expect(find.text('请输入不小于 10 的数值'), findsOneWidget);
-    await tester.tap(find.text('取消'));
-    await tester.pumpAndSettle();
-    expect(find.text('300MB'), findsOneWidget);
+    expect(find.text('文件限制'), findsNothing);
+    expect(find.text('300MB'), findsNothing);
 
     await tester.tap(find.byIcon(Icons.assignment_turned_in_outlined));
     await tester.pumpAndSettle();
@@ -350,7 +325,7 @@ void main() {
         localizedApp(
           home: AppPage(
             taskService: TaskService(database: database),
-            storageService: StorageService(database: database),
+            ruleService: RuleService(database: database),
           ),
         ),
       );
@@ -371,7 +346,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       tester.widget<NavigationRail>(find.byType(NavigationRail)).selectedIndex,
-      1,
+      2,
     );
     expect(find.widgetWithText(AppBar, '日志'), findsOneWidget);
     expect(
@@ -384,7 +359,7 @@ void main() {
     expect(find.byType(NavigationBar), findsNothing);
   });
 
-  testWidgets('相册卡片按名称、存储、照片进度排列，窄屏没有溢出', (tester) async {
+  testWidgets('相册卡片按名称、规则、照片进度排列，窄屏没有溢出', (tester) async {
     const channel = MethodChannel('com.fluttercandies/photo_manager');
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
       channel,
@@ -431,7 +406,7 @@ void main() {
         localizedApp(
           home: TaskPage(
             taskService: service,
-            storageService: StorageService(database: database),
+            ruleService: RuleService(database: database),
           ),
         ),
       );
@@ -441,11 +416,11 @@ void main() {
       });
       await tester.pumpAndSettle();
       expect(find.text('12 / 123 张照片'), findsOneWidget);
-      expect(find.text('本地存储'), findsOneWidget);
+      expect(find.text('规则失效'), findsOneWidget);
       expect(find.byIcon(Icons.play_arrow), findsOneWidget);
       expect(find.textContaining('张照片'), findsOneWidget);
       final nameY = tester.getTopLeft(find.text('旅行相册和一个足够长的名称')).dy;
-      final storageY = tester.getTopLeft(find.text('本地存储')).dy;
+      final storageY = tester.getTopLeft(find.text('规则失效')).dy;
       final countY = tester.getTopLeft(find.text('12 / 123 张照片')).dy;
       expect(nameY, lessThan(storageY));
       expect(storageY, lessThan(countY));
@@ -454,40 +429,35 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('存储落库后卡片更新名称和失效状态，保留照片进度', (tester) async {
+  testWidgets('规则落库后卡片更新名称和失效状态，保留照片进度', (tester) async {
     final tasks = TaskService(database: database);
-    final storages = StorageService(
-      database: database,
-      fetch: (_) async => throw StateError('离线'),
-    );
-    const storage = Storage(id: 'cloud', name: '旧存储', type: 3);
+    final storages = RuleService(database: database);
+    final storage = testRule(id: 'cloud', name: '旧规则');
     await tester.runAsync(() async {
       await UserService(database: database).add(_user);
-      await storages.save([storage], account: _user);
-      await tasks.add(['a'], storage: storage);
+      await saveTestRule(database, storage);
+      await tasks.add(['a'], rule: storage);
       await tasks.updateInfo('a', albumName: '旅行', photoCount: 123);
       await tasks.updateProgress('a', 12);
     });
     await _pumpTaskPage(tester, tasks, storages);
-    expect(find.text('旧存储'), findsOneWidget);
+    expect(find.text('旧规则'), findsOneWidget);
 
     await tester.runAsync(() async {
-      await storages.save([
-        const Storage(id: 'cloud', name: '新存储', type: 3),
-      ], account: _user);
+      await storages.rename(id: 'cloud', name: '新规则');
       await Future<void>.delayed(const Duration(milliseconds: 50));
     });
     await tester.pumpAndSettle();
-    expect(find.text('旧存储'), findsNothing);
-    expect(find.text('新存储'), findsOneWidget);
+    expect(find.text('旧规则'), findsNothing);
+    expect(find.text('新规则'), findsOneWidget);
     expect(find.text('12 / 123 张照片'), findsOneWidget);
 
     await tester.runAsync(() async {
-      await storages.save([], account: _user);
+      await storages.remove('cloud');
       await Future<void>.delayed(const Duration(milliseconds: 50));
     });
     await tester.pumpAndSettle();
-    final missing = find.text('存储失效');
+    final missing = find.text('规则失效');
     expect(missing, findsOneWidget);
     expect(
       tester.widget<Text>(missing).style?.color,
@@ -548,7 +518,7 @@ void main() {
         account: other,
       );
     });
-    await _pumpTaskPage(tester, tasks, StorageService(database: database));
+    await _pumpTaskPage(tester, tasks, RuleService(database: database));
     expect(find.text('账号甲相册'), findsOneWidget);
     expect(find.text('账号乙相册'), findsNothing);
     await tester.runAsync(() async {
@@ -580,7 +550,7 @@ void main() {
       await tasks.updateInfo('partial', albumName: '未完成', photoCount: 10);
       await tasks.updateProgress('partial', 3);
     });
-    await _pumpTaskPage(tester, tasks, StorageService(database: database));
+    await _pumpTaskPage(tester, tasks, RuleService(database: database));
     expect(find.text('同步完成'), findsOneWidget);
     expect(
       tester.getTopLeft(find.text('同步完成')).dx,
@@ -600,18 +570,16 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('编辑位于菜单首行，默认当前存储，取消不修改，保存刷新卡片', (tester) async {
+  testWidgets('编辑位于菜单首行，默认当前规则，取消不修改，保存刷新卡片', (tester) async {
     final tasks = TaskService(database: database);
-    final storages = StorageService(
-      database: database,
-      fetch: (_) async => throw StateError('离线'),
-    );
-    const first = Storage(id: 'first', name: '第一个存储', type: 1);
-    const current = Storage(id: 'current', name: '当前存储', type: 3);
+    final storages = RuleService(database: database);
+    final first = testRule(id: 'first', name: '第一个规则');
+    final current = testRule(id: 'current', name: '当前规则');
     await tester.runAsync(() async {
       await UserService(database: database).add(_user);
-      await storages.save([first, current], account: _user);
-      await tasks.add(['a'], storage: current);
+      await saveTestRule(database, first);
+      await saveTestRule(database, current);
+      await tasks.add(['a'], rule: current);
       await tasks.updateInfo('a', albumName: '旅行', photoCount: 123);
       await tasks.updateProgress('a', 12);
     });
@@ -662,7 +630,7 @@ void main() {
     expect(find.text('旅行'), findsOneWidget);
     expect(find.text('12 / 123 张照片'), findsOneWidget);
     final records = await tester.runAsync(tasks.list);
-    expect(records!.single.storageId, first.id);
+    expect(records!.single.ruleId, first.id);
     expect(records.single.completedCount, 12);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
@@ -696,7 +664,7 @@ void main() {
       localizedApp(
         home: TaskPage(
           taskService: tasks,
-          storageService: DialogStorageService(database),
+          ruleService: DialogRuleService(database),
           syncService: sync,
         ),
       ),
@@ -713,13 +681,13 @@ void main() {
 Future<void> _pumpTaskPage(
   WidgetTester tester,
   TaskService tasks,
-  StorageService storages,
+  RuleService storages,
 ) async {
   await tester.pumpWidget(
     localizedApp(
       home: TaskPage(
         taskService: tasks,
-        storageService: storages,
+        ruleService: storages,
         syncService: WaitingSyncService(tasks),
       ),
     ),
@@ -742,20 +710,16 @@ class DialogTaskService extends TaskService {
   @override
   Future<User?> currentUser() async => _user;
 
-  /// 接收页面提交的相册及存储。
+  /// 接收页面提交的相册及规则。
   @override
-  Future<void> add(
-    List<String> albumIds, {
-    Storage? storage,
-    User? account,
-  }) async {
+  Future<void> add(List<String> albumIds, {Rule? rule, User? account}) async {
     records.addAll(
       albumIds.map(
         (id) => Task(
           albumId: id,
           sortTime: DateTime.now(),
-          storageId: storage?.id,
-          storageName: storage?.name ?? '本地存储',
+          ruleId: rule?.id,
+          ruleName: rule?.name ?? '本地规则',
         ),
       ),
     );
@@ -779,8 +743,8 @@ class DialogTaskService extends TaskService {
       albumId: record.albumId,
       sortTime: record.sortTime,
       completedCount: record.completedCount,
-      storageId: record.storageId,
-      storageName: record.storageName,
+      ruleId: record.ruleId,
+      ruleName: record.ruleName,
       path: record.path,
       albumName: record.albumName,
       photoCount: record.photoCount,
@@ -806,8 +770,8 @@ class DialogTaskService extends TaskService {
       albumId: record.albumId,
       sortTime: record.sortTime,
       completedCount: record.completedCount,
-      storageName: record.storageName,
-      storageId: record.storageId,
+      ruleName: record.ruleName,
+      ruleId: record.ruleId,
       albumName: albumName,
       photoCount: photoCount,
       cover: cover,
@@ -877,23 +841,15 @@ class WaitingSyncService extends SyncService {
   }
 }
 
-/// 控制弹窗刷新时机，验证请求未完成时仍可使用缓存。
-class DialogStorageService extends StorageService {
-  /// 使用测试数据库创建存储服务。
-  DialogStorageService(Db database) : super(database: database);
+/// 记录任务弹窗读取本地规则的次数。
+class DialogRuleService extends RuleService {
+  DialogRuleService(Db database) : super(database: database);
+  List<Rule> cached = [testRule(id: 'old', name: '旧规则')];
+  int reads = 0;
 
-  List<Storage> cached = [const Storage(id: 'old', name: '旧存储', type: 1)];
-  Completer<List<Storage>>? pending;
-  int refreshes = 0;
-
-  /// 立即返回上次缓存。
   @override
-  Future<List<Storage>> list() async => cached;
-
-  /// 由测试决定远端请求何时返回。
-  @override
-  Future<List<Storage>> refresh() async {
-    refreshes++;
-    return cached = pending == null ? cached : await pending!.future;
+  Future<List<Rule>> list() async {
+    reads++;
+    return cached;
   }
 }

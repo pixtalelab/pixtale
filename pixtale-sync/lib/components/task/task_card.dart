@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:pixtale_sync/l10n/localizations.dart';
 import 'package:pixtale_sync/models/task_preview.dart';
 
-// 任务列表中的相册卡片，展示封面、存储和同步进度。
+// 任务列表中的相册卡片，展示封面、规则和同步进度。
 
-/// 显示相册封面、名称、目标存储及同步张数。
+/// 显示相册封面、名称、目标规则及同步张数。
 class TaskCard extends StatelessWidget {
   /// 创建任务卡片。
   const TaskCard({
@@ -12,8 +12,8 @@ class TaskCard extends StatelessWidget {
     required this.preview,
     required this.completed,
     required this.total,
-    required this.storageName,
-    required this.storageMissing,
+    required this.ruleName,
+    required this.ruleMissing,
     required this.syncing,
     required this.enabled,
     required this.onBlocked,
@@ -23,11 +23,11 @@ class TaskCard extends StatelessWidget {
   /// 相册及其封面信息。
   final TaskPreview preview;
 
-  /// 已同步张数、本地总张数和存储名称。
+  /// 已同步张数、本地总张数和规则名称。
   final int completed;
   final int total;
-  final String storageName;
-  final bool storageMissing;
+  final String ruleName;
+  final bool ruleMissing;
 
   /// 当前相册正在核对或上传。
   final bool syncing;
@@ -165,11 +165,11 @@ class TaskCard extends StatelessWidget {
                   ],
                   const SizedBox(height: 6),
                   Text(
-                    storageName,
+                    ruleName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: bodyStyle?.copyWith(
-                      color: storageMissing
+                      color: ruleMissing
                           ? colors.error
                           : colors.onSurfaceVariant,
                     ),

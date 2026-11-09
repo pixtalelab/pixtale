@@ -1,4 +1,10 @@
 import 'dart:async';
+
+import 'rule_fixture.dart';
+
+import 'package:pixtale_sync/models/rule.dart';
+import 'package:pixtale_sync/services/rule_service.dart';
+
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -32,6 +38,7 @@ void main() {
 
   late Db database;
   late TaskService tasks;
+  late RuleService rules;
   late SettingsService settings;
   late StorageService storages;
   late LogService logs;
@@ -45,7 +52,9 @@ void main() {
       factory: databaseFactoryFfi,
       databasePath: inMemoryDatabasePath,
     );
-    tasks = TaskService(database: database);
+    tasks = _SyncTasks(database);
+    rules = RuleService(database: database);
+    await saveTestRule(database, testRule(id: 'default', name: 'Default Rule'));
     settings = SettingsService(database: database);
     logs = LogService(database: database);
     users = UserService(database: database);
@@ -68,6 +77,7 @@ void main() {
       users: users,
       settings: settings,
       storages: storages,
+      rules: rules,
       logs: logs,
       photos: photos,
       apiFactory: (user, client) {
@@ -81,6 +91,194 @@ void main() {
     await service.stop();
     await photos.dispose();
     await database.close();
+  });
+
+  test('按范围和类型匹配，边界包含，重叠时只使用首条规则，允许超过旧上限', () async {
+    const mb = 1024 * 1024;
+    final id = await rules.add(
+      name: '分流规则',
+      fileType: RuleFileType.photo,
+      fileMinSize: 10 * mb,
+      fileMaxSize: 20 * mb,
+      storageId: 's3',
+    );
+    await rules.addItem(
+      pid: id,
+      fileType: RuleFileType.video,
+      fileMinSize: 10 * mb,
+      fileMaxSize: 20 * mb,
+      storageId: 'local-id',
+    );
+    await rules.addItem(
+      pid: id,
+      fileType: RuleFileType.any,
+      fileMinSize: 15 * mb,
+      fileMaxSize: 400 * mb,
+      storageId: 'local-id',
+    );
+    photos.albums = {
+      'a': [
+        localPhoto('min.jpg', size: 10 * mb),
+        localPhoto('max.jpg', size: 20 * mb),
+        localPhoto('clip.mp4', size: 10 * mb),
+        localPhoto('large.jpg', size: 400 * mb),
+        localPhoto('small.jpg', size: 10 * mb - 1),
+        localPhoto('huge.mp4', size: 400 * mb + 1),
+      ],
+    };
+    photos.headers['clip.mp4'] = const [
+      0,
+      0,
+      0,
+      24,
+      0x66,
+      0x74,
+      0x79,
+      0x70,
+      0x6D,
+      0x70,
+      0x34,
+      0x32,
+    ];
+    await tasks.add(['a'], rule: (await rules.get(id))!);
+    await service.start((_) {});
+    expect(api.attempts, {
+      'min.jpg': 1,
+      'max.jpg': 1,
+      'clip.mp4': 1,
+      'large.jpg': 1,
+    });
+    expect(api.uploadTargets, {
+      'min.jpg': 's3',
+      'max.jpg': 's3',
+      'clip.mp4': 'local-id',
+      'large.jpg': 'local-id',
+    });
+    expect(photos.opened, unorderedEquals(api.attempts.keys));
+    expect((await tasks.list()).single.completedCount, 4);
+  });
+
+  test('不同目标存储分别查重，其他存储中已存在的文件仍需上传', () async {
+    final id = await rules.add(
+      name: '分别查重',
+      fileType: RuleFileType.photo,
+      fileMinSize: 0,
+      fileMaxSize: 1000,
+      storageId: 'local-id',
+    );
+    await rules.addItem(
+      pid: id,
+      fileType: RuleFileType.video,
+      fileMinSize: 0,
+      fileMaxSize: 1000,
+      storageId: 's3',
+    );
+    photos.albums = {
+      'a': [
+        localPhoto('photo.jpg'),
+        localPhoto('existing.jpg'),
+        localPhoto('clip.mp4'),
+      ],
+    };
+    photos.headers['clip.mp4'] = const [
+      0,
+      0,
+      0,
+      24,
+      0x66,
+      0x74,
+      0x79,
+      0x70,
+      0x6D,
+      0x70,
+      0x34,
+      0x32,
+    ];
+    service = SyncService(
+      tasks: tasks,
+      users: users,
+      settings: settings,
+      storages: storages,
+      rules: rules,
+      logs: logs,
+      photos: photos,
+      apiFactory: (user, client) {
+        api = FakeApi(user, client)
+          ..storageInventory = {
+            'local-id': [remotePhoto('existing.jpg'), remotePhoto('clip.mp4')],
+            's3': [remotePhoto('photo.jpg')],
+          };
+        return api;
+      },
+    );
+    await tasks.add(['a'], rule: (await rules.get(id))!);
+    await service.start((_) {});
+    expect(api.checkAlbumIds.toSet(), hasLength(2));
+    expect(api.uploadTargets, {'photo.jpg': 'local-id', 'clip.mp4': 's3'});
+    expect((await tasks.list()).single.completedCount, 3);
+  });
+
+  test('每个任务开始时重新读取规则，上一任务期间的编辑立即生效', () async {
+    photos.albums = {
+      'a': [localPhoto('a.jpg')],
+      'b': [localPhoto('b.jpg')],
+    };
+    await tasks.add(['a', 'b']);
+    service = SyncService(
+      tasks: tasks,
+      users: users,
+      settings: settings,
+      storages: storages,
+      rules: rules,
+      logs: logs,
+      photos: photos,
+      apiFactory: (user, client) {
+        api = FakeApi(user, client)
+          ..onUpload = (_) async {
+            await rules.updateItem(
+              id: 'default-item',
+              pid: 'default',
+              fileType: RuleFileType.any,
+              fileMinSize: 0,
+              fileMaxSize: 0,
+              storageId: 'local-id',
+            );
+          };
+        return api;
+      },
+    );
+    await service.start((_) {});
+    expect(api.attempts, {'a.jpg': 1});
+    expect(api.albumNames, ['相册 a']);
+    expect((await tasks.list()).map((task) => task.completedCount), [1, 0]);
+  });
+
+  test('无关联、已删除、其他用户和空子项规则均不会上传或核对远端', () async {
+    final plainTasks = TaskService(database: database);
+    await plainTasks.add(['a']);
+    await tasks.add(['b'], rule: testRule(id: 'deleted', name: '已删除'));
+    final alien = testRule(id: 'alien', name: '其他用户', userId: 'other');
+    await saveTestRule(database, alien);
+    await tasks.add(['c'], rule: alien);
+    final empty = testRule(id: 'empty', name: '空规则');
+    await saveTestRule(database, empty);
+    await (await database.database).delete(
+      'rule_item',
+      where: 'pid = ?',
+      whereArgs: [empty.id],
+    );
+    await tasks.add(['d'], rule: empty);
+    photos.albums = {
+      for (final id in ['a', 'b', 'c', 'd']) id: [localPhoto('$id.jpg')],
+    };
+    await service.start((_) {});
+    expect(api.attempts, isEmpty);
+    expect(api.albumNames, isEmpty);
+    expect(api.checkAlbumIds, isEmpty);
+    expect(photos.opened, isEmpty);
+    final failures = await logs.list(failuresOnly: true);
+    expect(failures, hasLength(3));
+    expect(failures.every((entry) => entry.event == '读取规则'), isTrue);
   });
 
   test('没有照片权限时提示并停止同步', () async {
@@ -114,7 +312,7 @@ void main() {
     expect(records.first.isInvalid, isTrue);
     expect(records.first.completedCount, 12);
     expect(records.last.isInvalid, isFalse);
-    expect(api.albumNames, ['相册 b']);
+    expect(api.albumNames, isEmpty);
     final failures = await logs.list(failuresOnly: true);
     expect(failures.single.event, '读取相册');
     expect(failures.single.albumName, '旅行');
@@ -177,6 +375,7 @@ void main() {
       users: users,
       settings: settings,
       storages: storages,
+      rules: rules,
       logs: logs,
       photos: photos,
       apiFactory: (user, client) {
@@ -224,6 +423,7 @@ void main() {
       users: users,
       settings: settings,
       storages: storages,
+      rules: rules,
       logs: logs,
       photos: photos,
       apiFactory: (user, client) {
@@ -238,7 +438,7 @@ void main() {
     expect(api.attempts, isEmpty);
     final entries = await logs.list();
     expect(entries, hasLength(2));
-    expect(entries.first.event, '远程检测');
+    expect(entries.first.event, '读取相册');
     expect(entries.first.status, LogStatus.failure);
     expect(entries.first.message, '无法继续读取相册');
     expect(entries.last.event, '开始同步');
@@ -257,6 +457,7 @@ void main() {
       users: users,
       settings: settings,
       storages: storages,
+      rules: rules,
       logs: logs,
       photos: photos,
       apiFactory: (user, client) {
@@ -285,6 +486,7 @@ void main() {
       users: users,
       settings: settings,
       storages: storages,
+      rules: rules,
       logs: logs,
       photos: photos,
       apiFactory: (user, client) {
@@ -331,6 +533,7 @@ void main() {
       users: users,
       settings: settings,
       storages: storages,
+      rules: rules,
       logs: logs,
       photos: photos,
       apiFactory: (user, client) {
@@ -347,7 +550,7 @@ void main() {
     expect(photos.opened, ['new.jpg']);
     final records = await tasks.list();
     expect(records.map((task) => task.completedCount), [2, 1]);
-    expect(records.map((task) => task.storageName).toSet(), {null});
+    expect(records.map((task) => task.ruleName).toSet(), {'Default Rule'});
     expect(progress.last.total, 1);
     expect((await settings.get()).taskStatus, 2);
     expect((await settings.get()).lastSyncAt, isNotNull);
@@ -364,6 +567,7 @@ void main() {
       users: users,
       settings: settings,
       storages: storages,
+      rules: rules,
       logs: logs,
       photos: photos,
       apiFactory: (user, client) {
@@ -390,6 +594,7 @@ void main() {
       users: users,
       settings: settings,
       storages: storages,
+      rules: rules,
       logs: logs,
       photos: photos,
       apiFactory: (user, client) {
@@ -424,6 +629,7 @@ void main() {
       users: users,
       settings: settings,
       storages: storages,
+      rules: rules,
       photos: photos,
       logs: logs,
       apiFactory: (user, client) {
@@ -455,6 +661,7 @@ void main() {
       users: users,
       settings: settings,
       storages: storages,
+      rules: rules,
       logs: logs,
       photos: photos,
       apiFactory: (user, client) {
@@ -497,6 +704,7 @@ void main() {
       users: users,
       settings: settings,
       storages: storages,
+      rules: rules,
       logs: logs,
       photos: photos,
       apiFactory: (user, client) {
@@ -515,57 +723,6 @@ void main() {
     expect(peak, 3);
     expect(progress.map((item) => item.completed), [0, 1, 2, 3, 4, 5, 6]);
     expect((await tasks.list()).single.completedCount, 6);
-  });
-
-  test('默认超过 300MB 的文件静默跳过，继续上传其他文件', () async {
-    expect((await settings.get()).fileLimitMb, 300);
-    photos.albums = {
-      'a': [
-        localPhoto('large.mp4', size: 300 * 1024 * 1024 + 1),
-        localPhoto('keep.jpg'),
-      ],
-    };
-    await tasks.add(['a']);
-
-    await service.start((_) {});
-
-    expect(photos.opened, ['keep.jpg']);
-    expect(api.attempts, {'keep.jpg': 1});
-    expect((await tasks.list()).single.completedCount, 1);
-    expect((await logs.list()).map((entry) => entry.event), ['开始同步']);
-    expect((await settings.get()).lastSyncAt, isNotNull);
-  });
-
-  test('自定义 10MB 上限允许边界大小，调高后可重新上传被跳过的文件', () async {
-    for (final value in [-1, 0, 9]) {
-      await expectLater(settings.updateFileLimitMb(value), throwsRangeError);
-    }
-    expect((await settings.get()).fileLimitMb, 300);
-    await settings.updateFileLimitMb(10);
-    expect((await settings.get()).fileLimitMb, 10);
-    final limit = 10 * 1024 * 1024;
-    photos.albums = {
-      'a': [
-        localPhoto('large.jpg', size: limit + 1),
-        localPhoto('boundary.jpg', size: limit),
-        localPhoto('below.jpg', size: limit - 1),
-      ],
-    };
-    await tasks.add(['a']);
-
-    await service.start((_) {});
-
-    expect(photos.opened, ['boundary.jpg', 'below.jpg']);
-    expect(api.attempts, {'boundary.jpg': 1, 'below.jpg': 1});
-    expect((await tasks.list()).single.completedCount, 2);
-    expect((await logs.list()).map((entry) => entry.event), ['开始同步']);
-
-    await settings.updateFileLimitMb(11);
-    await service.start((_) {});
-
-    expect(api.attempts.keys, contains('large.jpg'));
-    expect((await tasks.list()).single.completedCount, 3);
-    expect(await logs.list(failuresOnly: true), isEmpty);
   });
 
   test('上传时后缀和文件头都要在白名单内', () async {
@@ -668,6 +825,7 @@ void main() {
           users: users,
           settings: settings,
           storages: storages,
+          rules: rules,
           logs: logs,
           photos: photos,
           apiFactory: (user, client) {
@@ -729,6 +887,7 @@ void main() {
         users: users,
         settings: scheduledSettings,
         storages: storages,
+        rules: rules,
         logs: logs,
         photos: photos,
         apiFactory: (user, client) {
@@ -767,6 +926,7 @@ void main() {
       users: users,
       settings: settings,
       storages: storages,
+      rules: rules,
       logs: logs,
       photos: photos,
       apiFactory: (user, client) {
@@ -800,6 +960,7 @@ void main() {
       users: users,
       settings: settings,
       storages: storages,
+      rules: rules,
       logs: logs,
       photos: photos,
       apiFactory: (user, client) {
@@ -844,7 +1005,9 @@ void main() {
   });
 
   test('定时下一轮开始时再次记录成功事件，等待期间不重复记录', () async {
-    photos.albums = {'a': []};
+    photos.albums = {
+      'a': [localPhoto('one.jpg')],
+    };
     await tasks.add(['a']);
     final scheduledSettings = DueSettings(database: database);
     await scheduledSettings.updateTaskInterval(1);
@@ -853,6 +1016,7 @@ void main() {
       users: users,
       settings: scheduledSettings,
       storages: storages,
+      rules: rules,
       logs: logs,
       photos: photos,
       apiFactory: (user, client) => api = FakeApi(user, client),
@@ -892,6 +1056,7 @@ void main() {
         users: users,
         settings: scheduledSettings,
         storages: storages,
+        rules: rules,
         logs: logs,
         photos: photos,
         apiFactory: (user, client) => api = FakeApi(user, client),
@@ -906,12 +1071,7 @@ void main() {
       expect((await tasks.list()).map((task) => task.completedCount), [12, 1]);
       final failures = await logs.list(failuresOnly: true);
       expect(failures, hasLength(2));
-      expect(
-        failures.every(
-          (entry) => entry.event == (missingAlbum ? '读取相册' : '远程检测'),
-        ),
-        isTrue,
-      );
+      expect(failures.every((entry) => entry.event == '读取相册'), isTrue);
       expect(
         (await logs.list()).where((entry) => entry.event == '开始同步'),
         hasLength(2),
@@ -920,13 +1080,16 @@ void main() {
   }
 
   test('远端差异检查失败只记录一次失败，并保留开始同步事件', () async {
-    photos.albums = {'a': []};
+    photos.albums = {
+      'a': [localPhoto('one.jpg')],
+    };
     await tasks.add(['a']);
     service = SyncService(
       tasks: tasks,
       users: users,
       settings: settings,
       storages: storages,
+      rules: rules,
       logs: logs,
       photos: photos,
       apiFactory: (user, client) {
@@ -952,17 +1115,18 @@ void main() {
       'a': [localPhoto('cloud.jpg')],
       'b': [localPhoto('disk.jpg')],
     };
-    await tasks.add([
-      'a',
-    ], storage: const Storage(id: 's3', name: '选择的云存储', type: 3));
-    await tasks.add([
-      'b',
-    ], storage: const Storage(id: 'local-id', name: '选择的本地存储', type: 1));
+    await saveTestRule(
+      database,
+      testRule(id: 's3-rule', name: '云端规则', storageId: 's3'),
+    );
+    await saveTestRule(database, testRule(id: 'local-rule', name: '本地规则'));
+    await tasks.add(['a'], rule: testRule(id: 's3-rule', name: '云端规则'));
+    await tasks.add(['b'], rule: testRule(id: 'local-rule', name: '本地规则'));
     await service.start((_) {});
     expect(api.storageReads, 1);
     expect(api.uploadStorages, ['s3', 'local-id']);
     final records = await tasks.list();
-    expect(records.map((task) => task.storageName), ['云存储', '本地照片']);
+    expect(records.map((task) => task.ruleName), ['云端规则', '本地规则']);
     expect((await storages.list()).map((item) => item.id), ['local-id', 's3']);
     expect(records.map((task) => task.completedCount), [1, 1]);
   });
@@ -974,9 +1138,11 @@ void main() {
     photos.albums = {
       'a': [localPhoto('missing.jpg')],
     };
-    await tasks.add([
-      'a',
-    ], storage: const Storage(id: 'deleted', name: '已删除存储', type: 3));
+    await saveTestRule(
+      database,
+      testRule(id: 'deleted-rule', name: '失效存储规则', storageId: 'deleted'),
+    );
+    await tasks.add(['a'], rule: testRule(id: 'deleted-rule', name: '失效存储规则'));
     await service.start((_) {});
     expect(api.uploadStorages, isEmpty);
     final entries = await logs.list();
@@ -986,13 +1152,26 @@ void main() {
     expect(entries.first.message, 'Storage unavailable');
     expect(entries.last.event, '开始同步');
     expect(entries.last.status, LogStatus.success);
-    expect((await tasks.list()).single.storageId, 'deleted');
-    expect((await tasks.list()).single.storageName, isNull);
+    expect((await tasks.list()).single.ruleId, 'deleted-rule');
+    expect((await tasks.list()).single.ruleName, '失效存储规则');
     expect(
       (await storages.list()).any((item) => item.id == 'deleted'),
       isFalse,
     );
   });
+}
+
+/// 为既有同步场景显式关联默认规则。
+class _SyncTasks extends TaskService {
+  _SyncTasks(Db database) : super(database: database);
+
+  @override
+  Future<void> add(List<String> albumIds, {Rule? rule, User? account}) =>
+      super.add(
+        albumIds,
+        rule: rule ?? testRule(id: 'default', name: 'Default Rule'),
+        account: account,
+      );
 }
 
 /// 将第一轮完成时间设为已到期，第二轮后结束定时，避免测试实际等待。
@@ -1026,7 +1205,12 @@ class DueSettings extends SettingsService {
 
 /// 创建可复用的本地照片样本。
 SyncPhoto localPhoto(String name, {int size = 123}) => SyncPhoto(
-  asset: AssetEntity(id: name, typeInt: 1, width: 10, height: 10),
+  asset: AssetEntity(
+    id: name,
+    typeInt: isAllowedImageName(name) ? 1 : 2,
+    width: 10,
+    height: 10,
+  ),
   name: name,
   size: size,
 );
@@ -1110,7 +1294,7 @@ class FakePhotos extends PhotoService {
       '${directory!.path}${Platform.pathSeparator}${photo.name}',
     );
     final header = headers[photo.name] ?? const [0xFF, 0xD8, 0xFF];
-    final length = photo.size > header.length ? photo.size : header.length;
+    final length = photo.size.clamp(header.length, 1024);
     final bytes = List<int>.filled(length, 0);
     bytes.setRange(0, header.length, header);
     await file.writeAsBytes(bytes);
@@ -1153,6 +1337,9 @@ class FakeApi extends SyncApi {
   final List<String> checkAlbumIds = [];
   final List<String> locks = [];
   final List<String> uploadStorages = [];
+  final Map<String, String> uploadTargets = {};
+  Map<String, List<RemotePhoto>>? storageInventory;
+  final Map<String, String> albumStorages = {};
   List<Storage> storages = [
     const Storage(id: 'local-id', name: '本地照片', type: 1),
     const Storage(id: 's3', name: '云存储', type: 3),
@@ -1178,7 +1365,11 @@ class FakeApi extends SyncApi {
   Future<String> getAlbum(String name, String storageId) async {
     expect(storages.any((item) => item.id == storageId), isTrue);
     albumNames.add(name);
-    return 'remote-$name';
+    final id = storageInventory == null
+        ? 'remote-$name'
+        : 'remote-$storageId-$name';
+    albumStorages[id] = storageId;
+    return id;
   }
 
   /// 返回远端还不存在的文件，供上传队列使用。
@@ -1186,7 +1377,10 @@ class FakeApi extends SyncApi {
   Future<List<SyncFile>> check(String albumId, List<SyncFile> files) async {
     checkAlbumIds.add(albumId);
     if (inventoryError != null) throw inventoryError!;
-    final keys = {for (final photo in inventory) photo.key};
+    final current = storageInventory == null
+        ? inventory
+        : storageInventory![albumStorages[albumId]] ?? <RemotePhoto>[];
+    final keys = {for (final photo in current) photo.key};
     return [
       for (final file in files)
         if (!keys.contains(file.key)) file,
@@ -1203,6 +1397,7 @@ class FakeApi extends SyncApi {
     String lock,
   ) async {
     uploadStorages.add(storageId);
+    uploadTargets[photo.name] = storageId;
     attempts.update(photo.name, (value) => value + 1, ifAbsent: () => 1);
     locks.add(lock);
     if (photo.name == badName) {

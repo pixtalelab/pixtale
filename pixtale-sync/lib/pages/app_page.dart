@@ -4,10 +4,12 @@ import 'package:pixtale_sync/components/common/window_title_bar.dart';
 import 'package:pixtale_sync/pages/log_page.dart';
 import 'package:pixtale_sync/pages/settings_page.dart';
 import 'package:pixtale_sync/pages/task_page.dart';
+import 'package:pixtale_sync/pages/template_page.dart';
 import 'package:pixtale_sync/providers/sync_provider.dart';
 import 'package:pixtale_sync/request/request.dart';
 import 'package:pixtale_sync/services/foreground_sync_service.dart';
 import 'package:pixtale_sync/services/task_service.dart';
+import 'package:pixtale_sync/services/rule_service.dart';
 import 'package:pixtale_sync/services/storage_service.dart';
 import 'package:pixtale_sync/services/user_service.dart';
 import 'package:pixtale_sync/services/window_service.dart';
@@ -15,15 +17,23 @@ import 'package:pixtale_sync/theme/app_theme.dart';
 
 // 应用主页面。窄屏竖向时导航贴底，宽屏或横屏时导航在左侧。
 
-/// 任务、日志和设置的导航容器。
+/// 任务、规则、日志和设置的导航容器。
 class AppPage extends StatefulWidget {
   /// 创建主页面，可注入任务服务进行测试。
-  const AppPage({super.key, this.taskService, this.storageService});
+  const AppPage({
+    super.key,
+    this.taskService,
+    this.storageService,
+    this.ruleService,
+  });
+
+  /// 任务和规则页面使用的本地规则服务。
+  final RuleService? ruleService;
 
   /// 任务页面使用的持久化服务。
   final TaskService? taskService;
 
-  /// 任务页面使用的存储列表服务。
+  /// 规则页面使用的存储列表服务。
   final StorageService? storageService;
 
   /// 创建导航状态。
@@ -81,17 +91,21 @@ class _AppPageState extends State<AppPage> {
 
   // 页面渲染
 
-  /// 三个页面叠在一起，切页时保留任务列表状态。
+  /// 页面叠在一起，切页时保留任务列表状态。
   Widget _pages() {
     return IndexedStack(
       index: _index,
       children: [
         TaskPage(
           taskService: widget.taskService,
-          storageService: widget.storageService,
+          ruleService: widget.ruleService,
           sync: _sync,
         ),
-        LogPage(active: _index == 1),
+        TemplatePage(
+          service: widget.ruleService,
+          storageService: widget.storageService,
+        ),
+        LogPage(active: _index == 2),
         SettingsPage(sync: _sync),
       ],
     );
@@ -134,6 +148,12 @@ class _AppPageState extends State<AppPage> {
             icon: const Icon(Icons.assignment_turned_in_outlined),
             selectedIcon: const Icon(Icons.assignment_turned_in),
             label: l10n.tasks,
+          ),
+          NavigationDestination(
+            tooltip: '',
+            icon: const Icon(Icons.signpost_outlined),
+            selectedIcon: const Icon(Icons.signpost),
+            label: l10n.templates,
           ),
           NavigationDestination(
             tooltip: '',
@@ -183,6 +203,11 @@ class _AppPageState extends State<AppPage> {
                   icon: const Icon(Icons.assignment_turned_in_outlined),
                   selectedIcon: const Icon(Icons.assignment_turned_in),
                   label: Text(l10n.tasks),
+                ),
+                NavigationRailDestination(
+                  icon: const Icon(Icons.signpost_outlined),
+                  selectedIcon: const Icon(Icons.signpost),
+                  label: Text(l10n.templates),
                 ),
                 NavigationRailDestination(
                   icon: const Icon(Icons.receipt_long_outlined),

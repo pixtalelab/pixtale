@@ -98,11 +98,173 @@ abstract class AppLocalizations {
     Locale('zh'),
   ];
 
+  /// No description provided for @syncRule.
+  ///
+  /// In zh, this message translates to:
+  /// **'同步规则'**
+  String get syncRule;
+
+  /// No description provided for @logEventReadRule.
+  ///
+  /// In zh, this message translates to:
+  /// **'读取规则'**
+  String get logEventReadRule;
+
+  /// No description provided for @noRuleAvailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无可用规则'**
+  String get noRuleAvailable;
+
+  /// No description provided for @ruleUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则失效'**
+  String get ruleUnavailable;
+
+  /// No description provided for @chooseRule.
+  ///
+  /// In zh, this message translates to:
+  /// **'请选择同步规则'**
+  String get chooseRule;
+
   /// No description provided for @tasks.
   ///
   /// In zh, this message translates to:
   /// **'任务'**
   String get tasks;
+
+  /// No description provided for @templates.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则'**
+  String get templates;
+
+  /// No description provided for @addTemplate.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加规则'**
+  String get addTemplate;
+
+  /// No description provided for @editTemplate.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑规则'**
+  String get editTemplate;
+
+  /// No description provided for @templateActions.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则操作'**
+  String get templateActions;
+
+  /// No description provided for @addTemplateItem.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加规则'**
+  String get addTemplateItem;
+
+  /// No description provided for @editTemplateItem.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑规则'**
+  String get editTemplateItem;
+
+  /// No description provided for @templateItemSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则设置'**
+  String get templateItemSettings;
+
+  /// No description provided for @add.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加'**
+  String get add;
+
+  /// No description provided for @templateName.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则名称'**
+  String get templateName;
+
+  /// No description provided for @templateNameRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入规则名称'**
+  String get templateNameRequired;
+
+  /// No description provided for @fileSizeRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件范围（MB）'**
+  String get fileSizeRange;
+
+  /// No description provided for @fileMinSize.
+  ///
+  /// In zh, this message translates to:
+  /// **'最小值'**
+  String get fileMinSize;
+
+  /// No description provided for @fileMaxSize.
+  ///
+  /// In zh, this message translates to:
+  /// **'最大值'**
+  String get fileMaxSize;
+
+  /// No description provided for @invalidFileSize.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入有效数值'**
+  String get invalidFileSize;
+
+  /// No description provided for @invalidFileRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'最大值不能小于最小值'**
+  String get invalidFileRange;
+
+  /// No description provided for @fileType.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件类型'**
+  String get fileType;
+
+  /// No description provided for @fileTypePhoto.
+  ///
+  /// In zh, this message translates to:
+  /// **'照片'**
+  String get fileTypePhoto;
+
+  /// No description provided for @fileTypeVideo.
+  ///
+  /// In zh, this message translates to:
+  /// **'视频'**
+  String get fileTypeVideo;
+
+  /// No description provided for @fileTypeAny.
+  ///
+  /// In zh, this message translates to:
+  /// **'不限'**
+  String get fileTypeAny;
+
+  /// No description provided for @loadTemplatesFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'读取规则失败，请重试'**
+  String get loadTemplatesFailed;
+
+  /// No description provided for @loadStoragesFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新存储失败，请重试'**
+  String get loadStoragesFailed;
+
+  /// No description provided for @retry.
+  ///
+  /// In zh, this message translates to:
+  /// **'重试'**
+  String get retry;
 
   /// No description provided for @logs.
   ///
@@ -343,18 +505,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'并发上传'**
   String get uploadConcurrency;
-
-  /// No description provided for @fileLimit.
-  ///
-  /// In zh, this message translates to:
-  /// **'文件限制'**
-  String get fileLimit;
-
-  /// No description provided for @fileLimitValue.
-  ///
-  /// In zh, this message translates to:
-  /// **'{size}MB'**
-  String fileLimitValue(int size);
 
   /// No description provided for @syncInterval.
   ///

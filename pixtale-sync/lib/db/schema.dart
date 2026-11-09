@@ -2,10 +2,31 @@
 // 已有表由 IF NOT EXISTS 跳过；之后给旧表补的列追加在建表语句后面。
 
 /// 当前数据库结构版本。
-const databaseVersion = 20;
+const databaseVersion = 22;
 
 /// 应用当前使用的全部表。
 const databaseSchema = <String>[
+  '''
+CREATE TABLE IF NOT EXISTS rule (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  name TEXT NOT NULL CHECK (length(trim(name)) > 0),
+  sort_time INTEGER NOT NULL
+);
+''',
+  'CREATE INDEX IF NOT EXISTS rule_user_id ON rule(user_id);',
+  '''
+CREATE TABLE IF NOT EXISTS rule_item (
+  id TEXT PRIMARY KEY,
+  pid TEXT NOT NULL REFERENCES rule(id),
+  file_type TEXT NOT NULL CHECK (file_type IN ('photo', 'video', 'any')),
+  file_min_size INTEGER NOT NULL CHECK (file_min_size >= 0),
+  file_max_size INTEGER NOT NULL CHECK (file_max_size >= file_min_size),
+  storage_id TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+''',
+  'CREATE INDEX IF NOT EXISTS rule_item_pid ON rule_item(pid);',
   '''
 CREATE TABLE IF NOT EXISTS user (
   user_id TEXT PRIMARY KEY,
@@ -32,7 +53,7 @@ CREATE TABLE IF NOT EXISTS task (
   album_id TEXT NOT NULL,
   sort_time INTEGER NOT NULL,
   completed_count INTEGER NOT NULL DEFAULT 0,
-  storage_id TEXT,
+  rule_id TEXT,
   album_name TEXT NOT NULL DEFAULT '',
   photo_count INTEGER NOT NULL DEFAULT 0,
   cover BLOB,
@@ -58,7 +79,6 @@ CREATE TABLE IF NOT EXISTS settings (
   log_max_count INTEGER NOT NULL DEFAULT 500,
   task_status INTEGER NOT NULL DEFAULT 2,
   upload_concurrency INTEGER NOT NULL DEFAULT 1,
-  file_limit_mb INTEGER NOT NULL DEFAULT 300,
   last_sync_at TEXT,
   schema_version INTEGER NOT NULL DEFAULT 0,
   locale TEXT NOT NULL DEFAULT ''
@@ -68,6 +88,6 @@ CREATE TABLE IF NOT EXISTS settings (
   // 旧库的 settings 在这条列加入之前就已建好，CREATE 不会补列。
   'ALTER TABLE settings ADD COLUMN schema_version INTEGER NOT NULL DEFAULT 0;',
   "ALTER TABLE settings ADD COLUMN locale TEXT NOT NULL DEFAULT '';",
-  'ALTER TABLE settings ADD COLUMN file_limit_mb INTEGER NOT NULL DEFAULT 300;',
+  'ALTER TABLE task ADD COLUMN rule_id TEXT;',
   'DROP TABLE IF EXISTS window_state;',
 ];

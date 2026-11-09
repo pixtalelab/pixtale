@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:pixtale_sync/db/db.dart';
 import 'package:pixtale_sync/models/task.dart';
-import 'package:pixtale_sync/models/storage.dart';
+import 'package:pixtale_sync/models/rule.dart';
 import 'package:pixtale_sync/models/user.dart';
 import 'package:pixtale_sync/models/photo.dart';
 import 'package:pixtale_sync/request/request.dart';
@@ -39,11 +39,7 @@ class TaskService {
   }
 
   /// 按当前账户和相册 ID 批量添加，已存在时保留原添加时间。
-  Future<void> add(
-    List<String> albumIds, {
-    Storage? storage,
-    User? account,
-  }) async {
+  Future<void> add(List<String> albumIds, {Rule? rule, User? account}) async {
     final user = await _account(account);
     final db = await _database.database;
     final sortTime = DateTime.now().millisecondsSinceEpoch ~/ 1000;
@@ -61,7 +57,7 @@ class TaskService {
           'user_id': user.userId,
           'album_id': id,
           'sort_time': sortTime,
-          'storage_id': storage?.id,
+          'rule_id': rule?.id,
         }, conflictAlgorithm: ConflictAlgorithm.ignore);
       }
     });
@@ -95,17 +91,17 @@ SELECT
   task.album_id,
   task.sort_time,
   task.completed_count,
-  task.storage_id,
+  task.rule_id,
   task.path,
   task.album_name,
   task.photo_count,
   task.cover,
   task.is_invalid,
-  storage.name AS resolved_storage_name
+  rule.name AS resolved_rule_name
 FROM task
-LEFT JOIN storage
-  ON storage.storage_id = task.storage_id
- AND storage.user_id = task.user_id
+LEFT JOIN rule
+  ON rule.id = task.rule_id
+ AND rule.user_id = task.user_id
 WHERE task.user_id = ?
 ORDER BY task.sort_time ASC
 ''',
@@ -120,8 +116,8 @@ ORDER BY task.sort_time ASC
               isUtc: true,
             ),
             completedCount: row['completed_count'] as int,
-            storageId: row['storage_id'] as String?,
-            storageName: row['resolved_storage_name'] as String?,
+            ruleId: row['rule_id'] as String?,
+            ruleName: row['resolved_rule_name'] as String?,
             path: row['path'] as String?,
             albumName: row['album_name'] as String,
             photoCount: row['photo_count'] as int,
@@ -183,18 +179,18 @@ ORDER BY task.sort_time ASC
     notifyChanged();
   }
 
-  /// 修改目标存储，保留任务已有的完成数量。
-  Future<void> updateStorage(
+  /// 修改目标规则，保留任务已有的完成数量。
+  Future<void> updateRule(
     String albumId,
-    String storageId, {
+    String ruleId, {
     User? account,
   }) async {
     final user = await _account(account);
     await (await _database.database).update(
       'task',
-      {'storage_id': storageId},
-      where: 'user_id = ? AND album_id = ? AND storage_id IS NOT ?',
-      whereArgs: [user.userId, albumId, storageId],
+      {'rule_id': ruleId},
+      where: 'user_id = ? AND album_id = ? AND rule_id IS NOT ?',
+      whereArgs: [user.userId, albumId, ruleId],
     );
   }
 
@@ -227,7 +223,7 @@ ORDER BY task.sort_time ASC
     );
   }
 
-  /// 保存已同步张数，不改变任务关联的存储。
+  /// 保存已同步张数，不改变任务关联的规则。
   Future<void> updateProgress(
     String albumId,
     int completedCount, {

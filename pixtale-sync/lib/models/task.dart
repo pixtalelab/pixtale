@@ -9,8 +9,8 @@ class Task {
     required this.albumId,
     required this.sortTime,
     this.completedCount = 0,
-    this.storageId,
-    this.storageName,
+    this.ruleId,
+    this.ruleName,
     this.path,
     this.albumName = '',
     this.photoCount = 0,
@@ -27,11 +27,11 @@ class Task {
   /// 最近一次核对并关联到远端相册的照片张数。
   final int completedCount;
 
-  /// 添加任务时选择的存储，旧任务为空。
-  final String? storageId;
+  /// 添加任务时选择的规则，旧任务为空。
+  final String? ruleId;
 
-  /// 按当前账户关联到的存储名称，未关联时为空。
-  final String? storageName;
+  /// 按当前账户关联到的规则名称，未关联时为空。
+  final String? ruleName;
 
   /// 桌面任务对应的目录路径，移动端为空。
   final String? path;

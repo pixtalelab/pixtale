@@ -12,13 +12,13 @@ import 'package:pixtale_sync/components/task/task_card.dart';
 import 'package:pixtale_sync/models/photo.dart';
 import 'package:pixtale_sync/models/task.dart';
 import 'package:pixtale_sync/models/task_preview.dart';
-import 'package:pixtale_sync/models/storage.dart';
+import 'package:pixtale_sync/models/rule.dart';
 import 'package:pixtale_sync/models/user.dart';
 import 'package:pixtale_sync/providers/sync_provider.dart';
-import 'package:pixtale_sync/providers/storage_provider.dart';
+import 'package:pixtale_sync/providers/rule_provider.dart';
 import 'package:pixtale_sync/services/photo_service.dart';
 import 'package:pixtale_sync/services/foreground_sync_service.dart';
-import 'package:pixtale_sync/services/storage_service.dart';
+import 'package:pixtale_sync/services/rule_service.dart';
 import 'package:pixtale_sync/services/sync_service.dart';
 import 'package:pixtale_sync/services/task_service.dart';
 import 'package:pixtale_sync/services/user_service.dart';
@@ -31,7 +31,7 @@ class TaskPage extends StatefulWidget {
   const TaskPage({
     super.key,
     this.taskService,
-    this.storageService,
+    this.ruleService,
     this.syncService,
     this.sync,
   });
@@ -39,8 +39,8 @@ class TaskPage extends StatefulWidget {
   /// 可注入的持久化服务。
   final TaskService? taskService;
 
-  /// 可注入的存储缓存与刷新服务。
-  final StorageService? storageService;
+  /// 可注入的本地规则服务。
+  final RuleService? ruleService;
 
   /// 可注入的同步服务。
   final SyncService? syncService;
@@ -69,9 +69,12 @@ class _TaskPageState extends State<TaskPage> {
   /// 页面使用的任务持久化服务。
   late final TaskService _service = widget.taskService ?? TaskService.instance;
 
-  /// 页面进入和弹窗打开时刷新可选存储。
-  late final StorageProvider _storages = StorageProvider(
-    widget.storageService ?? StorageService(),
+  /// 弹窗首次打开时创建本地规则选择状态。
+  RuleProvider? _ruleProvider;
+
+  /// 取得当前页面复用的规则选择状态。
+  RuleProvider get _rules => _ruleProvider ??= RuleProvider(
+    widget.ruleService ?? RuleService.instance,
   );
 
   /// 同步启停和卡片实时进度。外部传入时由上层释放。
@@ -105,10 +108,9 @@ class _TaskPageState extends State<TaskPage> {
     super.initState();
     _sync.addListener(_onSyncChanged);
     UserService.changes.addListener(_onAccountChanged);
-    StorageService.changes.addListener(_onTaskStateChanged);
+    RuleService.changes.addListener(_onTaskStateChanged);
     TaskService.changes.addListener(_onTaskStateChanged);
     _restoreTasks();
-    unawaited(_storages.load());
   }
 
   /// 页面释放时取消同步并移除状态监听。
@@ -116,16 +118,16 @@ class _TaskPageState extends State<TaskPage> {
   void dispose() {
     _sync.removeListener(_onSyncChanged);
     UserService.changes.removeListener(_onAccountChanged);
-    StorageService.changes.removeListener(_onTaskStateChanged);
+    RuleService.changes.removeListener(_onTaskStateChanged);
     TaskService.changes.removeListener(_onTaskStateChanged);
     if (_ownsSync) _sync.dispose();
-    _storages.dispose();
+    _ruleProvider?.dispose();
     super.dispose();
   }
 
   // 事件处理
 
-  /// 刷新存储、失效状态，以及同步写入的封面和张数。保留卡片同步进度。
+  /// 刷新规则、失效状态，以及同步写入的封面和张数。保留卡片同步进度。
   Future<void> _onTaskStateChanged() async {
     final account = _account;
     if (account == null) return;
@@ -149,8 +151,8 @@ class _TaskPageState extends State<TaskPage> {
                 ? current.cover
                 : task.cover,
             completedCount: current.completedCount,
-            storageName: _storageName(task),
-            storageMissing: _storageMissing(task),
+            ruleName: _ruleName(task),
+            ruleMissing: _ruleMissing(task),
             path: current.path,
             isInvalid: task.isInvalid,
           );
@@ -158,7 +160,7 @@ class _TaskPageState extends State<TaskPage> {
       });
     } catch (error, stackTrace) {
       developer.log(
-        'Cannot refresh task storage',
+        'Cannot refresh task rule',
         name: 'pixtale_sync.gallery',
         error: error,
         stackTrace: stackTrace,
@@ -191,7 +193,7 @@ class _TaskPageState extends State<TaskPage> {
     }
   }
 
-  /// 空闲时编辑存储、置顶或删除任务。
+  /// 空闲时编辑规则、置顶或删除任务。
   Future<void> _onTaskAction(String albumId, TaskAction action) async {
     if (_sync.active || _sync.restoring || _loading || _editing) return;
     final account = _account;
@@ -217,25 +219,26 @@ class _TaskPageState extends State<TaskPage> {
     }
   }
 
-  /// 复用存储选择弹窗，保存目标存储后静默更新卡片。
+  /// 复用规则选择弹窗，保存目标规则后静默更新卡片。
   Future<void> _editTask(String albumId, User account) async {
     final records = await _service.list(account: account);
     if (!mounted || !_isCurrentAccount(account)) return;
     final task = records.where((item) => item.albumId == albumId).firstOrNull;
     if (task == null) return;
-    _storages.select(task.storageId);
-    unawaited(_storages.load());
-    final storage = await showDialog<Storage>(
+    _rules.select(task.ruleId);
+    await _rules.load();
+    if (!mounted || !_isCurrentAccount(account)) return;
+    final rule = await showDialog<Rule>(
       context: context,
-      builder: (_) => _TaskStorageDialog(storages: _storages, editing: true),
+      builder: (_) => _TaskRuleDialog(rules: _rules, editing: true),
     );
-    if (storage == null ||
-        storage.id == task.storageId ||
+    if (rule == null ||
+        rule.id == task.ruleId ||
         !mounted ||
         !_isCurrentAccount(account)) {
       return;
     }
-    await _service.updateStorage(albumId, storage.id, account: account);
+    await _service.updateRule(albumId, rule.id, account: account);
     if (!mounted || !_isCurrentAccount(account)) return;
     setState(() {
       final index = _tasks.indexWhere((item) => item.albumId == albumId);
@@ -247,8 +250,8 @@ class _TaskPageState extends State<TaskPage> {
         count: current.count,
         cover: current.cover,
         completedCount: current.completedCount,
-        storageName: storage.name,
-        storageMissing: false,
+        ruleName: rule.name,
+        ruleMissing: false,
         path: current.path,
         isInvalid: current.isInvalid,
       );
@@ -271,7 +274,7 @@ class _TaskPageState extends State<TaskPage> {
     setState(() {});
   }
 
-  /// 先选择目标存储，再打开由页面自行加载数据的相册选择页。
+  /// 先选择目标规则，再打开由页面自行加载数据的相册选择页。
   Future<void> _openAddTask() async {
     if (_sync.active || _sync.restoring) {
       _showSyncNotice();
@@ -282,23 +285,24 @@ class _TaskPageState extends State<TaskPage> {
       _showMessage(AppLocalizations.of(context).signInFirst);
       return;
     }
-    _storages.select(null);
-    unawaited(_storages.load());
-    final storage = await showDialog<Storage>(
+    _rules.select(null);
+    await _rules.load();
+    if (!mounted || !_isCurrentAccount(account)) return;
+    final rule = await showDialog<Rule>(
       context: context,
-      builder: (_) => _TaskStorageDialog(storages: _storages),
+      builder: (_) => _TaskRuleDialog(rules: _rules),
     );
-    if (storage == null || !mounted || !_isCurrentAccount(account)) return;
-    await _openAlbumPicker(storage, account);
+    if (rule == null || !mounted || !_isCurrentAccount(account)) return;
+    await _openAlbumPicker(rule, account);
   }
 
-  /// 打开相册选择页，并为选中的存储添加相册任务。
-  Future<void> _openAlbumPicker(Storage storage, User account) async {
+  /// 打开相册选择页，并为选中的规则添加相册任务。
+  Future<void> _openAlbumPicker(Rule rule, User account) async {
     final isDesktop =
         Platform.environment['FLUTTER_TEST'] != 'true' &&
         (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
     if (isDesktop) {
-      await _openDesktopAlbumPicker(storage, account);
+      await _openDesktopAlbumPicker(rule, account);
       return;
     }
 
@@ -319,7 +323,7 @@ class _TaskPageState extends State<TaskPage> {
     try {
       await _service.add(
         selected.map((album) => album.id).toList(),
-        storage: storage,
+        rule: rule,
         account: account,
       );
       final paths = <String, String?>{
@@ -343,7 +347,7 @@ class _TaskPageState extends State<TaskPage> {
   }
 
   /// 在桌面端直接选择一个媒体文件夹并保存为任务。
-  Future<void> _openDesktopAlbumPicker(Storage storage, User account) async {
+  Future<void> _openDesktopAlbumPicker(Rule rule, User account) async {
     final selected = await AlbumDesktopPicker.pickAlbums(
       selectedIds: _tasks.map((preview) => preview.albumId).toSet(),
     );
@@ -353,7 +357,7 @@ class _TaskPageState extends State<TaskPage> {
     try {
       await _service.add(
         selected.map((album) => album.id).toList(),
-        storage: storage,
+        rule: rule,
         account: account,
       );
       await _service.updatePaths({
@@ -493,8 +497,8 @@ class _TaskPageState extends State<TaskPage> {
               ? current.cover
               : info.cover,
           completedCount: current.completedCount,
-          storageName: current.storageName,
-          storageMissing: current.storageMissing,
+          ruleName: current.ruleName,
+          ruleMissing: current.ruleMissing,
           path: info.album.path,
         );
         if (_samePreview(current, next)) continue;
@@ -518,22 +522,21 @@ class _TaskPageState extends State<TaskPage> {
     count: task.photoCount,
     cover: task.cover,
     completedCount: task.completedCount,
-    storageName: _storageName(task),
-    storageMissing: _storageMissing(task),
+    ruleName: _ruleName(task),
+    ruleMissing: _ruleMissing(task),
     path: task.path,
     isInvalid: task.isInvalid,
   );
 
-  /// 将任务的存储关联结果转换为卡片显示名称。
-  String _storageName(Task task) {
+  /// 将任务的规则关联结果转换为卡片显示名称。
+  String _ruleName(Task task) {
     final l10n = AppLocalizations.of(context);
-    if (task.storageId == null) return l10n.localStorage;
-    return task.storageName ?? l10n.storageUnavailable;
+
+    return task.ruleName ?? l10n.ruleUnavailable;
   }
 
-  /// 判断任务是否因存储关联失败而需要红色提示。
-  bool _storageMissing(Task task) =>
-      task.storageId != null && task.storageName == null;
+  /// 判断任务是否因规则关联失败而需要红色提示。
+  bool _ruleMissing(Task task) => task.ruleName == null;
 
   /// 判断封面字节是否相同，避免相同图片重新创建图片源。
   bool _sameCover(Uint8List? first, Uint8List? second) {
@@ -617,8 +620,8 @@ class _TaskPageState extends State<TaskPage> {
                   preview: preview,
                   completed: progress?.completed ?? preview.completedCount,
                   total: progress?.total ?? preview.count,
-                  storageName: preview.storageName,
-                  storageMissing: preview.storageMissing,
+                  ruleName: preview.ruleName,
+                  ruleMissing: preview.ruleMissing,
                   syncing: _sync.currentAlbumId == preview.albumId,
                   enabled:
                       !_sync.active &&
@@ -659,30 +662,30 @@ class _TaskPageState extends State<TaskPage> {
 
 // 私有组件
 
-/// 添加或编辑任务时共用的存储选择弹窗。
-class _TaskStorageDialog extends StatelessWidget {
-  /// 创建共享页面存储缓存的弹窗。
-  const _TaskStorageDialog({required this.storages, this.editing = false});
+/// 添加或编辑任务时共用的规则选择弹窗。
+class _TaskRuleDialog extends StatelessWidget {
+  /// 创建共享页面规则缓存的弹窗。
+  const _TaskRuleDialog({required this.rules, this.editing = false});
 
-  /// 缓存列表、远端刷新状态与当前单选项。
-  final StorageProvider storages;
+  /// 本地规则列表与当前单选项。
+  final RuleProvider rules;
 
-  /// 编辑时保存存储，添加时继续选择相册。
+  /// 编辑时保存规则，添加时继续选择相册。
   final bool editing;
 
-  /// 切换目标存储。
-  void _selectStorage(String? id) => storages.select(id);
+  /// 切换目标规则。
+  void _selectRule(String? id) => rules.select(id);
 
-  /// 返回选定存储供页面保存或继续选择相册。
+  /// 返回选定规则供页面保存或继续选择相册。
   void _confirm(BuildContext context) =>
-      Navigator.of(context).pop(storages.selected);
+      Navigator.of(context).pop(rules.selected);
 
-  /// 构建存储选择框和右下角文字按钮。
+  /// 构建规则选择框和右下角文字按钮。
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return ListenableBuilder(
-      listenable: storages,
+      listenable: rules,
       builder: (context, _) => AlertDialog(
         title: Text(editing ? l10n.editTask : l10n.addTask),
         content: SizedBox(
@@ -692,35 +695,35 @@ class _TaskStorageDialog extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               InputDecorator(
-                decoration: InputDecoration(labelText: l10n.storage),
+                decoration: InputDecoration(labelText: l10n.syncRule),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
-                    value: storages.selectedId,
+                    value: rules.selectedId,
                     isExpanded: true,
                     hint: Text(
-                      storages.items.isEmpty && !storages.loading
-                          ? l10n.noStorageAvailable
-                          : l10n.chooseStorage,
+                      rules.items.isEmpty && rules.error == null
+                          ? l10n.noRuleAvailable
+                          : l10n.chooseRule,
                     ),
                     items: [
-                      for (final storage in storages.items)
+                      for (final rule in rules.items)
                         DropdownMenuItem(
-                          value: storage.id,
+                          value: rule.id,
                           child: Text(
-                            storage.name,
+                            rule.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                     ],
-                    onChanged: _selectStorage,
+                    onChanged: _selectRule,
                   ),
                 ),
               ),
               const SizedBox(height: 8),
-              if (storages.error != null)
+              if (rules.error != null)
                 Text(
-                  storages.error!,
+                  rules.error!,
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
             ],
@@ -733,9 +736,7 @@ class _TaskStorageDialog extends StatelessWidget {
               child: Text(l10n.cancel),
             ),
           TextButton(
-            onPressed: storages.selected == null
-                ? null
-                : () => _confirm(context),
+            onPressed: rules.selected == null ? null : () => _confirm(context),
             child: Text(editing ? l10n.save : l10n.chooseAlbums),
           ),
         ],

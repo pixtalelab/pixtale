@@ -1,4 +1,7 @@
 import 'dart:io';
+
+import 'rule_fixture.dart';
+
 import 'dart:typed_data';
 
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -7,7 +10,7 @@ import 'package:pixtale_sync/services/task_service.dart';
 import 'package:pixtale_sync/services/directory_photo_service.dart';
 import 'package:pixtale_sync/db/db.dart';
 import 'package:pixtale_sync/models/photo.dart';
-import 'package:pixtale_sync/models/storage.dart';
+import 'package:pixtale_sync/models/rule.dart';
 import 'package:pixtale_sync/models/user.dart';
 import 'package:pixtale_sync/services/photo_service.dart';
 import 'package:pixtale_sync/services/user_service.dart';
@@ -23,11 +26,9 @@ void main() {
     final database = _createDatabase();
     final users = UserService(database: database);
     await users.add(_user);
-    await _addStorage(database, const Storage(id: 's3', name: '云存储', type: 3));
+    await _addRule(database, testRule(id: 's3', name: '云规则'));
     final service = TaskService(database: database);
-    await service.add([
-      'a',
-    ], storage: const Storage(id: 's3', name: '云存储', type: 3));
+    await service.add(['a'], rule: testRule(id: 's3', name: '云规则'));
     await service.updateProgress('a', 120);
     await service.updateProgress('a', 100);
     final counts = await Future.wait(
@@ -38,8 +39,8 @@ void main() {
     });
     final record = (await service.list()).single;
     expect(record.completedCount, 120);
-    expect(record.storageId, 's3');
-    expect(record.storageName, '云存储');
+    expect(record.ruleId, 's3');
+    expect(record.ruleName, '云规则');
   });
 
   test('保存并读取任务相册展示缓存', () async {
@@ -147,9 +148,7 @@ void main() {
         'UPDATE task SET sort_time = ? WHERE album_id = ?',
         [1, 'old'],
       );
-      await service.add([
-        'new',
-      ], storage: const Storage(id: 'cloud', name: '云存储', type: 3));
+      await service.add(['new'], rule: testRule(id: 'cloud', name: '云规则'));
       await service.updateProgress('new', 12);
       expect((await service.list()).map((row) => row.albumId), ['old', 'new']);
       await database.close();
@@ -160,8 +159,8 @@ void main() {
         (row) => row.albumId == 'new',
       );
       expect(restored.completedCount, 12);
-      expect(restored.storageName, isNull);
-      expect(restored.storageId, 'cloud');
+      expect(restored.ruleName, isNull);
+      expect(restored.ruleId, 'cloud');
       await (await database.database).update('task', {'sort_time': 1});
       await service.pin('old');
       final pinned = await service.list();
@@ -169,7 +168,7 @@ void main() {
       expect(pinned.first.sortTime.millisecondsSinceEpoch ~/ 1000, 0);
       expect(pinned.first.sortTime.isBefore(pinned.last.sortTime), isTrue);
       expect(pinned.last.completedCount, 12);
-      expect(pinned.last.storageId, 'cloud');
+      expect(pinned.last.ruleId, 'cloud');
       await database.close();
       database = Db(factory: databaseFactoryFfi, databasePath: file.path);
       service = TaskService(database: database);
@@ -187,25 +186,23 @@ void main() {
     }
   });
 
-  test('存储 ID 无法关联时返回空名称', () async {
+  test('规则 ID 无法关联时返回空名称', () async {
     final database = _createDatabase();
     final service = TaskService(database: database);
     await UserService(database: database).add(_user);
-    await service.add([
-      'missing',
-    ], storage: const Storage(id: 'deleted', name: '已删除', type: 3));
+    await service.add(['missing'], rule: testRule(id: 'deleted', name: '已删除'));
 
     final record = (await service.list()).single;
-    expect(record.storageId, 'deleted');
-    expect(record.storageName, isNull);
+    expect(record.ruleId, 'deleted');
+    expect(record.ruleName, isNull);
   });
 
-  test('修改存储只影响指定用户任务，切换时重置进度并保留相册缓存和排序', () async {
+  test('修改规则只影响指定用户任务，切换时保留进度、相册缓存和排序', () async {
     final database = _createDatabase();
     await UserService(database: database).add(_user);
     final service = TaskService(database: database);
-    const old = Storage(id: 'old', name: '旧存储', type: 1);
-    const next = Storage(id: 'new', name: '新存储', type: 3);
+    final old = testRule(id: 'old', name: '旧规则');
+    final next = testRule(id: 'new', name: '新规则');
     const other = User(
       userId: 'other',
       username: 'other',
@@ -214,10 +211,10 @@ void main() {
       token: 'other-token',
       endpoint: 'https://example.test',
     );
-    await _addStorage(database, old);
-    await _addStorage(database, next);
-    await service.add(['a'], storage: old);
-    await service.add(['a'], storage: old, account: other);
+    await _addRule(database, old);
+    await _addRule(database, next);
+    await service.add(['a'], rule: old);
+    await service.add(['a'], rule: old, account: other);
     await service.updateProgress('a', 12);
     final cover = Uint8List.fromList([1, 2, 3]);
     await service.updateInfo(
@@ -229,19 +226,19 @@ void main() {
     await service.updatePaths({'a': 'D:/photos'});
     final before = (await service.list()).single;
 
-    await service.updateStorage('a', old.id);
+    await service.updateRule('a', old.id);
     expect((await service.list()).single.completedCount, 12);
-    await service.updateStorage('a', next.id);
+    await service.updateRule('a', next.id);
     final after = (await service.list()).single;
-    expect(after.storageId, next.id);
-    expect(after.storageName, next.name);
+    expect(after.ruleId, next.id);
+    expect(after.ruleName, next.name);
     expect(after.completedCount, 12);
     expect(after.albumName, before.albumName);
     expect(after.photoCount, before.photoCount);
     expect(after.cover, before.cover);
     expect(after.path, before.path);
     expect(after.sortTime, before.sortTime);
-    expect((await service.list(account: other)).single.storageId, old.id);
+    expect((await service.list(account: other)).single.ruleId, old.id);
   });
 
   test('同相册按用户 ID 隔离，修改互不影响，同一用户跨服务器共用任务', () async {
@@ -267,15 +264,16 @@ void main() {
     for (final user in [_user, otherUser]) {
       await users.add(user);
       expect(await service.list(), isEmpty);
-      await service.add([
-        'same',
-      ], storage: const Storage(id: 'disk', name: '', type: 1));
-      await (await database.database).insert('storage', {
-        'user_id': user.userId,
-        'storage_id': 'disk',
-        'name': user.username,
-        'type': 1,
-      });
+      await service.add(['same'], rule: testRule(id: 'disk', name: ''));
+      await saveTestRule(
+        database,
+        testRule(
+          id: 'disk-${user.userId}',
+          name: user.username,
+          userId: user.userId,
+        ),
+      );
+      await service.updateRule('same', 'disk-${user.userId}');
     }
     await service.updatePaths({'same': 'D:/photos'});
     await service.updateInvalid('same', true);
@@ -292,9 +290,9 @@ void main() {
     expect(old.photoCount, 0);
     expect(old.path, isNull);
     expect(old.albumName, '');
-    expect(old.storageName, 'tester');
+    expect(old.ruleName, 'tester');
     final current = (await service.list()).single;
-    expect(current.storageName, 'other');
+    expect(current.ruleName, 'other');
     expect(current.isInvalid, isTrue);
     expect(current.completedCount, 6);
     expect(current.photoCount, 10);
@@ -306,7 +304,7 @@ void main() {
     expect(await service.list(account: otherUser), isEmpty);
     await users.add(otherServer);
     expect((await service.list()).single.completedCount, 1);
-    expect((await service.list()).single.storageName, 'tester');
+    expect((await service.list()).single.ruleName, 'tester');
     await service.add(['same']);
     expect((await service.list()).length, 1);
     await users.remove(otherServer.userId);
@@ -336,15 +334,8 @@ const _user = User(
   endpoint: 'https://example.test',
 );
 
-/// 写入测试账户的存储缓存。
-Future<void> _addStorage(Db database, Storage storage) async {
-  await (await database.database).insert('storage', {
-    'user_id': _user.userId,
-    'storage_id': storage.id,
-    'name': storage.name,
-    'type': storage.type,
-  });
-}
+/// 写入任务关联的测试规则。
+Future<void> _addRule(Db database, Rule rule) => saveTestRule(database, rule);
 
 /// 读取相册时抛出与相册不存在无关的错误。
 class _BrokenPhotos extends PhotoService {

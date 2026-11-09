@@ -10,7 +10,88 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get syncRule => '同步规则';
+
+  @override
+  String get logEventReadRule => '读取规则';
+
+  @override
+  String get noRuleAvailable => '暂无可用规则';
+
+  @override
+  String get ruleUnavailable => '规则失效';
+
+  @override
+  String get chooseRule => '请选择同步规则';
+
+  @override
   String get tasks => '任务';
+
+  @override
+  String get templates => '规则';
+
+  @override
+  String get addTemplate => '添加规则';
+
+  @override
+  String get editTemplate => '编辑规则';
+
+  @override
+  String get templateActions => '规则操作';
+
+  @override
+  String get addTemplateItem => '添加规则';
+
+  @override
+  String get editTemplateItem => '编辑规则';
+
+  @override
+  String get templateItemSettings => '规则设置';
+
+  @override
+  String get add => '添加';
+
+  @override
+  String get templateName => '规则名称';
+
+  @override
+  String get templateNameRequired => '请输入规则名称';
+
+  @override
+  String get fileSizeRange => '文件范围（MB）';
+
+  @override
+  String get fileMinSize => '最小值';
+
+  @override
+  String get fileMaxSize => '最大值';
+
+  @override
+  String get invalidFileSize => '请输入有效数值';
+
+  @override
+  String get invalidFileRange => '最大值不能小于最小值';
+
+  @override
+  String get fileType => '文件类型';
+
+  @override
+  String get fileTypePhoto => '照片';
+
+  @override
+  String get fileTypeVideo => '视频';
+
+  @override
+  String get fileTypeAny => '不限';
+
+  @override
+  String get loadTemplatesFailed => '读取规则失败，请重试';
+
+  @override
+  String get loadStoragesFailed => '刷新存储失败，请重试';
+
+  @override
+  String get retry => '重试';
 
   @override
   String get logs => '日志';
@@ -135,14 +216,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get uploadConcurrency => '并发上传';
-
-  @override
-  String get fileLimit => '文件限制';
-
-  @override
-  String fileLimitValue(int size) {
-    return '${size}MB';
-  }
 
   @override
   String get syncInterval => '定时同步';

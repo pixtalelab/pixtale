@@ -5,6 +5,7 @@ import 'package:pixtale_sync/models/user.dart';
 import 'package:pixtale_sync/request/request.dart';
 import 'package:pixtale_sync/request/storage.dart' as storage_request;
 import 'package:pixtale_sync/services/user_service.dart';
+import 'package:sqflite/sqflite.dart';
 
 // 读取存储缓存，并以远端最新列表事务替换本地记录。
 
@@ -60,28 +61,46 @@ class StorageService {
   }
 
   /// 保存已有的远程列表，避免同步时重复请求，并拒绝旧会话结果。
-  Future<void> save(List<Storage> items, {required User account}) async {
+  Future<void> save(
+    List<Storage> items, {
+    required User account,
+    Transaction? transaction,
+  }) async {
+    if (transaction != null) {
+      // 登录流程在同一事务中刚保存账户，由调用方在提交后统一通知。
+      await _save(transaction, items, account);
+      return;
+    }
     final current = await _users.get();
     if (current?.userId != account.userId ||
         current?.endpoint != account.endpoint ||
         current?.token != account.token) {
       throw const ApiException('Account changed, try again');
     }
-    await (await _database.database).transaction((txn) async {
-      await txn.delete(
-        'storage',
-        where: 'user_id = ?',
-        whereArgs: [account.userId],
-      );
-      for (final item in items) {
-        await txn.insert('storage', {
-          'user_id': account.userId,
-          'storage_id': item.id,
-          'name': item.name,
-          'type': item.type,
-        });
-      }
-    });
+    await (await _database.database).transaction(
+      (txn) => _save(txn, items, account),
+    );
     notifyChanged();
+  }
+
+  /// 在指定事务中替换该账户的全部存储缓存。
+  Future<void> _save(
+    DatabaseExecutor txn,
+    List<Storage> items,
+    User account,
+  ) async {
+    await txn.delete(
+      'storage',
+      where: 'user_id = ?',
+      whereArgs: [account.userId],
+    );
+    for (final item in items) {
+      await txn.insert('storage', {
+        'user_id': account.userId,
+        'storage_id': item.id,
+        'name': item.name,
+        'type': item.type,
+      });
+    }
   }
 }

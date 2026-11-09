@@ -10,6 +10,7 @@ import 'package:pixtale_sync/models/sync.dart';
 import 'package:pixtale_sync/models/log.dart';
 import 'package:pixtale_sync/models/storage.dart';
 import 'package:pixtale_sync/models/user.dart';
+import 'package:pixtale_sync/models/rule.dart';
 import 'package:pixtale_sync/request/request.dart';
 import 'package:pixtale_sync/request/sync.dart';
 import 'package:pixtale_sync/services/photo_service.dart';
@@ -18,6 +19,7 @@ import 'package:pixtale_sync/services/settings_service.dart';
 import 'package:pixtale_sync/services/storage_service.dart';
 import 'package:pixtale_sync/services/task_service.dart';
 import 'package:pixtale_sync/services/user_service.dart';
+import 'package:pixtale_sync/services/rule_service.dart';
 
 // 同步业务：顺序处理相册，分页查重并发上传，支持重试和主动停止。
 
@@ -31,6 +33,7 @@ class SyncService {
     PhotoService? photos,
     LogService? logs,
     StorageService? storages,
+    RuleService? rules,
     SyncApi Function(User, http.Client)? apiFactory,
   }) : _tasks = tasks ?? TaskService.instance,
        _userService = users,
@@ -38,6 +41,7 @@ class SyncService {
        _photos = photos ?? PhotoService.create(),
        _logService = logs,
        _storageService = storages,
+       _ruleService = rules,
        _apiFactory = apiFactory ?? SyncApi.new;
 
   final TaskService _tasks;
@@ -46,6 +50,7 @@ class SyncService {
   final PhotoService _photos;
   final LogService? _logService;
   final StorageService? _storageService;
+  final RuleService? _ruleService;
   final SyncApi Function(User, http.Client) _apiFactory;
 
   /// 当前网络连接和系统图库导出请求，用于立即取消。
@@ -215,16 +220,14 @@ class SyncService {
         var albumName = task.albumName.isEmpty ? task.albumId : task.albumName;
         try {
           setCurrentAlbum(task.albumId);
-          final storage = storages
-              .where(
-                (item) => task.storageId == null
-                    ? item.type == 1
-                    : item.id == task.storageId,
-              )
-              .firstOrNull;
-          if (storage == null) {
-            throw const ApiException('Storage unavailable');
-          }
+          event = _LogEvent.readRule;
+          final rule = task.ruleId == null
+              ? null
+              : await (_ruleService ?? RuleService.instance).get(
+                  task.ruleId!,
+                  account: api.user,
+                );
+          if (rule == null) throw const ApiException('Rule unavailable');
           event = _LogEvent.readAlbum;
           final album = await _tasks.readAlbum(
             task,
@@ -232,62 +235,84 @@ class SyncService {
             account: api.user,
           );
           final name = album.name.trim();
-          if (name.isEmpty)
+          if (name.isEmpty) {
             throw const ApiException('Local album name is empty');
+          }
           albumName = name;
           publishActivity(
-            SyncActivity(albumId: task.albumId, albumName: name, checking: true),
+            SyncActivity(
+              albumId: task.albumId,
+              albumName: name,
+              checking: true,
+            ),
           );
-          event = _LogEvent.getRemoteAlbum;
-          final remoteAlbumId = await _retry(
-            () => api.getAlbum(name, storage.id),
-          );
-          _checkStopped();
-          event = _LogEvent.remoteCheck;
-          final locals = <SyncPhoto>[];
+          final groups = <String, List<SyncPhoto>>{};
           await for (final page in _photos.scanAlbum(
             album,
             isStopped: () => _stopped,
           )) {
             _checkStopped();
             await _checkAccount(api.user);
-            locals.addAll(page);
+            for (final photo in page) {
+              final item = _matchRule(rule, photo);
+              if (item == null) continue;
+              (groups[item.storageId] ??= []).add(photo);
+            }
           }
           _checkStopped();
-          final missingFiles = <SyncFile>[];
-          if (locals.isEmpty) {
-            missingFiles.addAll(
-              await _retry(() => api.check(remoteAlbumId, const [])),
-            );
-          } else {
-            for (
-              var start = 0;
-              start < locals.length;
-              start += SyncApi.checkPageSize
-            ) {
-              _checkStopped();
-              missingFiles.addAll(
-                await _retry(
+          final missing = <(SyncPhoto, String, Storage)>[];
+          var completed = 0;
+          var checkedGroups = 0;
+          for (final entry in groups.entries) {
+            try {
+              event = _LogEvent.readStorage;
+              final storage = storages
+                  .where((item) => item.id == entry.key)
+                  .firstOrNull;
+              if (storage == null) {
+                throw const ApiException('Storage unavailable');
+              }
+              event = _LogEvent.getRemoteAlbum;
+              final remoteAlbumId = await _retry(
+                () => api.getAlbum(name, storage.id),
+              );
+              event = _LogEvent.remoteCheck;
+              final locals = entry.value;
+              final missingCounts = <String, int>{};
+              for (
+                var start = 0;
+                start < locals.length;
+                start += SyncApi.checkPageSize
+              ) {
+                final files = await _retry(
                   () => api.check(remoteAlbumId, [
                     for (final photo
                         in locals.skip(start).take(SyncApi.checkPageSize))
                       SyncFile(name: photo.name, size: photo.size),
                   ]),
-                ),
-              );
+                );
+                for (final file in files) {
+                  missingCounts[file.key] = (missingCounts[file.key] ?? 0) + 1;
+                }
+              }
+              for (final photo in locals) {
+                final count = missingCounts[photo.key] ?? 0;
+                if (count > 0) {
+                  missingCounts[photo.key] = count - 1;
+                  missing.add((photo, remoteAlbumId, storage));
+                } else {
+                  completed++;
+                }
+              }
+              checkedGroups++;
+            } catch (error) {
+              _checkStopped();
+              await _recordFailure(error, event: event, albumName: albumName);
+              if (error is ApiException && error.statusCode == 401) rethrow;
             }
           }
-          final missingCounts = <String, int>{};
-          for (final file in missingFiles) {
-            missingCounts[file.key] = (missingCounts[file.key] ?? 0) + 1;
-          }
-          final missing = <SyncPhoto>[];
-          for (final photo in locals) {
-            final count = missingCounts[photo.key] ?? 0;
-            if (count == 0) continue;
-            missingCounts[photo.key] = count - 1;
-            missing.add(photo);
-          }
+          // 全部目标均查重失败时保留上轮进度。
+          if (groups.isNotEmpty && checkedGroups == 0) continue;
           var total = await _photos.count(album);
           await _refreshAlbumCacheIfCountChanged(
             albumId: task.albumId,
@@ -296,8 +321,8 @@ class SyncService {
             cachedCount: task.photoCount,
             account: api.user,
           );
-          var completed = (locals.length - missing.length).clamp(0, total);
-          final storageName = storage.name;
+
+          final ruleName = rule.name;
 
           /// 仅发布已经持久化的完成数量。
           void publishProgress() {
@@ -306,7 +331,7 @@ class SyncService {
                 albumId: task.albumId,
                 completed: completed,
                 total: total,
-                storageName: storageName,
+                ruleName: ruleName,
                 albumName: albumName,
               ),
             );
@@ -326,15 +351,15 @@ class SyncService {
           event = _LogEvent.readSyncSettings;
           final settings = await _settings.get();
           final concurrency = settings.uploadConcurrency.clamp(1, 20);
-          final fileLimitBytes = settings.fileLimitMb * 1024 * 1024;
+
           var next = 0;
 
           /// 从待上传列表领取下一张照片，直到全部完成或同步停止。
           Future<void> worker() async {
             while (!_stopped && next < missing.length) {
               _checkStopped();
-              final photo = missing[next++];
-              if (photo.size > fileLimitBytes) continue;
+              final (photo, remoteAlbumId, storage) = missing[next++];
+
               if (!isAllowedMediaName(photo.name)) continue;
               try {
                 await _checkAccount(api.user);
@@ -393,6 +418,28 @@ class SyncService {
     }
   }
 
+  /// 按添加顺序匹配首个范围和类型均命中的子规则。
+  RuleItem? _matchRule(Rule rule, SyncPhoto photo) {
+    if (!isAllowedMediaName(photo.name)) return null;
+    final type = photo.asset?.type == AssetType.video
+        ? RuleFileType.video
+        : photo.asset?.type == AssetType.image
+        ? RuleFileType.photo
+        : photo.mimeType.startsWith('video/')
+        ? RuleFileType.video
+        : photo.mimeType.startsWith('image/') || isAllowedImageName(photo.name)
+        ? RuleFileType.photo
+        : RuleFileType.video;
+    return rule.items
+        .where(
+          (item) =>
+              photo.size >= item.fileMinSize &&
+              photo.size <= item.fileMaxSize &&
+              (item.fileType == RuleFileType.any || item.fileType == type),
+        )
+        .firstOrNull;
+  }
+
   /// 开始同步时总数和缓存不同，则重读封面、名称和张数。刷新失败不影响上传。
   Future<void> _refreshAlbumCacheIfCountChanged({
     required String albumId,
@@ -436,6 +483,7 @@ class SyncService {
       _LogEvent.startSync => text.logEventStartSync,
       _LogEvent.openSync => text.logEventOpenSync,
       _LogEvent.readStorage => text.logEventReadStorage,
+      _LogEvent.readRule => text.logEventReadRule,
       _LogEvent.readAlbum => text.logEventReadAlbum,
       _LogEvent.remoteCheck => text.logEventRemoteCheck,
       _LogEvent.getRemoteAlbum => text.logEventGetRemoteAlbum,
@@ -581,6 +629,7 @@ enum _LogEvent {
   startSync,
   openSync,
   readStorage,
+  readRule,
   readAlbum,
   remoteCheck,
   getRemoteAlbum,

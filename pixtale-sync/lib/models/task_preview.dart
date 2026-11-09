@@ -11,8 +11,8 @@ class TaskPreview {
     required this.count,
     this.cover,
     this.completedCount = 0,
-    this.storageName = 'Local storage',
-    this.storageMissing = false,
+    this.ruleName = '',
+    this.ruleMissing = false,
     this.path,
     this.isInvalid = false,
   });
@@ -32,11 +32,11 @@ class TaskPreview {
   /// 上次保存的已同步张数。
   final int completedCount;
 
-  /// 添加任务时选择的存储名称。
-  final String storageName;
+  /// 添加任务时选择的规则名称。
+  final String ruleName;
 
-  /// 当前任务的存储 ID 无法关联到当前账户的存储缓存。
-  final bool storageMissing;
+  /// 当前任务的规则 ID 无法关联到当前账户的规则缓存。
+  final bool ruleMissing;
 
   /// 桌面相册目录路径。
   final String? path;

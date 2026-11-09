@@ -18,13 +18,7 @@ const allowedImageExtensions = {
 };
 
 /// 允许上传的视频扩展名。
-const allowedVideoExtensions = {
-  '.mp4',
-  '.mov',
-  '.webm',
-  '.mkv',
-  '.avi',
-};
+const allowedVideoExtensions = {'.mp4', '.mov', '.webm', '.mkv', '.avi'};
 
 /// 文件头识别结果里允许上传的图片 MIME。
 const _allowedImageMimeTypes = {
@@ -199,14 +193,14 @@ class SyncProgress {
     required this.albumId,
     required this.completed,
     required this.total,
-    required this.storageName,
+    required this.ruleName,
     this.albumName = '',
   });
 
   final String albumId;
   final int completed;
   final int total;
-  final String storageName;
+  final String ruleName;
   final String albumName;
 
   /// 从后台服务消息恢复进度。
@@ -214,7 +208,7 @@ class SyncProgress {
     albumId: json['albumId'] as String,
     completed: json['completed'] as int,
     total: json['total'] as int,
-    storageName: json['storageName'] as String,
+    ruleName: json['ruleName'] as String,
     albumName: json['albumName'] as String? ?? '',
   );
 
@@ -223,7 +217,7 @@ class SyncProgress {
     'albumId': albumId,
     'completed': completed,
     'total': total,
-    'storageName': storageName,
+    'ruleName': ruleName,
     'albumName': albumName,
   };
 }
