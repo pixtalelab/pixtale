@@ -25,14 +25,10 @@ class SyncApi {
       storage_request.listStorages(user, client: client);
 
   /// 按本地相册名取得或创建远端相册。
-  Future<String> getAlbum(String name, String storageId) async {
+  Future<String> getAlbum(String name) async {
     final config = await _post<Map<String, dynamic>>('/api/sync/getConfig', {
       'albumName': [name],
-      'storageId': storageId,
     });
-    if (config['storageExists'] != true) {
-      throw const ApiException('Selected storage is unavailable');
-    }
     final albums = (config['album'] as List).cast<Map<String, dynamic>>();
     return albums.singleWhere((item) => item['name'] == name)['albumId']
         as String;

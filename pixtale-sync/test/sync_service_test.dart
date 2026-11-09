@@ -158,9 +158,9 @@ void main() {
     expect((await tasks.list()).single.completedCount, 4);
   });
 
-  test('不同目标存储分别查重，其他存储中已存在的文件仍需上传', () async {
+  test('不同目标存储统一查重，远端已存在的文件不再上传', () async {
     final id = await rules.add(
-      name: '分别查重',
+      name: '统一查重',
       fileType: RuleFileType.photo,
       fileMinSize: 0,
       fileMaxSize: 1000,
@@ -178,6 +178,7 @@ void main() {
         localPhoto('photo.jpg'),
         localPhoto('existing.jpg'),
         localPhoto('clip.mp4'),
+        localPhoto('new.jpg'),
       ],
     };
     photos.headers['clip.mp4'] = const [
@@ -204,18 +205,168 @@ void main() {
       photos: photos,
       apiFactory: (user, client) {
         api = FakeApi(user, client)
-          ..storageInventory = {
-            'local-id': [remotePhoto('existing.jpg'), remotePhoto('clip.mp4')],
-            's3': [remotePhoto('photo.jpg')],
-          };
+          ..inventory = [remotePhoto('existing.jpg'), remotePhoto('photo.jpg')];
         return api;
       },
     );
     await tasks.add(['a'], rule: (await rules.get(id))!);
     await service.start((_) {});
-    expect(api.checkAlbumIds.toSet(), hasLength(2));
-    expect(api.uploadTargets, {'photo.jpg': 'local-id', 'clip.mp4': 's3'});
+    expect(api.albumNames, ['相册 a']);
+    expect(api.checkAlbumIds, ['remote-相册 a']);
+    expect(api.checkedFiles.single.map((file) => file.name), [
+      'photo.jpg',
+      'existing.jpg',
+      'clip.mp4',
+      'new.jpg',
+    ]);
+    expect(api.uploadTargets, {'new.jpg': 'local-id', 'clip.mp4': 's3'});
+    expect((await tasks.list()).single.completedCount, 4);
+  });
+
+  test('规则范围外的已同步文件仍计数，仅筛选远端缺失文件上传', () async {
+    await rules.updateItem(
+      id: 'default-item',
+      pid: 'default',
+      fileType: RuleFileType.photo,
+      fileMinSize: 0,
+      fileMaxSize: 200,
+      storageId: 'local-id',
+    );
+    photos.albums = {
+      'a': [
+        localPhoto('old-large.jpg', size: 300),
+        localPhoto('old-video.mp4'),
+        localPhoto('new.jpg'),
+        localPhoto('new-large.jpg', size: 300),
+        localPhoto('new-video.mp4'),
+      ],
+    };
+    await tasks.add(['a']);
+    await tasks.updateProgress('a', 12);
+    final progress = <SyncProgress>[];
+    service = SyncService(
+      tasks: tasks,
+      users: users,
+      settings: settings,
+      storages: storages,
+      rules: rules,
+      logs: logs,
+      photos: photos,
+      apiFactory: (user, client) {
+        api = FakeApi(user, client)
+          ..inventory = [
+            remotePhoto('old-large.jpg', size: 300),
+            remotePhoto('old-video.mp4'),
+          ]
+          ..onCheck = (_) async {
+            expect((await tasks.list()).single.completedCount, 12);
+            expect(progress, isEmpty);
+          }
+          ..onUpload = (_) async {
+            expect((await tasks.list()).single.completedCount, 2);
+          };
+        return api;
+      },
+    );
+    await service.start(progress.add);
+    expect(api.checkedFiles.single.map((file) => file.name), [
+      'old-large.jpg',
+      'old-video.mp4',
+      'new.jpg',
+      'new-large.jpg',
+      'new-video.mp4',
+    ]);
+    expect(progress.map((item) => item.completed), [2, 3]);
+    expect(progress.every((item) => item.total == 5), isTrue);
+    expect(api.attempts, {'new.jpg': 1});
+    expect(photos.opened, ['new.jpg']);
     expect((await tasks.list()).single.completedCount, 3);
+  });
+
+  test('完整扫描后按 995 条分页统一查重，不命中规则也保存已同步总数', () async {
+    await rules.updateItem(
+      id: 'default-item',
+      pid: 'default',
+      fileType: RuleFileType.any,
+      fileMinSize: 0,
+      fileMaxSize: 0,
+      storageId: 'local-id',
+    );
+    final all = List.generate(1005, (index) => localPhoto('$index.jpg'));
+    photos.albums = {'a': all};
+    await tasks.add(['a']);
+    await tasks.updateProgress('a', 777);
+    var scanned = 0;
+    photos.onPage = (page) async => scanned++;
+    final progress = <SyncProgress>[];
+    service = SyncService(
+      tasks: tasks,
+      users: users,
+      settings: settings,
+      storages: storages,
+      rules: rules,
+      logs: logs,
+      photos: photos,
+      apiFactory: (user, client) {
+        api = FakeApi(user, client)
+          ..inventory = all
+              .take(1000)
+              .map((photo) => remotePhoto(photo.name))
+              .toList()
+          ..onCheck = (_) async {
+            expect(scanned, 11);
+            expect((await tasks.list()).single.completedCount, 777);
+            expect(progress, isEmpty);
+          };
+        return api;
+      },
+    );
+    await service.start(progress.add);
+    expect(api.albumNames, ['相册 a']);
+    expect(api.checkedFiles.map((page) => page.length), [995, 10]);
+    expect(
+      api.checkedFiles.expand((page) => page).map((file) => file.name),
+      all.map((photo) => photo.name),
+    );
+    expect(progress.single.completed, 1000);
+    expect(progress.single.total, 1005);
+    expect((await tasks.list()).single.completedCount, 1000);
+    expect(api.attempts, isEmpty);
+    expect(photos.opened, isEmpty);
+  });
+
+  test('后续查重分页失败时保留旧数量，不上传前页的缺失文件', () async {
+    photos.albums = {
+      'a': List.generate(1005, (index) => localPhoto('$index.jpg')),
+    };
+    await tasks.add(['a']);
+    await tasks.updateProgress('a', 777);
+    final progress = <SyncProgress>[];
+    service = SyncService(
+      tasks: tasks,
+      users: users,
+      settings: settings,
+      storages: storages,
+      rules: rules,
+      logs: logs,
+      photos: photos,
+      apiFactory: (user, client) {
+        api = FakeApi(user, client)
+          ..onCheck = (_) async {
+            if (api.checkedFiles.length == 2) {
+              throw const ApiException('后页查重失败', statusCode: 400);
+            }
+          };
+        return api;
+      },
+    );
+    await service.start(progress.add);
+    expect(api.checkedFiles.map((page) => page.length), [995, 10]);
+    expect(progress, isEmpty);
+    expect((await tasks.list()).single.completedCount, 777);
+    expect(api.attempts, isEmpty);
+    expect(photos.opened, isEmpty);
+    expect((await logs.list(failuresOnly: true)).single.event, '远程检测');
   });
 
   test('每个任务开始时重新读取规则，上一任务期间的编辑立即生效', () async {
@@ -249,11 +400,11 @@ void main() {
     );
     await service.start((_) {});
     expect(api.attempts, {'a.jpg': 1});
-    expect(api.albumNames, ['相册 a']);
+    expect(api.albumNames, ['相册 a', '相册 b']);
     expect((await tasks.list()).map((task) => task.completedCount), [1, 0]);
   });
 
-  test('无关联、已删除、其他用户和空子项规则均不会上传或核对远端', () async {
+  test('失效规则不核对远端，空规则仍统一查重但不上传', () async {
     final plainTasks = TaskService(database: database);
     await plainTasks.add(['a']);
     await tasks.add(['b'], rule: testRule(id: 'deleted', name: '已删除'));
@@ -273,8 +424,8 @@ void main() {
     };
     await service.start((_) {});
     expect(api.attempts, isEmpty);
-    expect(api.albumNames, isEmpty);
-    expect(api.checkAlbumIds, isEmpty);
+    expect(api.albumNames, ['相册 d']);
+    expect(api.checkAlbumIds, ['remote-相册 d']);
     expect(photos.opened, isEmpty);
     final failures = await logs.list(failuresOnly: true);
     expect(failures, hasLength(3));
@@ -1143,15 +1294,35 @@ void main() {
       const Storage(id: 'deleted', name: '已删除存储', type: 3),
     ], account: (await users.get())!);
     photos.albums = {
-      'a': [localPhoto('missing.jpg')],
+      'a': [
+        localPhoto('old.jpg'),
+        localPhoto('missing.jpg'),
+        localPhoto('missing2.jpg'),
+      ],
     };
     await saveTestRule(
       database,
       testRule(id: 'deleted-rule', name: '失效存储规则', storageId: 'deleted'),
     );
     await tasks.add(['a'], rule: testRule(id: 'deleted-rule', name: '失效存储规则'));
+    await tasks.updateProgress('a', 12);
+    service = SyncService(
+      tasks: tasks,
+      users: users,
+      settings: settings,
+      storages: storages,
+      rules: rules,
+      logs: logs,
+      photos: photos,
+      apiFactory: (user, client) {
+        api = FakeApi(user, client)..inventory = [remotePhoto('old.jpg')];
+        return api;
+      },
+    );
     await service.start((_) {});
     expect(api.uploadStorages, isEmpty);
+    expect(api.checkedFiles.single, hasLength(3));
+    expect((await tasks.list()).single.completedCount, 1);
     final entries = await logs.list();
     expect(entries, hasLength(2));
     expect(entries.first.event, '读取存储');
@@ -1345,8 +1516,7 @@ class FakeApi extends SyncApi {
   final List<String> locks = [];
   final List<String> uploadStorages = [];
   final Map<String, String> uploadTargets = {};
-  Map<String, List<RemotePhoto>>? storageInventory;
-  final Map<String, String> albumStorages = {};
+  final List<List<SyncFile>> checkedFiles = [];
   List<Storage> storages = [
     const Storage(id: 'local-id', name: '本地照片', type: 1),
     const Storage(id: 's3', name: '云存储', type: 3),
@@ -1357,6 +1527,7 @@ class FakeApi extends SyncApi {
   String? badName;
   ApiException? inventoryError;
   Future<void> Function()? onReadStorages;
+  Future<void> Function(List<SyncFile>)? onCheck;
   Future<void> Function(SyncPhoto)? onUpload;
 
   /// 返回固定的本地存储。
@@ -1369,25 +1540,19 @@ class FakeApi extends SyncApi {
 
   /// 保存实际使用的本地相册名称。
   @override
-  Future<String> getAlbum(String name, String storageId) async {
-    expect(storages.any((item) => item.id == storageId), isTrue);
+  Future<String> getAlbum(String name) async {
     albumNames.add(name);
-    final id = storageInventory == null
-        ? 'remote-$name'
-        : 'remote-$storageId-$name';
-    albumStorages[id] = storageId;
-    return id;
+    return 'remote-$name';
   }
 
   /// 返回远端还不存在的文件，供上传队列使用。
   @override
   Future<List<SyncFile>> check(String albumId, List<SyncFile> files) async {
     checkAlbumIds.add(albumId);
+    checkedFiles.add(files);
+    await onCheck?.call(files);
     if (inventoryError != null) throw inventoryError!;
-    final current = storageInventory == null
-        ? inventory
-        : storageInventory![albumStorages[albumId]] ?? <RemotePhoto>[];
-    final keys = {for (final photo in current) photo.key};
+    final keys = {for (final photo in inventory) photo.key};
     return [
       for (final file in files)
         if (!keys.contains(file.key)) file,

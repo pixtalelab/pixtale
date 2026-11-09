@@ -246,73 +246,49 @@ class SyncService {
               checking: true,
             ),
           );
-          final groups = <String, List<SyncPhoto>>{};
+          final locals = <SyncPhoto>[];
           await for (final page in _photos.scanAlbum(
             album,
             isStopped: () => _stopped,
           )) {
             _checkStopped();
             await _checkAccount(api.user);
-            for (final photo in page) {
-              final item = _matchRule(rule, photo);
-              if (item == null) continue;
-              (groups[item.storageId] ??= []).add(photo);
-            }
+            locals.addAll(page);
           }
           _checkStopped();
-          final missing = <(SyncPhoto, String, Storage)>[];
-          var completed = 0;
-          var checkedGroups = 0;
-          for (final entry in groups.entries) {
-            try {
-              event = _LogEvent.readStorage;
-              final storage = storages
-                  .where((item) => item.id == entry.key)
-                  .firstOrNull;
-              if (storage == null) {
-                throw const ApiException('Storage unavailable');
-              }
-              event = _LogEvent.getRemoteAlbum;
-              final remoteAlbumId = await _retry(
-                () => api.getAlbum(name, storage.id),
-              );
-              event = _LogEvent.remoteCheck;
-              final locals = entry.value;
-              final missingCounts = <String, int>{};
-              for (
-                var start = 0;
-                start < locals.length;
-                start += SyncApi.checkPageSize
-              ) {
-                final files = await _retry(
-                  () => api.check(remoteAlbumId, [
-                    for (final photo
-                        in locals.skip(start).take(SyncApi.checkPageSize))
-                      SyncFile(name: photo.name, size: photo.size),
-                  ]),
-                );
-                for (final file in files) {
-                  missingCounts[file.key] = (missingCounts[file.key] ?? 0) + 1;
-                }
-              }
-              for (final photo in locals) {
-                final count = missingCounts[photo.key] ?? 0;
-                if (count > 0) {
-                  missingCounts[photo.key] = count - 1;
-                  missing.add((photo, remoteAlbumId, storage));
-                } else {
-                  completed++;
-                }
-              }
-              checkedGroups++;
-            } catch (error) {
-              _checkStopped();
-              await _recordFailure(error, event: event, albumName: albumName);
-              if (error is ApiException && error.isUnauthorized) rethrow;
+          event = _LogEvent.getRemoteAlbum;
+          final remoteAlbumId = locals.isEmpty
+              ? null
+              : await _retry(() => api.getAlbum(name));
+          event = _LogEvent.remoteCheck;
+          final missingCounts = <String, int>{};
+          // 所有扫描结果先统一查重，规则变化不会影响已同步数量和远端相册关联。
+          for (
+            var start = 0;
+            start < locals.length;
+            start += SyncApi.checkPageSize
+          ) {
+            await _checkAccount(api.user);
+            final files = await _retry(
+              () => api.check(remoteAlbumId!, [
+                for (final photo
+                    in locals.skip(start).take(SyncApi.checkPageSize))
+                  SyncFile(name: photo.name, size: photo.size),
+              ]),
+            );
+            for (final file in files) {
+              missingCounts[file.key] = (missingCounts[file.key] ?? 0) + 1;
             }
           }
-          // 全部目标均查重失败时保留上轮进度。
-          if (groups.isNotEmpty && checkedGroups == 0) continue;
+          final pending = <SyncPhoto>[];
+          for (final photo in locals) {
+            final count = missingCounts[photo.key] ?? 0;
+            if (count > 0) {
+              missingCounts[photo.key] = count - 1;
+              pending.add(photo);
+            }
+          }
+          var completed = locals.length - pending.length;
           var total = await _photos.count(album);
           await _refreshAlbumCacheIfCountChanged(
             albumId: task.albumId,
@@ -347,6 +323,24 @@ class SyncService {
           publishActivity(
             SyncActivity(albumId: task.albumId, albumName: albumName),
           );
+          // 先保存全部已同步数量，再为远端缺失的文件匹配上传规则和目标存储。
+          final missing = <(SyncPhoto, Storage)>[];
+          for (final photo in pending) {
+            final item = _matchRule(rule, photo);
+            if (item == null) continue;
+            final storage = storages
+                .where((storage) => storage.id == item.storageId)
+                .firstOrNull;
+            if (storage == null) {
+              await _recordFailure(
+                const ApiException('Storage unavailable'),
+                event: _LogEvent.readStorage,
+                albumName: albumName,
+              );
+              continue;
+            }
+            missing.add((photo, storage));
+          }
           if (missing.isEmpty) continue;
           event = _LogEvent.readSyncSettings;
           final settings = await _settings.get();
@@ -358,7 +352,7 @@ class SyncService {
           Future<void> worker() async {
             while (!_stopped && next < missing.length) {
               _checkStopped();
-              final (photo, remoteAlbumId, storage) = missing[next++];
+              final (photo, storage) = missing[next++];
 
               if (!isAllowedMediaName(photo.name)) continue;
               try {
@@ -366,7 +360,7 @@ class SyncService {
                 final accepted = await _upload(
                   api,
                   photo,
-                  remoteAlbumId,
+                  remoteAlbumId!,
                   storage,
                 );
                 if (!accepted) continue;

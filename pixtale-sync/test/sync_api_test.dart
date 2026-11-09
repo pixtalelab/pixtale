@@ -41,17 +41,15 @@ void main() {
     expect(storages.map((item) => item.type), [3, 1]);
   });
 
-  test('沿用本地相册名，查重提交扫描结果并返回可上传文件', () async {
+  test('仅按相册名获取配置，无 storageExists 字段时正常查重', () async {
     final client = MockClient((request) async {
       final body = jsonDecode(request.body);
       switch (request.url.path) {
         case '/api/sync/getConfig':
           expect(body, {
             'albumName': ['旅行'],
-            'storageId': 'disk',
           });
           return response({
-            'storageExists': true,
             'album': [
               {'albumId': 'album', 'name': '旅行'},
             ],
@@ -73,7 +71,7 @@ void main() {
     });
     addTearDown(client.close);
     final api = SyncApi(user, client);
-    expect(await api.getAlbum('旅行', 'disk'), 'album');
+    expect(await api.getAlbum('旅行'), 'album');
     final missing = await api.check('album', const [
       SyncFile(name: 'old.jpg', size: 10),
       SyncFile(name: 'new.jpg', size: 20),
