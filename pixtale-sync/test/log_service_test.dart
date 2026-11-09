@@ -28,12 +28,82 @@ void main() {
     await database.close();
   });
 
-  test('成功固定保存 Success，失败保留错误，倒序分页和异常筛选', () async {
+  test('新增日志使用不同的 UUID v4 主键', () async {
+    for (var index = 0; index < 2; index++) {
+      await logs.add(
+        albumName: '旅行',
+        event: '$index.jpg',
+        status: LogStatus.success,
+      );
+    }
+    final records = await logs.list();
+    expect(records.map((log) => log.id).toSet(), hasLength(2));
+    for (final log in records) {
+      expect(
+        log.id,
+        matches(
+          r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+        ),
+      );
+    }
+  });
+
+  test('按创建时间排序，微秒和同一时间分页顺序稳定', () async {
+    final db = await database.database;
+    final times = [
+      '2026-11-10T12:00:00.123001Z',
+      '2026-11-10T12:00:00.123Z',
+      '2026-11-10T12:00:00.123001Z',
+      '2026-11-09T12:00:00.000Z',
+    ];
+    for (var index = 0; index < times.length; index++) {
+      await db.insert('log', {
+        'id': '00000000-0000-4000-8000-00000000000$index',
+        'album_name': '旅行',
+        'event': '$index.jpg',
+        'status': LogStatus.success,
+        'message': 'Success',
+        'created_at': Log.encodeTime(DateTime.parse(times[index])),
+      });
+    }
+    expect((await logs.list(limit: 2)).map((log) => log.event), [
+      '2.jpg',
+      '0.jpg',
+    ]);
+    expect((await logs.list(offset: 2, limit: 2)).map((log) => log.event), [
+      '1.jpg',
+      '3.jpg',
+    ]);
+  });
+
+  test('乱序写入时按创建时间清理最旧日志', () async {
+    await settings.updateLogMaxCount(10);
+    final db = await database.database;
+    for (var index = 0; index < 11; index++) {
+      await db.insert('log', {
+        'id': '00000000-0000-4000-8000-${index.toString().padLeft(12, '0')}',
+        'album_name': '旅行',
+        'event': '$index.jpg',
+        'status': LogStatus.success,
+        'message': 'Success',
+        'created_at': Log.encodeTime(DateTime.utc(2020, 1, 11 - index)),
+      });
+    }
     await logs.add(
       albumName: '旅行',
-      event: '远程检测',
+      event: 'new.jpg',
       status: LogStatus.success,
     );
+    final records = await logs.list();
+    expect(records, hasLength(10));
+    expect(records.first.event, 'new.jpg');
+    expect(records.last.event, '8.jpg');
+    expect(records.map((log) => log.event), isNot(contains('9.jpg')));
+    expect(records.map((log) => log.event), isNot(contains('10.jpg')));
+  });
+
+  test('成功固定保存 Success，失败保留错误，倒序分页和异常筛选', () async {
+    await logs.add(albumName: '旅行', event: '远程检测', status: LogStatus.success);
     await logs.add(
       albumName: '旅行',
       event: 'bad.jpg',
@@ -90,11 +160,7 @@ void main() {
 
   test('写入和清空完成后发送变更通知', () async {
     final changed = logs.changes.first;
-    await logs.add(
-      albumName: '旅行',
-      event: '远程检测',
-      status: LogStatus.success,
-    );
+    await logs.add(albumName: '旅行', event: '远程检测', status: LogStatus.success);
     await changed;
     final cleared = logs.changes.first;
     await logs.clear();

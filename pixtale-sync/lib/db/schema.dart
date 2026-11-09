@@ -1,8 +1,10 @@
-// 当前数据库结构。版本不一致时执行这些语句。
-// 已有表由 IF NOT EXISTS 跳过；之后给旧表补的列追加在建表语句后面。
+// 当前数据库结构。低于 22 的数据库删除旧表后按此结构重建。
 
 /// 当前数据库结构版本。
 const databaseVersion = 22;
+
+/// 应用唯一设置记录的固定主键。
+const settingsId = 'setting';
 
 /// 应用当前使用的全部表。
 const databaseSchema = <String>[
@@ -64,7 +66,7 @@ CREATE TABLE IF NOT EXISTS task (
 ''',
   '''
 CREATE TABLE IF NOT EXISTS log (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id TEXT PRIMARY KEY,
   album_name TEXT NOT NULL,
   event TEXT NOT NULL,
   status INTEGER NOT NULL,
@@ -74,7 +76,7 @@ CREATE TABLE IF NOT EXISTS log (
 ''',
   '''
 CREATE TABLE IF NOT EXISTS settings (
-  id INTEGER PRIMARY KEY CHECK (id = 1),
+  id TEXT NOT NULL PRIMARY KEY CHECK (id = '$settingsId'),
   task_interval INTEGER NOT NULL DEFAULT 10,
   log_max_count INTEGER NOT NULL DEFAULT 500,
   task_status INTEGER NOT NULL DEFAULT 2,
@@ -84,10 +86,5 @@ CREATE TABLE IF NOT EXISTS settings (
   locale TEXT NOT NULL DEFAULT ''
 );
 ''',
-  'INSERT OR IGNORE INTO settings (id) VALUES (1);',
-  // 旧库的 settings 在这条列加入之前就已建好，CREATE 不会补列。
-  'ALTER TABLE settings ADD COLUMN schema_version INTEGER NOT NULL DEFAULT 0;',
-  "ALTER TABLE settings ADD COLUMN locale TEXT NOT NULL DEFAULT '';",
-  'ALTER TABLE task ADD COLUMN rule_id TEXT;',
-  'DROP TABLE IF EXISTS window_state;',
+  "INSERT OR IGNORE INTO settings (id) VALUES ('$settingsId');",
 ];

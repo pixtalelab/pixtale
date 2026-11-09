@@ -812,12 +812,17 @@ void main() {
           const Storage(id: 'cached', name: '缓存存储', type: 1),
         ], account: (await users.get())!);
         if (hasLastSync) {
-          await (await database.database).update('settings', {
-            'last_sync_at': DateTime.now()
-                .toUtc()
-                .subtract(const Duration(days: 1))
-                .toIso8601String(),
-          }, where: 'id = 1');
+          await (await database.database).update(
+            'settings',
+            {
+              'last_sync_at': DateTime.now()
+                  .toUtc()
+                  .subtract(const Duration(days: 1))
+                  .toIso8601String(),
+            },
+            where: 'id = ?',
+            whereArgs: ['setting'],
+          );
         }
         await settings.updateTaskInterval(10);
         service = SyncService(

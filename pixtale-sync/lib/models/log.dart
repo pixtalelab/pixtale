@@ -24,7 +24,7 @@ class Log {
     required this.createdAt,
   });
 
-  final int id;
+  final String id;
   final String albumName;
   final String event;
 
@@ -32,4 +32,14 @@ class Log {
   final int status;
   final String message;
   final DateTime createdAt;
+
+  /// 保存固定六位微秒的 UTC 时间，保证数据库按文本排序时与真实时间一致。
+  static String encodeTime(DateTime value) {
+    final utc = value.toUtc();
+    final seconds = utc.toIso8601String().split('.').first;
+    final fraction = (utc.millisecond * 1000 + utc.microsecond)
+        .toString()
+        .padLeft(6, '0');
+    return '$seconds.${fraction}Z';
+  }
 }

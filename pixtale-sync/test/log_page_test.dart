@@ -6,6 +6,7 @@ import 'package:pixtale_sync/models/log.dart';
 import 'package:pixtale_sync/pages/log_page.dart';
 import 'package:pixtale_sync/services/log_service.dart';
 import 'package:pixtale_sync/theme/app_theme.dart';
+
 import 'localized_app.dart';
 
 // 验证日志只读展示、状态颜色和新增记录刷新。
@@ -131,7 +132,7 @@ void main() {
 
 /// 创建带固定时间的日志样本。
 Log _log(int id, String event, int status, String message) => Log(
-  id: id,
+  id: '$id',
   albumName: '旅行照片',
   event: event,
   status: status,

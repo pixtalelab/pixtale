@@ -47,30 +47,42 @@ class Db {
     );
   }
 
-  /// 结构版本不一致时执行当前 schema，并记下版本。
+  /// 低于 22 时删除旧表并执行当前建表语句，全程共用事务。
   Future<void> _ensureSchema(Database db) async {
-    if (await _schemaVersion(db) == databaseVersion) return;
+    final version = await _schemaVersion(db);
+    if (version >= databaseVersion) return;
     await db.transaction((txn) async {
+      if (version < 22) {
+        await _dropTables(txn);
+      }
       for (final sql in databaseSchema) {
-        try {
-          await txn.execute(sql);
-        } on DatabaseException catch (error) {
-          // SQLite 的 ADD COLUMN 没有 IF NOT EXISTS，列已在时跳过这一条。
-          if (!error.isDuplicateColumnError()) rethrow;
-        }
+        await txn.execute(sql);
       }
       await txn.rawUpdate(
-        'UPDATE settings SET schema_version = ? WHERE id = 1',
-        [databaseVersion],
+        'UPDATE settings SET schema_version = ? WHERE id = ?',
+        [databaseVersion, settingsId],
       );
     });
   }
 
-  /// 没有设置表、版本列或记录时视为尚未初始化。
+  /// 删除所有非 SQLite 内部表，旧索引和触发器随表一起删除。
+  Future<void> _dropTables(Transaction txn) async {
+    final tables = await txn.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'table' "
+      "AND name NOT GLOB 'sqlite_*'",
+    );
+    await txn.execute('PRAGMA defer_foreign_keys = ON');
+    for (final table in tables) {
+      final name = (table['name'] as String).replaceAll('"', '""');
+      await txn.execute('DROP TABLE "$name"');
+    }
+  }
+
+  /// 读取现有结构版本；缺少设置表、版本列或记录时视为 0。
   Future<int> _schemaVersion(DatabaseExecutor db) async {
     try {
       final rows = await db.rawQuery(
-        'SELECT schema_version FROM settings WHERE id = 1',
+        'SELECT schema_version FROM settings LIMIT 1',
       );
       if (rows.isEmpty) return 0;
       return rows.single['schema_version'] as int? ?? 0;

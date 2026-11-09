@@ -473,7 +473,7 @@ BEGIN SELECT RAISE(ABORT, 'test failure'); END;
     expect((await service.list()).first.sortTime, 97);
   });
 
-  test('版本 20 的已有数据库自动新增模板表并保留旧数据', () async {
+  test('版本 20 的数据库清空后重建规则表，重新登录后可新增规则', () async {
     final directory = await Directory.systemTemp.createTemp('rules_migrate_');
     final path = '${directory.path}/test.sqlite';
     var database = Db(factory: databaseFactoryFfi, databasePath: path);
@@ -498,9 +498,9 @@ BEGIN SELECT RAISE(ABORT, 'test failure'); END;
       (await db.query('settings')).single['schema_version'],
       databaseVersion,
     );
-    expect((await db.query('settings')).single['log_max_count'], 444);
-    expect((await db.query('task')).single['album_id'], 'album');
-    expect((await db.query('user')).single['user_id'], 'user');
+    expect((await db.query('settings')).single['log_max_count'], 500);
+    expect(await db.query('task'), isEmpty);
+    expect(await db.query('user'), isEmpty);
     expect(await db.query('rule'), isEmpty);
     expect(await db.query('rule_item'), isEmpty);
     final columns = await db.rawQuery('PRAGMA table_info(rule)');
@@ -525,6 +525,7 @@ BEGIN SELECT RAISE(ABORT, 'test failure'); END;
     expect(foreignKeys.single['table'], 'rule');
     expect(foreignKeys.single['from'], 'pid');
     expect(foreignKeys.single['to'], 'id');
+    await _signIn(database);
     final id = await RuleService(database: database).add(
       name: '升级后新增',
       fileType: RuleFileType.video,

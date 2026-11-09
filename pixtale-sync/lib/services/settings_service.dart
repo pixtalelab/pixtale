@@ -1,4 +1,5 @@
 import 'package:pixtale_sync/db/db.dart';
+import 'package:pixtale_sync/db/schema.dart';
 import 'package:pixtale_sync/models/settings.dart';
 
 // 应用设置与同步运行状态的持久化。
@@ -15,7 +16,8 @@ class SettingsService {
   Future<Settings> get() async {
     final rows = await (await _database.database).query(
       'settings',
-      where: 'id = 1',
+      where: 'id = ?',
+      whereArgs: [settingsId],
       limit: 1,
     );
     final row = rows.first;
@@ -54,8 +56,11 @@ class SettingsService {
 
   /// 更新指定设置字段。
   Future<void> _update(String column, Object value) async {
-    await (await _database.database).update('settings', {
-      column: value,
-    }, where: 'id = 1');
+    await (await _database.database).update(
+      'settings',
+      {column: value},
+      where: 'id = ?',
+      whereArgs: [settingsId],
+    );
   }
 }
