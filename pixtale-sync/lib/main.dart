@@ -19,9 +19,11 @@ Future<void> main() async {
   if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
-    await WindowService.instance.initialize();
   }
   await AppLocale.instance.load();
+  if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+    await WindowService.instance.initialize();
+  }
   runApp(const MyApp());
 }
 

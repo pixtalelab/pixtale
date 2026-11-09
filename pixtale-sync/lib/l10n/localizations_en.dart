@@ -10,6 +10,9 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get quit => 'Quit';
+
+  @override
   String get syncRule => 'Sync rule';
 
   @override

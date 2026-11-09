@@ -1,5 +1,6 @@
 {
   "@@locale": "en",
+  "quit": "Quit",
   "syncRule": "Sync rule",
   "logEventReadRule": "Read rule",
   "noRuleAvailable": "No rules available",

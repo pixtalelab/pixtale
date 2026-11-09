@@ -98,6 +98,12 @@ abstract class AppLocalizations {
     Locale('zh'),
   ];
 
+  /// No description provided for @quit.
+  ///
+  /// In zh, this message translates to:
+  /// **'退出'**
+  String get quit;
+
   /// No description provided for @syncRule.
   ///
   /// In zh, this message translates to:

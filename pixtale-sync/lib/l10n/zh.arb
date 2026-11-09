@@ -1,5 +1,6 @@
 {
   "@@locale": "zh",
+  "quit": "退出",
   "syncRule": "同步规则",
   "logEventReadRule": "读取规则",
   "noRuleAvailable": "暂无可用规则",

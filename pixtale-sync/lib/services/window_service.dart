@@ -8,6 +8,7 @@ import 'dart:ui';
 
 import 'package:path/path.dart' as path;
 import 'package:pixtale_sync/db/database_path.dart';
+import 'package:pixtale_sync/l10n/locale.dart';
 import 'package:pixtale_sync/providers/sync_provider.dart';
 import 'package:pixtale_sync/services/tray_sync_service.dart';
 import 'package:screen_retriever/screen_retriever.dart';
@@ -18,6 +19,12 @@ import 'package:window_manager/window_manager.dart';
 
 /// 统一管理桌面窗口，移动端不初始化此服务。
 class WindowService with WindowListener, TrayListener {
+  /// 创建窗口服务，平台接口和语言可替换以验证原生资源的退出顺序。
+  WindowService({TrayManager? tray, WindowManager? window, AppLocale? locale})
+    : _tray = tray ?? trayManager,
+      _window = window ?? windowManager,
+      _locale = locale ?? AppLocale.instance;
+
   /// 应用启动时使用的窗口服务。
   static final instance = WindowService();
 
@@ -38,11 +45,14 @@ class WindowService with WindowListener, TrayListener {
 
   bool _exiting = false;
   TraySyncService? _traySync;
+  final TrayManager _tray;
+  final WindowManager _window;
+  final AppLocale _locale;
 
   /// 托盘和页面使用同一份同步状态。
   void bindSync(SyncProvider sync) {
     _traySync?.dispose();
-    _traySync = TraySyncService(sync: sync, setToolTip: trayManager.setToolTip);
+    _traySync = TraySyncService(sync: sync, setToolTip: _tray.setToolTip);
   }
 
   void unbindSync(SyncProvider sync) {
@@ -53,29 +63,10 @@ class WindowService with WindowListener, TrayListener {
 
   /// 在主屏幕内以默认尺寸居中显示窗口。
   Future<void> initialize() async {
-    await windowManager.ensureInitialized();
-    windowManager.addListener(this);
-    trayManager.addListener(this);
-    await windowManager.setPreventClose(true);
-    await trayManager.setIcon('assets/tray_icon.png');
-    await trayManager.setToolTip('Pixtale Sync');
-    await trayManager.setContextMenu(
-      Menu(
-        items: [
-          MenuItem(
-            key: 'show',
-            label: 'Open',
-            onClick: (_) => unawaited(_showWindow()),
-          ),
-          MenuItem.separator(),
-          MenuItem(
-            key: 'exit',
-            label: 'Quit',
-            onClick: (_) => unawaited(_exit()),
-          ),
-        ],
-      ),
-    );
+    await _window.ensureInitialized();
+    _window.addListener(this);
+    await _window.setPreventClose(true);
+    await initializeTray();
     final primary = await screenRetriever.getPrimaryDisplay();
     final visibleSize = primary.visibleSize ?? primary.size;
     final saved = await readSavedSize();
@@ -88,7 +79,7 @@ class WindowService with WindowListener, TrayListener {
       ),
       saved: saved,
     );
-    await windowManager.waitUntilReadyToShow(
+    await _window.waitUntilReadyToShow(
       WindowOptions(
         size: bounds.size,
         minimumSize: Size(
@@ -100,10 +91,46 @@ class WindowService with WindowListener, TrayListener {
         windowButtonVisibility: false,
       ),
     );
-    await windowManager.setBounds(bounds);
-    await windowManager.show();
-    await windowManager.focus();
+    await _window.setBounds(bounds);
+    await _window.show();
+    await _window.focus();
   }
+
+  /// 创建托盘，并在应用语言变化时更新右键菜单。
+  Future<void> initializeTray() async {
+    _tray.addListener(this);
+    _locale.addListener(_onLocaleChanged);
+    await _tray.setIcon('assets/tray_icon.png');
+    await _tray.setToolTip('Pixtale Sync');
+    await _updateTrayMenu();
+  }
+
+  /// 使用与界面一致的语言重建菜单，包含跟随系统的情况。
+  Future<void> _updateTrayMenu() async {
+    if (_exiting) return;
+    final text = AppLocale.strings(saved: _locale.locale?.languageCode);
+    await _tray.setContextMenu(
+      Menu(
+        items: [
+          MenuItem(
+            key: 'show',
+            label: text.open,
+            onClick: (_) => unawaited(_showWindow()),
+          ),
+          MenuItem.separator(),
+          MenuItem(
+            key: 'exit',
+            label: text.quit,
+            // 原生菜单回调返回后再销毁资源，避免在回调中释放所属托盘。
+            onClick: (_) => unawaited(Future<void>(quit)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 用户切换语言时立即更新菜单。
+  void _onLocaleChanged() => unawaited(_updateTrayMenu());
 
   /// 拖动结束后记下当前宽高。最大化时不覆盖上次的普通尺寸。
   @override
@@ -115,7 +142,7 @@ class WindowService with WindowListener, TrayListener {
   @override
   void onWindowClose() {
     if (_exiting) return;
-    unawaited(_rememberSize().whenComplete(windowManager.hide));
+    unawaited(_rememberSize().whenComplete(_window.hide));
   }
 
   /// 点击托盘图标时重新显示窗口。
@@ -127,26 +154,41 @@ class WindowService with WindowListener, TrayListener {
   /// 右键托盘图标时弹出操作菜单。
   @override
   void onTrayIconRightMouseDown() {
-    unawaited(trayManager.popUpContextMenu());
+    unawaited(_showTrayMenu());
+  }
+
+  /// 打开前再解析系统语言，退出期间不再创建托盘资源。
+  Future<void> _showTrayMenu() async {
+    await _updateTrayMenu();
+    if (!_exiting) await _tray.popUpContextMenu();
   }
 
   /// 显示窗口并恢复焦点。
   Future<void> _showWindow() async {
-    await windowManager.show();
-    await windowManager.focus();
+    if (_exiting) return;
+    await _window.show();
+    await _window.focus();
   }
 
-  /// 清理托盘资源并真正退出桌面程序。
-  Future<void> _exit() async {
+  /// 先隐藏窗口及托盘，再等待同步停止，最后销毁原生窗口。
+  Future<void> quit() async {
     if (_exiting) return;
     _exiting = true;
+    final sync = _traySync?.sync;
     _traySync?.dispose();
     _traySync = null;
-    windowManager.removeListener(this);
-    trayManager.removeListener(this);
-    await trayManager.destroy();
-    await windowManager.setPreventClose(false);
-    await windowManager.destroy();
+    _locale.removeListener(_onLocaleChanged);
+    try {
+      // 先让可见窗口消失，避免 Flutter 引擎释放期间留下停止重绘的界面。
+      await _window.hide();
+      _window.removeListener(this);
+      _tray.removeListener(this);
+      await _tray.destroy();
+      await sync?.stop();
+    } finally {
+      await _window.setPreventClose(false);
+      await _window.destroy();
+    }
   }
 
   /// 读取上次保存的宽高。文件缺失或内容无效时返回空。
@@ -218,8 +260,8 @@ class WindowService with WindowListener, TrayListener {
   /// 最大化时保留上一次普通尺寸，读写失败不影响窗口显示。
   Future<void> _rememberSize() async {
     try {
-      if (await windowManager.isMaximized()) return;
-      final bounds = await windowManager.getBounds();
+      if (await _window.isMaximized()) return;
+      final bounds = await _window.getBounds();
       await writeSavedSize(bounds.size);
     } catch (_) {}
   }

@@ -10,6 +10,9 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get quit => '退出';
+
+  @override
   String get syncRule => '同步规则';
 
   @override

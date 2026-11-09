@@ -76,7 +76,6 @@ class _TemplateNameDialogState extends State<TemplateNameDialog> {
                 children: [
                   TextFormField(
                     controller: _name,
-                    autofocus: true,
                     enabled: !_saving,
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => _save(),

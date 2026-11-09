@@ -166,7 +166,6 @@ class _TemplateDialogState extends State<TemplateDialog> {
                     if (widget.pid == null && widget.item == null) ...[
                       TextFormField(
                         controller: _name,
-                        autofocus: true,
                         enabled: !_saving,
                         textInputAction: TextInputAction.next,
                         decoration: InputDecoration(
