@@ -263,16 +263,6 @@ const storageService = {
     return storageList;
   },
 
-  // 查询指定的正常存储配置是否存在。
-  async syncExists(storageId?: string): Promise<boolean> {
-    if (!storageId) {
-      return false;
-    }
-
-    const storageList = await this.select();
-    return storageList.some((storage) => storage.storageId === storageId);
-  },
-
   // 刷新存储配置缓存。
   async refreshStorageCache(): Promise<void> {
     const storageList = await orm

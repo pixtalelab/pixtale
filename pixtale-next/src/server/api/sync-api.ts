@@ -7,7 +7,7 @@ import { syncService } from '@/server/service/sync-service';
 
 // 这个模块注册照片同步相关接口。
 
-// 按名称查询当前用户可用的存储和相册配置。
+// 按名称查询当前用户的相册配置，并创建缺少的相册。
 app.post('/sync/getConfig', async (c: Context) => {
   const body = await c.req.json<SyncConfigBo>();
   const data = await syncService.getConfig(body, getUserId());

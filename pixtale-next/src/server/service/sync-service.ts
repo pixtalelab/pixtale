@@ -3,7 +3,6 @@ import { type SyncCheckVo, type SyncGetConfigVo } from '@/server/entity/vo/sync'
 import BizError from '@/server/error/biz-error';
 import { albumService } from '@/server/service/album-service';
 import { photoService } from '@/server/service/photo-service';
-import { storageService } from '@/server/service/storage-service';
 
 // 这个模块处理照片同步检查相关业务。
 
@@ -22,9 +21,7 @@ const syncService = {
       album.push(item);
     }
 
-    const storageExists = await storageService.syncExists(params.storageId);
-
-    return { album, storageExists };
+    return { album };
   },
 
   // 筛选当前用户照片库中不存在的文件，并把已存在且未关联的照片挂到指定相册。

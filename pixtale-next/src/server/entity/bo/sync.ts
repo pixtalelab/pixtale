@@ -12,7 +12,6 @@ interface SyncCheckBo {
 
 interface SyncConfigBo {
   albumName: string[];
-  storageId?: string;
 }
 
 export type { SyncCheckBo, SyncCheckFileBo, SyncConfigBo };

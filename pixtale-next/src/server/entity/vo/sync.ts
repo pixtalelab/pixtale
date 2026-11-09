@@ -9,7 +9,6 @@ interface SyncCheckVo {
 
 interface SyncGetConfigVo {
   album: Album[];
-  storageExists: boolean;
 }
 
 export type { SyncCheckVo, SyncGetConfigVo };
