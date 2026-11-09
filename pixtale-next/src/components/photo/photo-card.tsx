@@ -6,6 +6,7 @@ import { type RenderComponentProps } from "masonic"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { formatPhotoTakenDate, formatRecycleTime } from "@/lib/date"
+import { formatCapacity } from "@/lib/file"
 import { getThumbHashUrl } from "@/lib/thumb-hash"
 import { PhotoFavoriteEnum, PhotoStatusEnum } from "@/server/enums/photo-enum"
 import { SettingListStyleEnum } from "@/server/enums/setting-enum"
@@ -198,7 +199,7 @@ export function PhotoCard({
       ) : null}
       {data.type.startsWith("video/") && data.status !== PhotoStatusEnum.DELETE && (
         <Video
-          className="pointer-events-none absolute top-[7px] left-[7px] z-10 size-4.5 text-white"
+          className="pointer-events-none absolute top-[7px] left-[7px] z-10 size-5 text-white"
           style={{
             filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.4)) drop-shadow(0 0 1px rgba(0,0,0,0.3))",
           }}
@@ -266,7 +267,7 @@ export function PhotoCard({
               {formatPhotoName(data.name)}
             </h3>
             <div className="flex justify-start">
-              <span className={["text-xs text-white/90 opacity-0 group-hover:opacity-100", showHover ? "opacity-100" : ""].join(" ")}>
+              <span className={["text-xs text-white/85 opacity-0 group-hover:opacity-100", showHover ? "opacity-100" : ""].join(" ")}>
                 {formatPhotoTakenDate(data.takenTime, locale)}
               </span>
             </div>

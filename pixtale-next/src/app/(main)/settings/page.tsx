@@ -175,12 +175,14 @@ export default function Page() {
                 </SelectContent>
               </Select>
             </SettingItem>
-            <SettingItem title={t("publicAlbum")} description={t("publicAlbumDescription")}>
-              <Switch
-                checked={setting.publicAlbum === SettingPublicAlbumEnum.ENABLE}
-                onCheckedChange={changePublicAlbum}
-              />
-            </SettingItem>
+            <div hidden>
+              <SettingItem title={t("publicAlbum")} description={t("publicAlbumDescription")}>
+                <Switch
+                  checked={setting.publicAlbum === SettingPublicAlbumEnum.ENABLE}
+                  onCheckedChange={changePublicAlbum}
+                />
+              </SettingItem>
+            </div>
           </div>
           <div className="mt-8 flex justify-end">
             <Button type="button" onClick={saveSetting}>

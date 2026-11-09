@@ -191,6 +191,13 @@ html {
     --os-handle-bg-active: var(--scrollbar-color-active);
 }
 
+@media (width < 48rem) {
+    .os-theme-page {
+        --os-size: 4px;
+        --os-handle-border-radius: 0;
+    }
+}
+
 body > .os-theme-page {
     z-index: 30;
 }

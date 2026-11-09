@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, memo, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type RefObject } from "react"
-import { CheckIcon, CircleAlertIcon, CircleFadingPlay, PlusIcon, RedoDot, SettingsIcon } from "lucide-react"
+import { CheckIcon, CircleAlertIcon, PlusIcon, RedoDot, SettingsIcon, Video } from "lucide-react"
 import { toast } from "sonner"
 import { sha1 } from "hash-wasm"
 
@@ -732,8 +732,8 @@ const PhotoUploadCell = memo(function PhotoUploadCell({ data, width }: RenderCom
         <PhotoUploadCover cover={preview.cover} name={preview.file.name} />
       ) : null}
       {isVideo && (
-        <CircleFadingPlay
-          className="pointer-events-none absolute top-[7px] left-[7px] z-10 size-4 text-white"
+        <Video
+          className="pointer-events-none absolute top-[7px] left-[7px] z-10 size-4.5 text-white"
           style={{
             filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.4)) drop-shadow(0 0 1px rgba(0,0,0,0.3))",
           }}

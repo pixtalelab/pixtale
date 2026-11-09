@@ -42,8 +42,24 @@ export function getPhotoColorSpace(exif: string | null | undefined, uncalibrated
   return formatColorSpace(parsePhotoExifJson(exif), uncalibrated)
 }
 
+// 拍摄模式分组按曝光、测光、白平衡、闪光和场景的顺序展示。
+const captureFields = [
+  ["ExposureProgram", "exposureProgram"],
+  ["ExposureMode", "exposureMode"],
+  ["MeteringMode", "meteringMode"],
+  ["WhiteBalance", "whiteBalance"],
+  ["WhiteBalanceBias", "whiteBalanceBias"],
+  ["WBShiftAB", "wbShiftAB"],
+  ["WBShiftGM", "wbShiftGM"],
+  ["Flash", "flash"],
+  ["LightSource", "lightSource"],
+  ["SceneCaptureType", "sceneCaptureType"],
+  ["FlashMeteringMode", "flashMeteringMode"],
+] as const
+
 type ViewerField = {
-  key: "camera" | "lens" | "shutter" | "aperture" | "maxAperture" | "focalLength" | "focalLength35mm" | "iso"
+  key: "camera" | "lens" | "shutter" | "aperture" | "maxAperture" | "focalLength" | "focalLength35mm" | "iso" | typeof captureFields[number][1]
+    | "brightnessValue" | "sensingMethod" | "focalPlaneResolution"
   value: string
   wrap?: boolean
 }
@@ -177,6 +193,68 @@ export function getPhotoShootingParams(exif: string | null | undefined): ViewerF
   const iso = exifText(data.ISO)
   if (iso) {
     items.push({ key: "iso", value: iso })
+  }
+
+  return items
+}
+
+// 从 EXIF 读取拍摄模式，翻译已知描述，厂商扩展值保留原文。
+export function getPhotoCaptureParams(
+  exif: string | null | undefined,
+  translate: (key: string) => string | null,
+): ViewerField[] {
+  const data = parsePhotoExifJson(exif)
+  if (!data) return []
+
+  const items: ViewerField[] = []
+  for (const [tag, key] of captureFields) {
+    const text = exifText(data[tag])
+    // 白平衡偏移为 0 也是有效数据，仅忽略缺失或空值。
+    if (text === null) continue
+
+    const normalized = text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+    const value = tag === "WhiteBalanceBias"
+      ? `${text} Mired`
+      : translate(`captureValues.${key}.${normalized}`) ?? text
+    items.push({ key, value, wrap: true })
+  }
+
+  return items
+}
+
+// 用字符串截取小数，避免浮点运算误差；整数原样显示，小数保留两位。
+function formatFocalPlaneResolution(value: unknown) {
+  const text = exifText(value)
+  return text?.replace(/(\.\d{1,2})\d*$/, (_match, decimal: string) => decimal.padEnd(3, "0")) ?? null
+}
+
+// 从 EXIF 读取亮度值、感光方式和焦平面分辨率。
+export function getPhotoTechnicalParams(
+  exif: string | null | undefined,
+  translate: (key: string) => string | null,
+): ViewerField[] {
+  const data = parsePhotoExifJson(exif)
+  if (!data) return []
+
+  const items: ViewerField[] = []
+  const brightness = exifText(data.BrightnessValue)
+  if (brightness !== null) {
+    const value = Number(brightness)
+    items.push({ key: "brightnessValue", value: Number.isFinite(value) ? `${value.toFixed(1)} EV` : brightness })
+  }
+
+  const sensingMethod = exifText(data.SensingMethod)
+  if (sensingMethod) {
+    const normalized = sensingMethod.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+    const value = translate(`technicalValues.sensingMethod.${normalized}`) ?? sensingMethod
+    items.push({ key: "sensingMethod", value, wrap: true })
+  }
+
+  const x = formatFocalPlaneResolution(data.FocalPlaneXResolution)
+  const y = formatFocalPlaneResolution(data.FocalPlaneYResolution)
+  if (x !== null || y !== null) {
+    const value = `${x ?? "—"} × ${y ?? "—"}`
+    items.push({ key: "focalPlaneResolution", value, wrap: true })
   }
 
   return items

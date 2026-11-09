@@ -64,7 +64,7 @@ export function AlbumActionMenu({ albumId, shadow = true, onRename, onTop, onPub
               <ArrowUpToLine />
               {t("actions.pin")}
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={onPublic}>
+            <DropdownMenuItem className="hidden" onSelect={onPublic}>
               {publicStatus === AlbumPublicEnum.ENABLE ? <LockIcon /> : <GlobeIcon />}
               {publicStatus === AlbumPublicEnum.ENABLE ? t("actions.private") : t("actions.public")}
             </DropdownMenuItem>
