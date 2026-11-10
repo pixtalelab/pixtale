@@ -26,6 +26,7 @@ const exifPickKeys = [
   "FocalLengthIn35mmFormat",
   "ISO",
   "ColorSpace",
+  "ProfileDescription",
   "ExposureProgram",
   "ExposureMode",
   "MeteringMode",
@@ -48,6 +49,8 @@ const exifPickKeys = [
 
 const readArgs = [
   ...exifPickKeys.map((key) => `-${key}`),
+  "-MIMEType",
+  "-FileType",
   "-GPSLatitude",
   "-GPSLongitude",
   "-GPSAltitude",
@@ -226,12 +229,14 @@ function getDuration(tags: Tags) {
   return null
 }
 
-// 从原图文件路径读取拍摄时间、经纬度、视频时长与 exif JSON 字符串。
+// 从原文件内容读取文件类型、拍摄时间、经纬度、视频时长与 exif JSON 字符串。
 export async function readPhotoExif(filePath: string) {
   try {
     const tags = await exiftool.read(filePath, { readArgs })
 
     return {
+      type: tags.MIMEType ?? null,
+      typeDesc: tags.FileType?.toLowerCase() ?? null,
       takenTime: getTakenTime(tags),
       latitude: getCoordinate(tags.GPSLatitude),
       longitude: getCoordinate(tags.GPSLongitude),
@@ -242,6 +247,8 @@ export async function readPhotoExif(filePath: string) {
   } catch (error) {
     console.error("[ExifError] failed to read EXIF:", error)
     return {
+      type: null,
+      typeDesc: null,
       takenTime: null,
       latitude: null,
       longitude: null,

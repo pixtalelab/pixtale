@@ -1,11 +1,14 @@
-// 获取媒体 MIME 类型，在浏览器未识别视频类型时按扩展名补全。
+// 获取媒体 MIME 类型，在浏览器未识别 HEIC/HEIF 图片或视频类型时按扩展名补全。
 export function getMediaType(file: { name: string; type: string }): string {
   if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
     return file.type
   }
 
   const extension = file.name.split(".").pop()?.toLowerCase() ?? ""
-  const videoTypes: Record<string, string> = {
+  const mediaTypes: Record<string, string> = {
+    heic: "image/heic",
+    heif: "image/heif",
+    hif: "image/heif",
     mp4: "video/mp4",
     m4v: "video/mp4",
     mov: "video/quicktime",
@@ -19,5 +22,5 @@ export function getMediaType(file: { name: string; type: string }): string {
     m2ts: "video/mp2t",
   }
 
-  return videoTypes[extension] ?? file.type
+  return mediaTypes[extension] ?? file.type
 }

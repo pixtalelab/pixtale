@@ -371,7 +371,7 @@ const photoService = {
   // 上传照片或视频，视频先提取第一帧，再生成 preview、thumbnail 和元信息。
   async add(upload: PhotoUpload, userId: string): Promise<PhotoAddResultVo> {
 
-    const { name, path, size, type, storageId, albumId, lastModified } = upload;
+    const { name, path, size, storageId, albumId, lastModified } = upload;
 
     if (!storageId) {
       throw new BizError('storage.configRequired');
@@ -399,13 +399,18 @@ const photoService = {
       return { photo: null, duplicate: true };
     }
 
-    const coverPath = type.startsWith('video/')
+    // 先按原文件内容识别类型，读取失败时沿用上传类型。
+    const meta = await readPhotoExif(path);
+    const type = meta.type ?? upload.type;
+    const typeDesc = meta.typeDesc ?? (type.split('/').pop() || type);
+    // 视频先提取封面，再按图片流程生成派生图。
+    const isVideo = type.startsWith('video/');
+    const coverPath = isVideo
       ? await readVideoFrame(path, join(upload.directory, 'frame.png'))
       : path;
     const images = await processPhotoImages(coverPath);
-    const meta = await readPhotoExif(path);
     const takenTime = meta.takenTime ?? new Date(lastModified > 0 ? lastModified : Date.now()).toISOString();
-    const duration = type.startsWith('video/') ? await readVideoDuration(path) : null;
+    const duration = isVideo ? await readVideoDuration(path) : null;
     const key = await this.resolvePhotoKey(userId, name);
     const photoId = createId();
     const preview = buildPreviewKey(userId, photoId);
@@ -456,7 +461,7 @@ const photoService = {
       thumbHash: images.thumbHash,
       checksum,
       type,
-      typeDesc: type.split('/').pop() || type,
+      typeDesc,
       size,
       width: images.width,
       height: images.height,

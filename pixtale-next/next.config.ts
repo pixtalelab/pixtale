@@ -4,7 +4,7 @@ import createNextIntlPlugin from "next-intl/plugin";
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 const nextConfig: NextConfig = {
   reactStrictMode: false,
-  serverExternalPackages: ['exiftool-vendored', 'better-sqlite3'],
+  serverExternalPackages: ['exiftool-vendored', 'better-sqlite3', 'heic-convert'],
   // Vercel 不用 standalone；Docker 自建部署才需要。
   output: process.env.VERCEL ? undefined : 'standalone',
   // standalone 需要把平台对应的原生依赖资源一并打进产物。

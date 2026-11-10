@@ -13,6 +13,7 @@ import PhotoVideo, { type VideoSlide } from "@/components/photo/photo-video"
 import { useTapAction } from "@/hooks/use-tap-action"
 import { Button } from "@/components/ui/button"
 import { getThumbHashUrl } from "@/lib/thumb-hash"
+import { getMediaType } from "@/lib/media"
 import { type PhotoVo } from "@/server/entity/vo/photo"
 import { usePhotoStore } from "@/store/photo-store"
 import { useTranslations } from "next-intl"
@@ -37,6 +38,10 @@ type PhotoSlide = SlideImage & {
   key: string
   // 当前照片原图大小。
   originalSize: number
+  // 原文件名，用于识别格式和下载命名。
+  fileName: string
+  // 原文件 MIME 类型。
+  fileType: string
   // 当前照片预览图。
   preview: string
   // 缩图地址。
@@ -73,6 +78,10 @@ type LoadOriginalImageParams = {
   src: string
   // 原图文件大小，用于没有返回 total 时兜底显示进度。
   totalSize: number
+  // 原文件名，用于识别格式和下载命名。
+  fileName: string
+  // 原文件 MIME 类型。
+  fileType: string
   // 保存已经加载完成的原图。
   setOriginalPhoto: (photo: OriginalPhoto | null) => void
   // 保存原图加载进度。
@@ -113,11 +122,36 @@ function closePreviewRequests(requests: PreviewRequestMap) {
   })
 }
 
+// 非 Safari 浏览器下载 HEIC/HEIF 原图，返回是否已转为下载。
+function downloadHeicOriginal(data: ArrayBuffer, fileName: string, fileType: string): boolean {
+  const mediaType = getMediaType({ name: fileName, type: fileType })
+  const isHeic = /\.(heic|heif|hif)$/i.test(fileName) || /^image\/hei[cf](?:-sequence)?$/i.test(mediaType)
+  const isSafari = /Version\/[\d.]+.*Safari\//.test(navigator.userAgent)
+    && !/Chrome|Chromium|CriOS|FxiOS|Edg|OPR|OPiOS|Android|GSA\//i.test(navigator.userAgent)
+
+  if (!isHeic || isSafari) {
+    return false
+  }
+
+  const url = URL.createObjectURL(new Blob([data], { type: mediaType }))
+  const link = document.createElement("a")
+  link.href = url
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  // 留出浏览器接管下载的时间，再释放原图数据。
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  return true
+}
+
 // 加载原图并直接更新查看器原图相关状态。
 function loadOriginalImage({
   photoId,
   src,
   totalSize,
+  fileName,
+  fileType,
   setOriginalPhoto,
   setOriginalProgress,
   setShowOriginalProgress,
@@ -164,10 +198,12 @@ function loadOriginalImage({
         loaded: xhr.response.byteLength,
         total: xhr.response.byteLength,
       })
-      setPhotoCache(photoId, src)
-      setOriginalPhoto({
-        key: src,
-      })
+      if (!downloadHeicOriginal(xhr.response, fileName, fileType)) {
+        setPhotoCache(photoId, src)
+        setOriginalPhoto({
+          key: src,
+        })
+      }
 
       hideTimerRef.current = setTimeout(() => {
         hideTimerRef.current = null
@@ -237,12 +273,15 @@ function loadPreviewImage(
     if (xhr.status >= 200 && xhr.status < 300) {
       setPhotoCache(photoId, src)
 
-      if (currentPhotoIdRef.current === photoId) {
-        setOriginalPhoto({
-          key: src,
-        })
-        onLoaded?.()
-      }
+      // 在下一帧更新画面，并再次确认当前照片，避免切换后写入旧预览。
+      requestAnimationFrame(() => {
+        if (currentPhotoIdRef.current === photoId) {
+          setOriginalPhoto({
+            key: src,
+          })
+          onLoaded?.()
+        }
+      })
     }
     clearCurrentRequest()
   }
@@ -628,6 +667,8 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
         ...common,
         key: photo.key,
         originalSize: photo.size,
+        fileName: photo.name,
+        fileType: photo.type,
         preview: photo.preview || "",
         src: photo.thumbnail || photo.preview || "",
       }
@@ -753,6 +794,8 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
       photoId: slide.photoId,
       src: slide.key,
       totalSize: slide.originalSize,
+      fileName: slide.fileName,
+      fileType: slide.fileType,
       setOriginalPhoto,
       setOriginalProgress,
       setShowOriginalProgress,

@@ -18,19 +18,21 @@ const colorSpaceLabels: Record<number, string> = {
   2: "Adobe RGB",
 }
 
-// 仅使用 Exif ColorSpace 显示色彩空间，翻译未校准状态并清理末尾括号说明。
+// 优先显示 Exif ColorSpace，未校准时使用 ICC 描述并统一其中的 sRGB 名称。
 function formatColorSpace(exif: Record<string, unknown> | null | undefined, uncalibrated: string) {
   const colorSpace = exif?.ColorSpace
   if (!colorSpace) {
     return null
   }
 
-  if (typeof colorSpace === "number") {
-    return colorSpace === 65535 ? uncalibrated : colorSpaceLabels[colorSpace] ?? String(colorSpace)
-  }
-
-  const text = String(colorSpace).replace(/\s*\([^)]*\)$/, "").trim()
-  if (text.toLowerCase() === "uncalibrated") {
+  const text = typeof colorSpace === "number"
+    ? colorSpaceLabels[colorSpace] ?? String(colorSpace)
+    : String(colorSpace).replace(/\s*\([^)]*\)$/, "").trim()
+  if (colorSpace === 65535 || text.toLowerCase() === "uncalibrated") {
+    const description = exif?.ProfileDescription
+    if (typeof description === "string" && description.trim()) {
+      return description.includes("sRGB") ? "sRGB" : description
+    }
     return uncalibrated
   }
 
