@@ -296,6 +296,18 @@ abstract class AppLocalizations {
   /// **'设置'**
   String get settings;
 
+  /// No description provided for @settingsFaqTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'常见问题'**
+  String get settingsFaqTitle;
+
+  /// No description provided for @settingsFaqDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'如果后台同步失效，需要在 应用信息→省电策略 中将 Pixtale Sync 改为无限制'**
+  String get settingsFaqDescription;
+
   /// No description provided for @chooseAlbums.
   ///
   /// In zh, this message translates to:

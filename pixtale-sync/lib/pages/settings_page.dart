@@ -136,6 +136,29 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  /// 展示后台同步常见问题，提示用户手动调整手机省电策略。
+  Future<void> _showInfo() async {
+    final l10n = AppLocalizations.of(context);
+    await showDialog<void>(
+      context: context,
+      requestFocus: false,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.settingsFaqTitle),
+        content: Text(l10n.settingsFaqDescription),
+        scrollable: true,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF0A0A0A),
+            ),
+            child: Text(MaterialLocalizations.of(context).okButtonLabel),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _updateSettings(Settings next) async {
     final current = _settings;
     if (current == null) return;
@@ -177,8 +200,19 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(AppLocalizations.of(context).settings)),
+      appBar: AppBar(
+        title: Text(l10n.settings),
+        actions: [
+          IconButton(
+            onPressed: _showInfo,
+            tooltip: l10n.settingsFaqTitle,
+            icon: const Icon(Icons.info_outline),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(

@@ -110,6 +110,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings => 'Settings';
 
   @override
+  String get settingsFaqTitle => 'FAQ';
+
+  @override
+  String get settingsFaqDescription =>
+      'If background sync stops working, set Pixtale Sync to Unrestricted under App info → Battery settings.';
+
+  @override
   String get chooseAlbums => 'Choose albums';
 
   @override

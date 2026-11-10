@@ -33,6 +33,8 @@
   "retry": "重试",
   "logs": "日志",
   "settings": "设置",
+  "settingsFaqTitle": "常见问题",
+  "settingsFaqDescription": "如果后台同步失效，需要在 应用信息→省电策略 中将 Pixtale Sync 改为无限制",
   "chooseAlbums": "选择相册",
   "done": "完成",
   "cancel": "取消",

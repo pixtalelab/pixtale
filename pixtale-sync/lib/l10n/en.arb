@@ -33,6 +33,8 @@
   "retry": "Retry",
   "logs": "Logs",
   "settings": "Settings",
+  "settingsFaqTitle": "FAQ",
+  "settingsFaqDescription": "If background sync stops working, set Pixtale Sync to Unrestricted under App info → Battery settings.",
   "chooseAlbums": "Choose albums",
   "done": "Done",
   "cancel": "Cancel",

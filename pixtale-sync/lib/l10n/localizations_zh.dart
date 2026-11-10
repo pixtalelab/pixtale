@@ -109,6 +109,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settings => '设置';
 
   @override
+  String get settingsFaqTitle => '常见问题';
+
+  @override
+  String get settingsFaqDescription =>
+      '如果后台同步失效，需要在 应用信息→省电策略 中将 Pixtale Sync 改为无限制';
+
+  @override
   String get chooseAlbums => '选择相册';
 
   @override
