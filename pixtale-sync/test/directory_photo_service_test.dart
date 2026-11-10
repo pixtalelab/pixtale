@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:photo_manager/photo_manager.dart';
 import 'package:pixtale_sync/models/photo.dart';
 import 'package:pixtale_sync/services/directory_photo_service.dart';
 
@@ -129,6 +130,35 @@ void main() {
     expect(info.cover, isNull);
   });
 
+  test('平台无法解码 HEIF 封面时仍能读取相册和同步原文件', () async {
+    final heif = File(p.join(directory.path, 'camera.HIF'));
+    final bytes = [
+      0x00, 0x00, 0x00, 0x18, //
+      ...'ftypmif1'.codeUnits,
+    ];
+    await heif.writeAsBytes(bytes);
+    await heif.setLastModified(DateTime(2024));
+
+    final onlyHeif = await service.getInfo(album);
+    expect(onlyHeif.count, 1);
+    expect(onlyHeif.cover, isNull);
+
+    final image = File(p.join(directory.path, 'old.png'));
+    await image.writeAsBytes(await createImage(80, 40));
+    await image.setLastModified(DateTime(2020));
+    final info = await service.getInfo(album);
+    expect(info.count, 2);
+    expect(info.cover, await image.readAsBytes());
+
+    final photos = await service
+        .scanAlbum(album, isStopped: () => false)
+        .expand((page) => page)
+        .toList();
+    final photo = photos.singleWhere((photo) => photo.name == 'camera.HIF');
+    final original = await service.getFile(photo, PMCancelToken());
+    expect(await original.readAsBytes(), bytes);
+  });
+
   test('扩展名和文件头都在白名单才保留', () async {
     const jpeg = [0xFF, 0xD8, 0xFF];
     const png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
@@ -157,6 +187,9 @@ void main() {
       0x66, 0x74, 0x79, 0x70, // ftyp
       0x33, 0x67, 0x70, 0x35, // 3gp5
     ];
+    final heic = [0, 0, 0, 24, ...'ftypheic'.codeUnits];
+    final heix = [0, 0, 0, 24, ...'ftypheix'.codeUnits];
+    final heif = [0, 0, 0, 24, ...'ftypmif1'.codeUnits];
     final accepted = {
       'a.jpg': jpeg,
       'b.jpeg': jpeg,
@@ -164,7 +197,13 @@ void main() {
       'd.JFIF': jpeg,
       'e.webp': webp,
       'f.gif': gif,
+      'phone.heic': heic,
+      'camera.HIF': heif,
+      'photo.heif': heif,
+      'upper.HEIF': heif,
+      'ten-bit.hif': heix,
       'mismatch.jpg': png,
+      'photo.mp4': heic,
       'movie.mp4': mp4,
       'clip.mov': mov,
       'browser.webm': ebml,
@@ -192,15 +231,11 @@ void main() {
       0,
       0,
     ];
-    const heic = [
-      0x00, 0x00, 0x00, 0x18, //
-      0x66, 0x74, 0x79, 0x70, // ftyp
-      0x68, 0x65, 0x69, 0x63, // heic
-    ];
     for (final name in [
       'broken.jpg',
+      'broken.heic',
+      'broken.hif',
       'bad.mp4',
-      'photo.mp4',
       'renamed.mp4',
       'phone.m4v',
       'disc.mpg',
@@ -209,17 +244,14 @@ void main() {
       'camera.mts',
       'camera.m2ts',
       'g.avif',
-      'h.heic',
-      'i.heif',
+      'broken.heif',
       'j.bmp',
       'k.tif',
       'l.tiff',
       'm.txt',
     ]) {
       final bytes = switch (name) {
-        'h.heic' => jpeg,
         'g.avif' => avif,
-        'photo.mp4' => heic,
         'renamed.mp4' => gp,
         _ => const [1, 2, 3],
       };
@@ -234,6 +266,22 @@ void main() {
     expect(
       photos.map((photo) => photo.name.toLowerCase()),
       unorderedEquals(accepted.keys.map((name) => name.toLowerCase())),
+    );
+    expect(
+      photos.singleWhere((photo) => photo.name == 'phone.heic').mimeType,
+      'image/heic',
+    );
+    expect(
+      photos.singleWhere((photo) => photo.name == 'camera.HIF').mimeType,
+      'image/heif',
+    );
+    expect(
+      photos.singleWhere((photo) => photo.name == 'photo.heif').mimeType,
+      'image/heif',
+    );
+    expect(
+      photos.singleWhere((photo) => photo.name == 'upper.HEIF').mimeType,
+      'image/heif',
     );
     expect(
       photos.singleWhere((photo) => photo.name == 'movie.mp4').mimeType,

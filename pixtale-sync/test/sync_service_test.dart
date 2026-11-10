@@ -894,12 +894,23 @@ void main() {
       0x71, 0x74, 0x20, 0x20, // qt
     ];
     photos.headers['bad.mp4'] = const [1, 2, 3, 4];
+    photos.headers['phone.heic'] = [0, 0, 0, 24, ...'ftypheic'.codeUnits];
+    photos.headers['camera.HIF'] = [0, 0, 0, 24, ...'ftypmif1'.codeUnits];
+    photos.headers['photo.HEIF'] = [0, 0, 0, 24, ...'ftypmif1'.codeUnits];
+    photos.headers['broken.heic'] = const [1, 2, 3, 4];
+    photos.headers['broken.hif'] = const [1, 2, 3, 4];
+    photos.headers['broken.heif'] = const [1, 2, 3, 4];
     photos.albums = {
       'a': [
         localPhoto('keep.jpg'),
         localPhoto('mismatch.jpg'),
         localPhoto('broken.jpg'),
-        localPhoto('skip.heic'),
+        localPhoto('phone.heic'),
+        localPhoto('camera.HIF'),
+        localPhoto('photo.HEIF'),
+        localPhoto('broken.heic'),
+        localPhoto('broken.hif'),
+        localPhoto('broken.heif'),
         localPhoto('skip.bmp'),
         localPhoto('clip.mp4'),
         localPhoto('bad.mp4'),
@@ -913,19 +924,32 @@ void main() {
     };
     await tasks.add(['a']);
     await service.start((_) {});
-    expect(api.attempts.keys, {'keep.jpg', 'mismatch.jpg', 'clip.mp4'});
+    expect(api.attempts.keys, {
+      'keep.jpg',
+      'mismatch.jpg',
+      'phone.heic',
+      'camera.HIF',
+      'photo.HEIF',
+      'clip.mp4',
+    });
     expect(
       photos.opened,
       unorderedEquals([
         'keep.jpg',
         'mismatch.jpg',
         'broken.jpg',
+        'phone.heic',
+        'camera.HIF',
+        'photo.HEIF',
+        'broken.heic',
+        'broken.hif',
+        'broken.heif',
         'clip.mp4',
         'bad.mp4',
       ]),
     );
     expect(await logs.list(failuresOnly: true), isEmpty);
-    expect((await tasks.list()).single.completedCount, 3);
+    expect((await tasks.list()).single.completedCount, 6);
   });
 
   test('完成一轮后保持定时开启，停止可立即结束等待', () async {

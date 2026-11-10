@@ -54,24 +54,25 @@ class DirectoryPhotoService extends PhotoService {
     );
   }
 
-  /// 读取目录中的图片和视频数量，封面使用最新的图片。
+  /// 读取目录中的图片和视频数量，封面使用最新的可解码图片。
   @override
   Future<PhotoAlbumInfo> getInfo(
     PhotoAlbum album, {
     bool imagesOnly = false,
   }) async {
     final photos = await _files(album);
-    File? coverFile;
+    Uint8List? cover;
     for (final file in photos) {
       if (!isAllowedImageName(file.path)) continue;
-      coverFile = file;
-      break;
+      try {
+        cover = await _readCover(file);
+        break;
+      } on Exception {
+        // 平台可能无法解码 HEIF 等原图，继续寻找封面，不影响原文件同步。
+        continue;
+      }
     }
-    return PhotoAlbumInfo(
-      album: album,
-      count: photos.length,
-      cover: coverFile == null ? null : await _readCover(coverFile),
-    );
+    return PhotoAlbumInfo(album: album, count: photos.length, cover: cover);
   }
 
   /// 将封面等比缩至最长边 256 像素，以 PNG 缓存且不放大小图。
@@ -89,7 +90,9 @@ class DirectoryPhotoService extends PhotoService {
       );
       image = (await codec.getNextFrame()).image;
       final data = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (data == null) throw const ApiException("Couldn't create an album cover");
+      if (data == null) {
+        throw const ApiException("Couldn't create an album cover");
+      }
       return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
     } finally {
       image?.dispose();
@@ -173,6 +176,11 @@ String mediaMimeType(String filePath) {
       return 'image/gif';
     case '.webp':
       return 'image/webp';
+    case '.hif':
+    case '.heif':
+      return 'image/heif';
+    case '.heic':
+      return 'image/heic';
     case '.mp4':
       return 'video/mp4';
     case '.mov':

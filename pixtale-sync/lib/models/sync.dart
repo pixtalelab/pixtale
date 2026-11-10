@@ -15,6 +15,9 @@ const allowedImageExtensions = {
   '.jfif',
   '.webp',
   '.gif',
+  '.hif',
+  '.heic',
+  '.heif',
 };
 
 /// 允许上传的视频扩展名。
@@ -26,6 +29,8 @@ const _allowedImageMimeTypes = {
   'image/png',
   'image/gif',
   'image/webp',
+  'image/heif',
+  'image/heic',
 };
 
 /// 文件头识别结果里允许上传的视频 MIME。
