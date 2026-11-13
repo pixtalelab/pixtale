@@ -1,14 +1,15 @@
 "use client"
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject, type SyntheticEvent } from "react"
 import { useLocale } from "next-intl"
 import { LoaderCircle, Play } from "lucide-react"
 import { BufferingIndicator, PlayButton } from "@videojs/react"
 import { I18nProvider } from "@videojs/react/i18n"
 import "@videojs/react/i18n/locales/zh/register"
-import { Video, VideoPlayer, VideoSkin } from "@videojs/react/video"
+import { Video, VideoPlayer, VideoSkin, usePlayer } from "@videojs/react/video"
 import { useController, useLightboxState, type ContainerRect, type GenericSlide } from "yet-another-react-lightbox"
 import { useSrcAfterAnimation } from "@/hooks/use-src-after-animation"
+import { useTapAction } from "@/hooks/use-tap-action"
 import { getThumbHashUrl } from "@/lib/thumb-hash"
 import { usePhotoStore } from "@/store/photo-store"
 
@@ -31,6 +32,58 @@ declare module "yet-another-react-lightbox" {
   interface SlideTypes {
     video: VideoSlide
   }
+}
+
+// 中间播放按钮只负责开始播放，同一次点击不把控制条唤出来。
+function CenterPlayButton({ videoRef }: { videoRef: RefObject<HTMLVideoElement | null> }) {
+  const toggleControls = usePlayer((state) => state.toggleControls)
+
+  // 暂停时开始播放并收起控制条，播放中则暂停。
+  function togglePlayback() {
+    const video = videoRef.current
+    if (!video) {
+      return
+    }
+    if (video.paused) {
+      void video.play()
+      toggleControls?.(false)
+      return
+    }
+    video.pause()
+  }
+
+  const playTap = useTapAction(togglePlayback)
+
+  // 挡住冒泡，避免这次点击被播放器当成显示控制条。
+  function stopControlGesture(event: SyntheticEvent) {
+    event.stopPropagation()
+  }
+
+  return (
+    <PlayButton
+      className="photo-video-start absolute left-1/2 top-1/2 z-10 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center bg-transparent text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+      render={(props) => (
+        <button
+          {...props}
+          onPointerDown={(event) => {
+            stopControlGesture(event)
+            props.onPointerDown?.(event)
+          }}
+          onPointerMove={stopControlGesture}
+          onPointerUp={(event) => {
+            stopControlGesture(event)
+            playTap.onPointerUp(event)
+          }}
+          onClick={(event) => {
+            stopControlGesture(event)
+            playTap.onClick(event)
+          }}
+        >
+          <Play className="ml-1.5 h-10 md:h-12 w-10 md:w-12 drop-shadow-md" fill="currentColor" aria-hidden="true" />
+        </button>
+      )}
+    />
+  )
 }
 
 // 当前项在切换动画结束后创建播放器，切走时等动画结束再销毁。
@@ -233,9 +286,7 @@ export default function PhotoVideo({ slide, rect, active, offset }: {
                 playsInline
                 aria-label={slide.alt}
               />
-              <PlayButton className="photo-video-start absolute left-1/2 top-1/2 z-10 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center bg-transparent text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
-                <Play className="ml-1.5 h-10 md:h-12 w-10 md:w-12 drop-shadow-md" fill="currentColor" aria-hidden="true" />
-              </PlayButton>
+              <CenterPlayButton videoRef={videoRef} />
               <BufferingIndicator className="photo-video-buffering pointer-events-none absolute inset-0 z-30 hidden items-center justify-center data-[visible]:flex">
                 <LoaderCircle className="h-6 w-6 animate-spin text-white drop-shadow-md" aria-hidden="true" />
               </BufferingIndicator>
