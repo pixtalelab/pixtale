@@ -10,6 +10,7 @@ import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, CircleAlertIcon, Circ
 
 import { PhotoInfoSidebar, PhotoViewerBlurBackground } from "@/components/photo/photo-info-sidebar"
 import PhotoVideo, { type VideoSlide } from "@/components/photo/photo-video"
+import { useSrcAfterAnimation } from "@/hooks/use-src-after-animation"
 import { useTapAction } from "@/hooks/use-tap-action"
 import { Button } from "@/components/ui/button"
 import { getThumbHashUrl } from "@/lib/thumb-hash"
@@ -57,11 +58,6 @@ type FullscreenButtonProps = {
   enter: () => void
 }
 
-type OriginalPhoto = {
-  // 当前已经加载完成的原图 key。
-  key: string
-}
-
 type OriginalProgress = {
   // 当前已加载字节数。
   loaded: number
@@ -82,8 +78,6 @@ type LoadOriginalImageParams = {
   fileName: string
   // 原文件 MIME 类型。
   fileType: string
-  // 保存已经加载完成的原图。
-  setOriginalPhoto: (photo: OriginalPhoto | null) => void
   // 保存原图加载进度。
   setOriginalProgress: (progress: OriginalProgress | null) => void
   // 控制原图加载进度是否显示。
@@ -152,7 +146,6 @@ function loadOriginalImage({
   totalSize,
   fileName,
   fileType,
-  setOriginalPhoto,
   setOriginalProgress,
   setShowOriginalProgress,
   setOriginalError,
@@ -200,9 +193,6 @@ function loadOriginalImage({
       })
       if (!downloadHeicOriginal(xhr.response, fileName, fileType)) {
         setPhotoCache(photoId, src)
-        setOriginalPhoto({
-          key: src,
-        })
       }
 
       hideTimerRef.current = setTimeout(() => {
@@ -228,28 +218,21 @@ function loadOriginalImage({
   return abortOriginal
 }
 
-// 静默加载预览图，请求完成后替换当前显示图。
+// 静默加载预览图。完成后写入 photoCache，由画面按缓存地址自行更新。
 function loadPreviewImage(
   src: string,
   photoId: string,
   currentPhotoIdRef: { current: string | null },
-  setOriginalPhoto: (photo: OriginalPhoto | null) => void,
   previewRequestsRef: { current: PreviewRequestMap },
   getPhotoCache: (photoId: string) => string | undefined,
   setPhotoCache: (photoId: string, src: string) => void,
   onLoaded?: () => void
 ) {
-  const cachedSrc = getPhotoCache(photoId)
-
-  if (cachedSrc) {
-    requestAnimationFrame(() => {
-      if (currentPhotoIdRef.current === photoId) {
-        setOriginalPhoto({
-          key: cachedSrc,
-        })
-        onLoaded?.()
-      }
-    })
+  // 已有预览或原图缓存时不再请求；只有当前照片才继续预热邻居。
+  if (getPhotoCache(photoId)) {
+    if (currentPhotoIdRef.current === photoId) {
+      onLoaded?.()
+    }
     return
   }
 
@@ -271,17 +254,13 @@ function loadPreviewImage(
   xhr.responseType = "arraybuffer"
   xhr.onload = () => {
     if (xhr.status >= 200 && xhr.status < 300) {
-      setPhotoCache(photoId, src)
-
-      // 在下一帧更新画面，并再次确认当前照片，避免切换后写入旧预览。
-      requestAnimationFrame(() => {
-        if (currentPhotoIdRef.current === photoId) {
-          setOriginalPhoto({
-            key: src,
-          })
-          onLoaded?.()
-        }
-      })
+      // 原图已经写入缓存时保留原图地址，避免迟到的预览响应把它盖掉。
+      if (!getPhotoCache(photoId)) {
+        setPhotoCache(photoId, src)
+      }
+      if (currentPhotoIdRef.current === photoId) {
+        onLoaded?.()
+      }
     }
     clearCurrentRequest()
   }
@@ -485,19 +464,20 @@ function RotateButton({ showActions, onRotate }: { showActions: boolean, onRotat
 // 渲染原图加载按钮。
 function LoadOriginalButton({
   showActions,
-  originalPhoto,
-  getPhotoCache,
   onLoadOriginal,
 }: {
   showActions: boolean
-  originalPhoto: OriginalPhoto | null
-  getPhotoCache: (photoId: string) => string | undefined
   onLoadOriginal: (slide: PhotoSlide) => void
 }) {
   const { currentSlide } = useLightboxState()
   const photoSlide = currentSlide && isImageSlide(currentSlide) ? currentSlide as PhotoSlide : null
-  const cacheSrc = photoSlide ? getPhotoCache(photoSlide.photoId) : undefined
-  const originalLoaded = Boolean(photoSlide && (originalPhoto?.key === photoSlide.key || cacheSrc?.includes("photo/")))
+  // originalLoaded 表示当前照片的原图地址已经在 photoCache 中。
+  const originalLoaded = usePhotoStore((state) => {
+    if (!photoSlide?.key) {
+      return false
+    }
+    return state.photoCache.get(photoSlide.photoId) === photoSlide.key
+  })
 
   // 把当前 slide 交给父组件加载原图。
   function loadOriginal() {
@@ -555,22 +535,39 @@ function CloseButton({ showActions }: { showActions: boolean }) {
   )
 }
 
-// 渲染单张照片，通过原图 key ref 判断显示封面还是原图。
+// 从 photoCache 解析显示地址。当前张可用预览或原图，前后各一张只用预览。
+function resolveSlideSrc(slide: PhotoSlide, offset: number, photoCache: Map<string, string>) {
+  const cachedSrc = photoCache.get(slide.photoId)
+
+  if (offset === 0 && cachedSrc && (cachedSrc === slide.preview || cachedSrc === slide.key)) {
+    return cachedSrc
+  }
+
+  if (Math.abs(offset) === 1 && slide.preview && cachedSrc === slide.preview) {
+    return cachedSrc
+  }
+
+  return slide.src
+}
+
+// 渲染单张照片，按缓存决定显示缩略图、预览图或原图。
 function PhotoSlideImage({
   slide,
-  originalPhoto,
+  offset,
   rotate,
   fullscreenOpen,
 }: {
   // 当前照片 slide。
   slide: PhotoSlide
-  // 当前已加载完成的原图。
-  originalPhoto: OriginalPhoto | null
+  // 相对当前照片的距离，只有 -1、0、1 会提升预览。
+  offset: number
   // 当前照片 CSS 旋转角度。
   rotate: number
   // 当前是否处于全屏状态。
   fullscreenOpen: boolean
 }) {
+  // imageSrc 是这张照片解析后的目标地址，动画结束后才写到图片上。
+  const imageSrc = useSrcAfterAnimation(usePhotoStore((state) => resolveSlideSrc(slide, offset, state.photoCache)))
   const normalizedRotate = rotate % 360
   const sideways = normalizedRotate === 90 || normalizedRotate === 270
   const thumbnailHeight = innerWidth < 768 ? 46 : 75
@@ -578,7 +575,7 @@ function PhotoSlideImage({
 
   return (
     <img
-      src={originalPhoto?.key === slide.preview || originalPhoto?.key === slide.key ? originalPhoto.key : slide.src}
+      src={imageSrc}
       alt={slide.alt}
       draggable={false}
       className="select-none max-w-none object-contain transition-transform duration-200"
@@ -604,8 +601,6 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
   const setInfoOpen = usePhotoStore((state) => state.setInfoOpen)
   // toggleInfoOpen 切换信息侧栏展开状态。
   const toggleInfoOpen = usePhotoStore((state) => state.toggleInfoOpen)
-  // 当前已经加载完成的原图。
-  const [originalPhoto, setOriginalPhoto] = useState<OriginalPhoto | null>(null)
   // 当前原图加载进度。
   const [originalProgress, setOriginalProgress] = useState<OriginalProgress | null>(null)
   // showOriginalProgress 控制原图加载进度是否显示。
@@ -628,7 +623,7 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
   const abortOriginalRef = useRef<(() => void) | null>(null)
   // previewRequestsRef 保存正在请求的预览图 id 和取消方法。
   const previewRequestsRef = useRef<PreviewRequestMap>(new Map())
-  // currentPhotoIdRef 保存当前查看的照片 id，用于静默预览图请求防乱序。
+  // currentPhotoIdRef 保存当前查看的照片 id，只有仍停在这张照片时才预热邻居。
   const currentPhotoIdRef = useRef<string | null>(photos[index]?.photoId ?? null)
   // openScrollYRef 保存打开查看器前的页面滚动位置，关闭后还原照片列表。
   const openScrollYRef = useRef(typeof window === "undefined" ? 0 : window.scrollY)
@@ -735,7 +730,7 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
     }
   }, [open])
 
-  // 处理照片切换后的原图加载。
+  // 切换照片后加载当前预览，完成后再预热前后各一张。
   function handleView(nextIndex: number) {
     setViewIndex(nextIndex)
     setZoomLevel(1)
@@ -754,14 +749,13 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
     setOriginalProgress(null)
     setOriginalError(false)
     setShowOriginalProgress(false)
-    setOriginalPhoto(null)
 
     if (!preview) {
       return
     }
 
     // 当前项加载完成后，再静默预热前后两张的高清图或视频封面。
-    loadPreviewImage(preview, photo.photoId, currentPhotoIdRef, setOriginalPhoto, previewRequestsRef, getPhotoCache, setPhotoCache, () => {
+    loadPreviewImage(preview, photo.photoId, currentPhotoIdRef, previewRequestsRef, getPhotoCache, setPhotoCache, () => {
       if (photos.length < 2) {
         return
       }
@@ -778,7 +772,7 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
       }
 
       targets.forEach((target) => {
-        loadPreviewImage(target.preview!, target.photoId, currentPhotoIdRef, setOriginalPhoto, previewRequestsRef, getPhotoCache, setPhotoCache)
+        loadPreviewImage(target.preview!, target.photoId, currentPhotoIdRef, previewRequestsRef, getPhotoCache, setPhotoCache)
       })
     })
   }
@@ -796,7 +790,6 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
       totalSize: slide.originalSize,
       fileName: slide.fileName,
       fileType: slide.fileType,
-      setOriginalPhoto,
       setOriginalProgress,
       setShowOriginalProgress,
       setOriginalError,
@@ -911,6 +904,7 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
       }}
       animation={{
         fade: 250,
+        swipe: innerWidth < 768 ? 300 : 500,
         easing: {
           fade: "ease-out",
           navigation: "cubic-bezier(0.22, 1, 0.36, 1)",
@@ -966,8 +960,6 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
             <RotateButton showActions={actionsVisible} onRotate={rotatePhoto} />
             <LoadOriginalButton
               showActions={actionsVisible}
-              originalPhoto={originalPhoto}
-              getPhotoCache={getPhotoCache}
               onLoadOriginal={loadOriginalPhoto}
             />
             {showOriginalProgress && (
@@ -992,7 +984,7 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
                   slide={slide}
                   rect={rect}
                   active={offset === 0}
-                  previewCover={originalPhoto?.key === slide.preview ? originalPhoto.key : undefined}
+                  offset={offset}
                 />
               </div>
             )
@@ -1019,7 +1011,7 @@ export function PhotoViewer({ open, index, photos, onBack, onBrowserBack }: Phot
               />
               <PhotoSlideImage
                 slide={photoSlide}
-                originalPhoto={originalPhoto}
+                offset={offset}
                 rotate={photoRotates[photoSlide.photoId] ?? 0}
                 fullscreenOpen={fullscreenOpen}
               />

@@ -8,6 +8,7 @@ import { I18nProvider } from "@videojs/react/i18n"
 import "@videojs/react/i18n/locales/zh/register"
 import { Video, VideoPlayer, VideoSkin } from "@videojs/react/video"
 import { useController, useLightboxState, type ContainerRect, type GenericSlide } from "yet-another-react-lightbox"
+import { useSrcAfterAnimation } from "@/hooks/use-src-after-animation"
 import { getThumbHashUrl } from "@/lib/thumb-hash"
 import { usePhotoStore } from "@/store/photo-store"
 
@@ -33,16 +34,24 @@ declare module "yet-another-react-lightbox" {
 }
 
 // 当前项在切换动画结束后创建播放器，切走时等动画结束再销毁。
-export default function PhotoVideo({ slide, rect, active, previewCover }: {
+export default function PhotoVideo({ slide, rect, active, offset }: {
   slide: VideoSlide
   rect: ContainerRect
   active: boolean
-  // previewCover 是已经加载完成的高清封面，未完成时只显示缩图。
-  previewCover?: string
+  // offset 是相对当前项的距离，只有 -1、0、1 使用预览封面。
+  offset: number
 }) {
   const locale = useLocale()
   // videoMuted 从照片 store 读取，所有视频共享并持久化该开关状态。
   const videoMuted = usePhotoStore((state) => state.videoMuted)
+  // previewCover 是已缓存的预览封面。滑动动画结束后才盖到缩略图上。
+  const previewCover = useSrcAfterAnimation(usePhotoStore((state) => {
+    if (Math.abs(offset) > 1 || !slide.preview) {
+      return undefined
+    }
+    const cachedSrc = state.photoCache.get(slide.photoId)
+    return cachedSrc === slide.preview ? cachedSrc : undefined
+  }))
   // 读取图库动画状态和实际轮播容器，用于判断画面是否已经停止移动。
   const { animation } = useLightboxState()
   const { containerRef } = useController()
